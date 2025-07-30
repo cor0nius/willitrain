@@ -17,7 +17,7 @@ RETURNING *;
 SELECT * FROM current_weather WHERE location_id=$1;
 
 -- name: GetCurrentWeatherAtLocationFromAPI :one
-SELECT * FROM current_weather WHERE location_id=$1, source_api=$2;
+SELECT * FROM current_weather WHERE location_id=$1 AND source_api=$2;
 
 -- name: UpdateCurrentWeather :one
 UPDATE current_weather
@@ -29,7 +29,10 @@ RETURNING *;
 DELETE FROM current_weather WHERE location_id=$1;
 
 -- name: DeleteCurrentWeatherAtLocationFromAPI :exec
-DELETE FROM current_weather WHERE location_id=$1, source_api=$2;
+DELETE FROM current_weather WHERE location_id=$1 AND source_api=$2;
+
+-- name: DeleteAllCurrentWeatherFromAPI :exec
+DELETE FROM current_weather WHERE source_api=$1;
 
 -- name: DeleteAllCurrentWeather :exec
 DELETE FROM current_weather;
