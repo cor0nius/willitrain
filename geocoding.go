@@ -17,12 +17,12 @@ func (cfg *apiConfig) WrapForGeocode(cityName string) (string, error) {
 }
 
 func (cfg *apiConfig) Geocode(cityName string) (Location, error) {
-	reqestURL, err := cfg.WrapForGeocode(cityName)
+	requestURL, err := cfg.WrapForGeocode(cityName)
 	if err != nil {
 		return Location{}, err
 	}
 
-	response, err := http.Get(reqestURL)
+	response, err := http.Get(requestURL)
 	if err != nil {
 		return Location{}, err
 	}
@@ -67,6 +67,52 @@ func (cfg *apiConfig) WrapForReverseGeocode(lat, lng float64) (string, error) {
 	latlng := fmt.Sprintf("latlng=%v,%v", lat, lng)
 	wrappedURL := fmt.Sprintf("%sjson?%s%s", baseURL, latlng, cfg.gmpKey)
 	return wrappedURL, nil
+}
+
+func (cfg *apiConfig) ReverseGeocode(lat, lng float64) (Location, error) {
+	requestURL, err := cfg.WrapForReverseGeocode(lat, lng)
+	if err != nil {
+		return Location{}, err
+	}
+
+	response, err := http.Get(requestURL)
+	if err != nil {
+		return Location{}, err
+	}
+	defer response.Body.Close()
+
+	data, err := io.ReadAll(response.Body)
+	if err != nil {
+		return Location{}, err
+	}
+
+	var responseJSON Response
+	if err = json.Unmarshal(data, &responseJSON); err != nil {
+		return Location{}, err
+	}
+
+	if len(responseJSON.Results) == 0 {
+		return Location{}, err // no results found
+	}
+
+	result := responseJSON.Results[0]
+
+	var location Location
+	location.Latitude = result.Geometry.Location.Latitude
+	location.Longitude = result.Geometry.Location.Longitude
+
+	for _, component := range result.AddressComponents {
+		for _, componentType := range component.Types {
+			switch componentType {
+			case "locality":
+				location.CityName = component.LongName
+			case "country":
+				location.CountryCode = component.ShortName
+			}
+		}
+	}
+
+	return location, nil
 }
 
 type Response struct {
