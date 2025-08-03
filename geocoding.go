@@ -58,7 +58,7 @@ func (cfg *apiConfig) Geocode(cityName string) (Location, error) {
 }
 
 func (cfg *apiConfig) WrapForReverseGeocode(lat, lng float64) string {
-	latlng := fmt.Sprintf("latlng=%v,%v", lat, lng)
+	latlng := fmt.Sprintf("latlng=%.2f,%.2f", lat, lng)
 	wrappedURL := fmt.Sprintf("%sjson?%s&key=%s", cfg.gmpGeocodeURL, latlng, cfg.gmpKey)
 	return wrappedURL
 }

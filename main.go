@@ -74,5 +74,15 @@ func main() {
 		owmKey:           owmKey,
 	}
 
-	log.Printf("Starting WillItRain API with config: %+v\n", cfg)
+	wroclaw, err := cfg.Geocode("Wroclaw")
+	if err != nil {
+		log.Printf("Geocoding error: %v", err)
+		return
+	}
+	log.Printf("Geocoded location: %+v", wroclaw)
+
+	wroclawCurrentWeather := cfg.WrapForCurrentWeather(wroclaw)
+	for service, url := range wroclawCurrentWeather {
+		log.Printf("Current weather URL for %s: %s", service, url)
+	}
 }

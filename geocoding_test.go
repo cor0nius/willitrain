@@ -26,7 +26,7 @@ func TestWrapForGeocode(t *testing.T) {
 
 	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
 
-	cityName := "New York"
+	cityName := "Wroclaw"
 	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?address=new%20york&key=" + gmpKey
 
 	wrappedURL := cfg.WrapForGeocode(cityName)
@@ -38,7 +38,7 @@ func TestWrapForGeocode(t *testing.T) {
 		t.Errorf("Expected %s, got %s", expectedURL, wrappedURL)
 	}
 
-	if !strings.Contains(wrappedURL, "address=new%20york") {
+	if !strings.Contains(wrappedURL, "address=wroclaw") {
 		t.Error("Wrapped URL does not contain the expected address parameter")
 	}
 
@@ -52,14 +52,6 @@ func TestWrapForGeocode(t *testing.T) {
 
 	if strings.Contains(wrappedURL, " ") {
 		t.Error("Wrapped URL contains spaces, which should be replaced with '%20'")
-	}
-
-	if strings.Contains(wrappedURL, "New York") {
-		t.Error("Wrapped URL should not contain the original city name with spaces, it should be URL-encoded")
-	}
-
-	if strings.Contains(wrappedURL, "new york") {
-		t.Error("Wrapped URL should not contain the original city name in lowercase with spaces, it should be URL-encoded")
 	}
 }
 
@@ -81,7 +73,7 @@ func TestGeocode(t *testing.T) {
 
 	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
 
-	cityName := "New York"
+	cityName := "Wroclaw"
 
 	location, err := cfg.Geocode(cityName)
 	if err != nil {
@@ -96,7 +88,7 @@ func TestGeocode(t *testing.T) {
 		t.Error("Geocode did not return valid latitude or longitude")
 	}
 
-	if location.CityName != "New York" {
+	if location.CityName != "Wrocław" {
 		t.Errorf("Expected city name 'New York', got '%s'", location.CityName)
 	}
 
@@ -123,8 +115,8 @@ func TestWrapForReverseGeocode(t *testing.T) {
 
 	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
 
-	lat, lng := 40.7128, -74.0061 // Coordinates for New York City
-	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?latlng=40.7128,-74.0061&key=" + gmpKey
+	lat, lng := 51.1093, 17.0386 // Coordinates for Wroclaw
+	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?latlng=40.71,-74.00&key=" + gmpKey
 
 	wrappedURL := cfg.WrapForReverseGeocode(lat, lng)
 	if err != nil {
@@ -135,7 +127,7 @@ func TestWrapForReverseGeocode(t *testing.T) {
 		t.Errorf("Expected %s, got %s", expectedURL, wrappedURL)
 	}
 
-	if !strings.Contains(wrappedURL, "latlng=40.7128,-74.0061") {
+	if !strings.Contains(wrappedURL, "latlng=51.11,17.04") {
 		t.Error("Wrapped URL does not contain the expected latlng parameter")
 	}
 
@@ -165,7 +157,7 @@ func TestReverseGeocode(t *testing.T) {
 	}
 
 	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
-	lat, lng := 40.7128, -74.0061 // Coordinates for New York City
+	lat, lng := 51.1093, 17.0386 // Coordinates for Wroclaw
 
 	location, err := cfg.ReverseGeocode(lat, lng)
 	if err != nil {
@@ -176,8 +168,8 @@ func TestReverseGeocode(t *testing.T) {
 		t.Error("ReverseGeocode did not return valid location data")
 	}
 
-	if location.CityName != "New York" {
-		t.Errorf("Expected city name 'New York', got '%s'", location.CityName)
+	if location.CityName != "Wrocław" {
+		t.Errorf("Expected city name 'Wrocław', got '%s'", location.CityName)
 	}
 
 	if location.CountryCode == "" {
