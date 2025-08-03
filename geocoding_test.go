@@ -14,12 +14,18 @@ func TestWrapForGeocode(t *testing.T) {
 		t.Fatalf("Error loading .env file")
 	}
 
+	gmpGeocodeURL := os.Getenv("GMP_GEOCODE_URL")
+	if gmpGeocodeURL == "" {
+		t.Fatal("GMP_GEOCODE_URL must be set")
+	}
+
 	gmpKey := os.Getenv("GMP_KEY")
 	if gmpKey == "" {
 		t.Fatal("Missing API Key for Google Maps Platform")
 	}
 
-	cfg := apiConfig{gmpKey: gmpKey}
+	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
+
 	cityName := "New York"
 	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?address=new%20york&key=" + gmpKey
 
@@ -63,12 +69,18 @@ func TestGeocode(t *testing.T) {
 		t.Fatalf("Error loading .env file")
 	}
 
+	gmpGeocodeURL := os.Getenv("GMP_GEOCODE_URL")
+	if gmpGeocodeURL == "" {
+		t.Fatal("GMP_GEOCODE_URL must be set")
+	}
+
 	gmpKey := os.Getenv("GMP_KEY")
 	if gmpKey == "" {
 		t.Fatal("Missing API Key for Google Maps Platform")
 	}
 
-	cfg := apiConfig{gmpKey: gmpKey}
+	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
+
 	cityName := "New York"
 
 	location, err := cfg.Geocode(cityName)
@@ -99,12 +111,18 @@ func TestWrapForReverseGeocode(t *testing.T) {
 		t.Fatalf("Error loading .env file")
 	}
 
+	gmpGeocodeURL := os.Getenv("GMP_GEOCODE_URL")
+	if gmpGeocodeURL == "" {
+		t.Fatal("GMP_GEOCODE_URL must be set")
+	}
+
 	gmpKey := os.Getenv("GMP_KEY")
 	if gmpKey == "" {
 		t.Fatal("Missing API Key for Google Maps Platform")
 	}
 
-	cfg := apiConfig{gmpKey: gmpKey}
+	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
+
 	lat, lng := 40.7128, -74.0061 // Coordinates for New York City
 	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?latlng=40.7128,-74.0061&key=" + gmpKey
 
@@ -136,12 +154,17 @@ func TestReverseGeocode(t *testing.T) {
 		t.Fatalf("Error loading .env file")
 	}
 
+	gmpGeocodeURL := os.Getenv("GMP_GEOCODE_URL")
+	if gmpGeocodeURL == "" {
+		t.Fatal("GMP_GEOCODE_URL must be set")
+	}
+
 	gmpKey := os.Getenv("GMP_KEY")
 	if gmpKey == "" {
 		t.Fatal("Missing API Key for Google Maps Platform")
 	}
 
-	cfg := apiConfig{gmpKey: gmpKey}
+	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
 	lat, lng := 40.7128, -74.0061 // Coordinates for New York City
 
 	location, err := cfg.ReverseGeocode(lat, lng)

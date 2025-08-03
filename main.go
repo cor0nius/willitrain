@@ -11,9 +11,13 @@ import (
 )
 
 type apiConfig struct {
-	dbQueries *database.Queries
-	gmpKey    string
-	owmKey    string
+	dbQueries        *database.Queries
+	gmpGeocodeURL    string
+	gmpWeatherURL    string
+	owmWeatherURL    string
+	ometeoWeatherURL string
+	gmpKey           string
+	owmKey           string
 }
 
 func main() {
@@ -30,6 +34,26 @@ func main() {
 	}
 	dbQueries := database.New(db)
 
+	gmpGeocodeURL := os.Getenv("GMP_GEOCODE_URL")
+	if gmpGeocodeURL == "" {
+		log.Fatal("GEOCODE_URL must be set")
+	}
+
+	gmpWeatherURL := os.Getenv("GMP_WEATHER_URL")
+	if gmpWeatherURL == "" {
+		log.Fatal("GMP_WEATHER_URL must be set")
+	}
+
+	owmWeatherURL := os.Getenv("OWM_WEATHER_URL")
+	if owmWeatherURL == "" {
+		log.Fatal("OWM_WEATHER_URL must be set")
+	}
+
+	ometeoWeatherURL := os.Getenv("OMETEO_WEATHER_URL")
+	if ometeoWeatherURL == "" {
+		log.Fatal("OMETEO_WEATHER_URL must be set")
+	}
+
 	gmpKey := os.Getenv("GMP_KEY")
 	if gmpKey == "" {
 		log.Fatal("Missing API Key for Google Maps Platform")
@@ -41,9 +65,13 @@ func main() {
 	}
 
 	cfg := apiConfig{
-		dbQueries: dbQueries,
-		gmpKey:    gmpKey,
-		owmKey:    owmKey,
+		dbQueries:        dbQueries,
+		gmpGeocodeURL:    gmpGeocodeURL,
+		gmpWeatherURL:    gmpWeatherURL,
+		owmWeatherURL:    owmWeatherURL,
+		ometeoWeatherURL: ometeoWeatherURL,
+		gmpKey:           gmpKey,
+		owmKey:           owmKey,
 	}
 
 	log.Printf("Starting WillItRain API with config: %+v\n", cfg)

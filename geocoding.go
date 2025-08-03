@@ -9,9 +9,8 @@ import (
 )
 
 func (cfg *apiConfig) WrapForGeocode(cityName string) string {
-	baseURL := "https://maps.googleapis.com/maps/api/geocode/"
 	city := strings.ReplaceAll(strings.ToLower(cityName), " ", "%20")
-	wrappedURL := fmt.Sprintf("%sjson?address=%s&key=%s", baseURL, city, cfg.gmpKey)
+	wrappedURL := fmt.Sprintf("%sjson?address=%s&key=%s", cfg.gmpGeocodeURL, city, cfg.gmpKey)
 	return wrappedURL
 }
 
@@ -59,9 +58,8 @@ func (cfg *apiConfig) Geocode(cityName string) (Location, error) {
 }
 
 func (cfg *apiConfig) WrapForReverseGeocode(lat, lng float64) string {
-	baseURL := "https://maps.googleapis.com/maps/api/geocode/"
 	latlng := fmt.Sprintf("latlng=%v,%v", lat, lng)
-	wrappedURL := fmt.Sprintf("%sjson?%s&key=%s", baseURL, latlng, cfg.gmpKey)
+	wrappedURL := fmt.Sprintf("%sjson?%s&key=%s", cfg.gmpGeocodeURL, latlng, cfg.gmpKey)
 	return wrappedURL
 }
 

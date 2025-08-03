@@ -8,7 +8,7 @@ CREATE TABLE daily_forecasts (
     max_temp_c FLOAT,
     avg_temp_c FLOAT,
     precipitation_mm FLOAT,
-    chance_of_rain_percent INT
+    precipitation_chance_percent INT
 );
 
 -- +goose Down
