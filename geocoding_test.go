@@ -27,7 +27,7 @@ func TestWrapForGeocode(t *testing.T) {
 	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
 
 	cityName := "Wroclaw"
-	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?address=new%20york&key=" + gmpKey
+	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?address=wroclaw&key=" + gmpKey
 
 	wrappedURL := cfg.WrapForGeocode(cityName)
 	if err != nil {
@@ -116,7 +116,7 @@ func TestWrapForReverseGeocode(t *testing.T) {
 	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
 
 	lat, lng := 51.1093, 17.0386 // Coordinates for Wroclaw
-	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?latlng=40.71,-74.00&key=" + gmpKey
+	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?latlng=51.11,17.04&key=" + gmpKey
 
 	wrappedURL := cfg.WrapForReverseGeocode(lat, lng)
 	if err != nil {
