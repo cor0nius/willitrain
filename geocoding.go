@@ -8,18 +8,15 @@ import (
 	"strings"
 )
 
-func (cfg *apiConfig) WrapForGeocode(cityName string) (string, error) {
+func (cfg *apiConfig) WrapForGeocode(cityName string) string {
 	baseURL := "https://maps.googleapis.com/maps/api/geocode/"
 	city := strings.ReplaceAll(strings.ToLower(cityName), " ", "%20")
 	wrappedURL := fmt.Sprintf("%sjson?address=%s&key=%s", baseURL, city, cfg.gmpKey)
-	return wrappedURL, nil
+	return wrappedURL
 }
 
 func (cfg *apiConfig) Geocode(cityName string) (Location, error) {
-	requestURL, err := cfg.WrapForGeocode(cityName)
-	if err != nil {
-		return Location{}, err
-	}
+	requestURL := cfg.WrapForGeocode(cityName)
 
 	response, err := http.Get(requestURL)
 	if err != nil {
@@ -61,18 +58,15 @@ func (cfg *apiConfig) Geocode(cityName string) (Location, error) {
 	return location, nil
 }
 
-func (cfg *apiConfig) WrapForReverseGeocode(lat, lng float64) (string, error) {
+func (cfg *apiConfig) WrapForReverseGeocode(lat, lng float64) string {
 	baseURL := "https://maps.googleapis.com/maps/api/geocode/"
 	latlng := fmt.Sprintf("latlng=%v,%v", lat, lng)
 	wrappedURL := fmt.Sprintf("%sjson?%s&key=%s", baseURL, latlng, cfg.gmpKey)
-	return wrappedURL, nil
+	return wrappedURL
 }
 
 func (cfg *apiConfig) ReverseGeocode(lat, lng float64) (Location, error) {
-	requestURL, err := cfg.WrapForReverseGeocode(lat, lng)
-	if err != nil {
-		return Location{}, err
-	}
+	requestURL := cfg.WrapForReverseGeocode(lat, lng)
 
 	response, err := http.Get(requestURL)
 	if err != nil {

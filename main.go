@@ -13,6 +13,7 @@ import (
 type apiConfig struct {
 	dbQueries *database.Queries
 	gmpKey    string
+	owmKey    string
 }
 
 func main() {
@@ -25,7 +26,7 @@ func main() {
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		log.Print("Couldn't connect to database: %v", err)
+		log.Printf("Couldn't connect to database: %v", err)
 	}
 	dbQueries := database.New(db)
 
@@ -34,8 +35,16 @@ func main() {
 		log.Fatal("Missing API Key for Google Maps Platform")
 	}
 
+	owmKey := os.Getenv("OWM_KEY")
+	if owmKey == "" {
+		log.Fatal("Missing API Key for OpenWeatherMap")
+	}
+
 	cfg := apiConfig{
 		dbQueries: dbQueries,
 		gmpKey:    gmpKey,
+		owmKey:    owmKey,
 	}
+
+	log.Printf("Starting WillItRain API with config: %+v\n", cfg)
 }

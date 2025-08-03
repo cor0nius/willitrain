@@ -23,7 +23,7 @@ func TestWrapForGeocode(t *testing.T) {
 	cityName := "New York"
 	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?address=new%20york&key=" + gmpKey
 
-	wrappedURL, err := cfg.WrapForGeocode(cityName)
+	wrappedURL := cfg.WrapForGeocode(cityName)
 	if err != nil {
 		t.Fatalf("WrapForGeocode failed: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestWrapForReverseGeocode(t *testing.T) {
 	lat, lng := 40.7128, -74.0061 // Coordinates for New York City
 	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?latlng=40.7128,-74.0061&key=" + gmpKey
 
-	wrappedURL, err := cfg.WrapForReverseGeocode(lat, lng)
+	wrappedURL := cfg.WrapForReverseGeocode(lat, lng)
 	if err != nil {
 		t.Fatalf("WrapForReverseGeocode failed: %v", err)
 	}
