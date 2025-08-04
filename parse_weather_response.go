@@ -82,69 +82,6 @@ func ParseCurrentWeatherOMeteo(body io.Reader) CurrentWeather {
 	return weather
 }
 
-func interpretWeatherCode(i int) string {
-	switch i {
-	case 0:
-		return "clear sky"
-	case 1:
-		return "mainly clear"
-	case 2:
-		return "partly cloudy"
-	case 3:
-		return "overcast"
-	case 45:
-		return "fog"
-	case 48:
-		return "depositing rime fog"
-	case 51:
-		return "light drizzle"
-	case 53:
-		return "moderate drizzle"
-	case 55:
-		return "dense drizzle"
-	case 56:
-		return "light freezing drizzle"
-	case 57:
-		return "dense freezing drizzle"
-	case 61:
-		return "slight rain"
-	case 63:
-		return "moderate rain"
-	case 65:
-		return "heavy rain"
-	case 66:
-		return "light freezing rain"
-	case 67:
-		return "heavy freezing rain"
-	case 71:
-		return "slight snowfall"
-	case 73:
-		return "moderate snowfall"
-	case 75:
-		return "heavy snowfall"
-	case 77:
-		return "snow grains"
-	case 80:
-		return "slight showers"
-	case 81:
-		return "moderate showers"
-	case 82:
-		return "violent showers"
-	case 85:
-		return "slight snow showers"
-	case 86:
-		return "heavy snow showers"
-	case 95:
-		return "thunderstorm"
-	case 96:
-		return "thunderstorm with slight hail"
-	case 99:
-		return "thunderstorm with heavy hail"
-	default:
-		return "unknown code"
-	}
-}
-
 type ResponseCurrentWeatherGMP struct {
 	Timestamp     time.Time        `json:"currentTime"`
 	Temperature   Temperature      `json:"temperature"`
@@ -221,4 +158,67 @@ type Weather struct {
 func Round(val float64, precision int) float64 {
 	p := math.Pow10(precision)
 	return math.Round(val*p) / p
+}
+
+func interpretWeatherCode(i int) string {
+	switch i {
+	case 0:
+		return "clear sky"
+	case 1:
+		return "mainly clear"
+	case 2:
+		return "partly cloudy"
+	case 3:
+		return "overcast"
+	case 45:
+		return "fog"
+	case 48:
+		return "depositing rime fog"
+	case 51:
+		return "light drizzle"
+	case 53:
+		return "moderate drizzle"
+	case 55:
+		return "dense drizzle"
+	case 56:
+		return "light freezing drizzle"
+	case 57:
+		return "dense freezing drizzle"
+	case 61:
+		return "slight rain"
+	case 63:
+		return "moderate rain"
+	case 65:
+		return "heavy rain"
+	case 66:
+		return "light freezing rain"
+	case 67:
+		return "heavy freezing rain"
+	case 71:
+		return "slight snowfall"
+	case 73:
+		return "moderate snowfall"
+	case 75:
+		return "heavy snowfall"
+	case 77:
+		return "snow grains"
+	case 80:
+		return "slight showers"
+	case 81:
+		return "moderate showers"
+	case 82:
+		return "violent showers"
+	case 85:
+		return "slight snow showers"
+	case 86:
+		return "heavy snow showers"
+	case 95:
+		return "thunderstorm"
+	case 96:
+		return "thunderstorm with slight hail"
+	case 99:
+		return "thunderstorm with heavy hail"
+	default:
+		return "unknown code"
+	}
 }

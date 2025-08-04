@@ -15,7 +15,7 @@ type Location struct {
 }
 
 type CurrentWeather struct {
-	LocationID    Location  `json:"location"`
+	Location      Location  `json:"location"`
 	SourceAPI     string    `json:"source_api"`
 	Timestamp     time.Time `json:"timestamp"`
 	Temperature   float64   `json:"temperature_c"`
@@ -27,7 +27,7 @@ type CurrentWeather struct {
 }
 
 type DailyForecast struct {
-	LocationID          Location  `json:"location"`
+	Location            Location  `json:"location"`
 	SourceAPI           string    `json:"source_api"`
 	ForecastDate        time.Time `json:"forecast_date"`
 	MinTemp             float64   `json:"min_temp_c"`
@@ -38,7 +38,7 @@ type DailyForecast struct {
 }
 
 type HourlyForecast struct {
-	LocationID       Location  `json:"location"`
+	Location         Location  `json:"location"`
 	SourceAPI        string    `json:"source_api"`
 	ForecastDateTime time.Time `json:"forecast_datetime"`
 	Temperature      float64   `json:"min_temp_c"`
