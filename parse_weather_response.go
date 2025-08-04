@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"io"
+	"math"
 	"time"
 )
 
@@ -44,12 +45,12 @@ func ParseCurrentWeatherOWM(body io.Reader) CurrentWeather {
 
 	weather := CurrentWeather{
 		SourceAPI:     "OpenWeatherMap API",
-		Timestamp:     response.CurrentWeather.Dt,
+		Timestamp:     time.Unix(response.CurrentWeather.Dt, 0),
 		Temperature:   response.CurrentWeather.Temp,
 		Humidity:      int(response.CurrentWeather.Humidity),
-		WindSpeed:     response.CurrentWeather.WindSpeed / 3.6,
+		WindSpeed:     Round(response.CurrentWeather.WindSpeed/3.6, 4),
 		Precipitation: response.CurrentWeather.Rain.Quantity + response.CurrentWeather.Snow.Quantity,
-		Condition:     response.CurrentWeather.Weather.Main,
+		Condition:     response.CurrentWeather.Weather[0].Main,
 		Error:         nil,
 	}
 
@@ -69,7 +70,7 @@ func ParseCurrentWeatherOMeteo(body io.Reader) CurrentWeather {
 
 	weather := CurrentWeather{
 		SourceAPI:     "Open-Meteo API",
-		Timestamp:     response.CurrentWeather.Time,
+		Timestamp:     time.Unix(response.CurrentWeather.Time, 0),
 		Temperature:   response.CurrentWeather.Temperature2m,
 		Humidity:      int(response.CurrentWeather.RelativeHumidity2m),
 		WindSpeed:     response.CurrentWeather.WindSpeed10m,
@@ -162,19 +163,19 @@ type ResponseCurrentWeatherOMeteo struct {
 }
 
 type Current struct {
-	Dt                 time.Time        `json:"dt"`
-	Time               time.Time        `json:"time"`
-	Temp               float64          `json:"temp"`
-	Temperature2m      float64          `json:"temperature_2m"`
-	Humidity           float64          `json:"humidity"`
-	RelativeHumidity2m float64          `json:"relative_humidity_2m"`
-	WindSpeed          float64          `json:"wind_speed"`
-	WindSpeed10m       float64          `json:"wind_speed_10m"`
-	Precipitation      float64          `json:"precipitation"`
-	Rain               Rain             `json:"rain"`
-	Snow               Snow             `json:"snow"`
-	Weather            WeatherCondition `json:"weather"`
-	WeatherCode        int              `json:"weather_code"`
+	Dt                 int64     `json:"dt"`
+	Time               int64     `json:"time"`
+	Temp               float64   `json:"temp"`
+	Temperature2m      float64   `json:"temperature_2m"`
+	Humidity           float64   `json:"humidity"`
+	RelativeHumidity2m float64   `json:"relative_humidity_2m"`
+	WindSpeed          float64   `json:"wind_speed"`
+	WindSpeed10m       float64   `json:"wind_speed_10m"`
+	Precipitation      float64   `json:"precipitation"`
+	Rain               Rain      `json:"rain"`
+	Snow               Snow      `json:"snow"`
+	Weather            []Weather `json:"weather"`
+	WeatherCode        int       `json:"weather_code"`
 }
 
 type Temperature struct {
@@ -207,9 +208,17 @@ type Snow struct {
 
 type WeatherCondition struct {
 	Description Description `json:"description"`
-	Main        string      `json:"main"`
 }
 
 type Description struct {
 	Text string `json:"text"`
+}
+
+type Weather struct {
+	Main string `json:"main"`
+}
+
+func Round(val float64, precision int) float64 {
+	p := math.Pow10(precision)
+	return math.Round(val*p) / p
 }
