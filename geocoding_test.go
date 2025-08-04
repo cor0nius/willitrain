@@ -89,7 +89,7 @@ func TestGeocode(t *testing.T) {
 	}
 
 	if location.CityName != "Wrocław" {
-		t.Errorf("Expected city name 'New York', got '%s'", location.CityName)
+		t.Errorf("Expected city name 'Wrocław', got '%s'", location.CityName)
 	}
 
 	if location.CountryCode == "" {

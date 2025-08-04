@@ -36,7 +36,7 @@ func main() {
 
 	gmpGeocodeURL := os.Getenv("GMP_GEOCODE_URL")
 	if gmpGeocodeURL == "" {
-		log.Fatal("GEOCODE_URL must be set")
+		log.Fatal("GMP_GEOCODE_URL must be set")
 	}
 
 	gmpWeatherURL := os.Getenv("GMP_WEATHER_URL")

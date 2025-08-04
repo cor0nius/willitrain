@@ -61,8 +61,8 @@ func TestWrapForCurrentWeather(t *testing.T) {
 		t.Errorf("Expected OWM wrapped URL to be %s, got %s", "https://api.openweathermap.org/data/3.0/onecall?lat=51.11&lon=17.04&exclude=minutely,hourly,daily,alerts&units=metric&appid="+owmKey, wrappedURLs["owmWrappedURL"])
 	}
 
-	if wrappedURLs["ometeoWrappedURL"] != "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,rain,showers,snowfall,weather_code&timezone=auto" {
-		t.Errorf("Expected Ometeo wrapped URL to be %s, got %s", "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,rain,showers,snowfall,weather_code&timezone=auto", wrappedURLs["ometeoWrappedURL"])
+	if wrappedURLs["ometeoWrappedURL"] != "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,rain,showers,snowfall,weather_code&timezone=auto&timeformat=unixtime" {
+		t.Errorf("Expected Ometeo wrapped URL to be %s, got %s", "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,rain,showers,snowfall,weather_code&timezone=auto&timeformat=unixtime", wrappedURLs["ometeoWrappedURL"])
 	}
 }
 
@@ -120,8 +120,8 @@ func TestWrapForDailyForecast(t *testing.T) {
 		t.Errorf("Expected OWM wrapped URL to be %s, got %s", "https://api.openweathermap.org/data/3.0/onecall?lat=51.11&lon=17.04&exclude=current,minutely,hourly,alerts&units=metric&appid="+owmKey, wrappedURLs["owmWrappedURL"])
 	}
 
-	if wrappedURLs["ometeoWrappedURL"] != "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&daily=temperature_2m_max,temperature_2m_mean,temperature_2m_min,precipitation_sum,precipitation_probability_max,rain_sum,showers_sum,snowfall_sum,wind_speed_10m_max,weather_code&timezone=auto" {
-		t.Errorf("Expected Ometeo wrapped URL to be %s, got %s", "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&daily=temperature_2m_max,temperature_2m_mean,temperature_2m_min,precipitation_sum,precipitation_probability_max,rain_sum,showers_sum,snowfall_sum,wind_speed_10m_max,weather_code&timezone=auto", wrappedURLs["ometeoWrappedURL"])
+	if wrappedURLs["ometeoWrappedURL"] != "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&daily=temperature_2m_max,temperature_2m_mean,temperature_2m_min,precipitation_sum,precipitation_probability_max,rain_sum,showers_sum,snowfall_sum,wind_speed_10m_max,weather_code&timezone=auto&timeformat=unixtime" {
+		t.Errorf("Expected Ometeo wrapped URL to be %s, got %s", "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&daily=temperature_2m_max,temperature_2m_mean,temperature_2m_min,precipitation_sum,precipitation_probability_max,rain_sum,showers_sum,snowfall_sum,wind_speed_10m_max,weather_code&timezone=auto&timeformat=unixtime", wrappedURLs["ometeoWrappedURL"])
 	}
 }
 
@@ -179,7 +179,7 @@ func TestWrapForHourlyForecast(t *testing.T) {
 		t.Errorf("Expected OWM wrapped URL to be %s, got %s", "https://api.openweathermap.org/data/3.0/onecall?lat=51.11&lon=17.04&exclude=current,minutely,daily,alerts&units=metric&appid="+owmKey, wrappedURLs["owmWrappedURL"])
 	}
 
-	if wrappedURLs["ometeoWrappedURL"] != "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,precipitation_probability,rain,showers,snowfall,weather_code&forecast_days=2&timezone=auto" {
-		t.Errorf("Expected Ometeo wrapped URL to be %s, got %s", "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,precipitation_probability,rain,showers,snowfall,weather_code&forecast_days=2&timezone=auto", wrappedURLs["ometeoWrappedURL"])
+	if wrappedURLs["ometeoWrappedURL"] != "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,precipitation_probability,rain,showers,snowfall,weather_code&forecast_days=2&timezone=auto&timeformat=unixtime" {
+		t.Errorf("Expected Ometeo wrapped URL to be %s, got %s", "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,precipitation_probability,rain,showers,snowfall,weather_code&forecast_days=2&timezone=auto&timeformat=unixtime", wrappedURLs["ometeoWrappedURL"])
 	}
 }
