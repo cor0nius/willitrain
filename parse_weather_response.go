@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"math"
 	"time"
@@ -12,6 +13,9 @@ func ParseCurrentWeatherGMP(body io.Reader) (CurrentWeather, error) {
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
 		return CurrentWeather{SourceAPI: "Google Weather API"}, err
+	}
+	if response.Timestamp.IsZero() {
+		return CurrentWeather{SourceAPI: "Google Weather API"}, errors.New("empty or invalid response from API")
 	}
 
 	weather := CurrentWeather{
@@ -33,6 +37,9 @@ func ParseCurrentWeatherOWM(body io.Reader) (CurrentWeather, error) {
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
 		return CurrentWeather{SourceAPI: "OpenWeatherMap API"}, err
 	}
+	if response.CurrentWeather.Dt == 0 {
+		return CurrentWeather{SourceAPI: "OpenWeatherMap API"}, errors.New("empty or invalid response from API")
+	}
 
 	weather := CurrentWeather{
 		SourceAPI:     "OpenWeatherMap API",
@@ -53,6 +60,9 @@ func ParseCurrentWeatherOMeteo(body io.Reader) (CurrentWeather, error) {
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
 		return CurrentWeather{SourceAPI: "Open-Meteo API"}, err
 	}
+	if response.CurrentWeather.Time == 0 {
+		return CurrentWeather{SourceAPI: "Open-Meteo API"}, errors.New("empty or invalid response from API")
+	}
 
 	weather := CurrentWeather{
 		SourceAPI:     "Open-Meteo API",
@@ -72,6 +82,9 @@ func ParseDailyForecastGMP(body io.Reader) ([]DailyForecast, error) {
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
 		return []DailyForecast{{SourceAPI: "Google Weather API"}}, err
+	}
+	if len(response.ForecastDays) == 0 {
+		return []DailyForecast{{SourceAPI: "Google Weather API"}}, errors.New("empty or invalid response from API")
 	}
 
 	var forecast []DailyForecast
@@ -98,6 +111,9 @@ func ParseDailyForecastOWM(body io.Reader) ([]DailyForecast, error) {
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
 		return []DailyForecast{{SourceAPI: "OpenWeatherMap API"}}, err
 	}
+	if len(response.DailyForecast) == 0 {
+		return []DailyForecast{{SourceAPI: "OpenWeatherMap API"}}, errors.New("empty or invalid response from API")
+	}
 
 	var forecast []DailyForecast
 	for i, day := range response.DailyForecast {
@@ -121,6 +137,9 @@ func ParseDailyForecastOMeteo(body io.Reader) ([]DailyForecast, error) {
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
 		return []DailyForecast{{SourceAPI: "Open-Meteo API"}}, err
+	}
+	if len(response.DailyForecast.Time) == 0 {
+		return []DailyForecast{{SourceAPI: "Open-Meteo API"}}, errors.New("empty or invalid response from API")
 	}
 
 	var forecast []DailyForecast
@@ -149,6 +168,9 @@ func ParseHourlyForecastGMP(body io.Reader) ([]HourlyForecast, error) {
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
 		return []HourlyForecast{{SourceAPI: "Google Weather API"}}, err
 	}
+	if len(response.ForecastHours) == 0 {
+		return []HourlyForecast{{SourceAPI: "Google Weather API"}}, errors.New("empty or invalid response from API")
+	}
 
 	var forecast []HourlyForecast
 	for i, hour := range response.ForecastHours {
@@ -174,6 +196,9 @@ func ParseHourlyForecastOWM(body io.Reader) ([]HourlyForecast, error) {
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
 		return []HourlyForecast{{SourceAPI: "OpenWeatherMap API"}}, err
 	}
+	if len(response.HourlyForecast) == 0 {
+		return []HourlyForecast{{SourceAPI: "OpenWeatherMap API"}}, errors.New("empty or invalid response from API")
+	}
 
 	var forecast []HourlyForecast
 	for i, hour := range response.HourlyForecast {
@@ -198,6 +223,9 @@ func ParseHourlyForecastOMeteo(body io.Reader) ([]HourlyForecast, error) {
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
 		return []HourlyForecast{{SourceAPI: "Open-Meteo API"}}, err
+	}
+	if len(response.HourlyForecast.Time) == 0 {
+		return []HourlyForecast{{SourceAPI: "Open-Meteo API"}}, errors.New("empty or invalid response from API")
 	}
 
 	var forecast []HourlyForecast

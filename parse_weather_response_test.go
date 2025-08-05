@@ -148,6 +148,48 @@ func TestParseCurrentWeatherOMeteo(t *testing.T) {
 	}
 }
 
+func TestParseCurrentWeatherGMP_Error(t *testing.T) {
+	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
+
+	parsedWeather, err := ParseCurrentWeatherGMP(invalidJSON)
+	if err == nil {
+		t.Fatal("expected an error for invalid JSON, but got nil")
+	}
+
+	expected := CurrentWeather{SourceAPI: "Google Weather API"}
+	if parsedWeather != expected {
+		t.Errorf("expected weather to be %v, but got %v", expected, parsedWeather)
+	}
+}
+
+func TestParseCurrentWeatherOWM_Error(t *testing.T) {
+	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
+
+	parsedWeather, err := ParseCurrentWeatherOWM(invalidJSON)
+	if err == nil {
+		t.Fatal("expected an error for invalid JSON, but got nil")
+	}
+
+	expected := CurrentWeather{SourceAPI: "OpenWeatherMap API"}
+	if parsedWeather != expected {
+		t.Errorf("expected weather to be %v, but got %v", expected, parsedWeather)
+	}
+}
+
+func TestParseCurrentWeatherOMeteo_Error(t *testing.T) {
+	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
+
+	parsedWeather, err := ParseCurrentWeatherOMeteo(invalidJSON)
+	if err == nil {
+		t.Fatal("expected an error for invalid JSON, but got nil")
+	}
+
+	expected := CurrentWeather{SourceAPI: "Open-Meteo API"}
+	if parsedWeather != expected {
+		t.Errorf("expected weather to be %v, but got %v", expected, parsedWeather)
+	}
+}
+
 func TestParseDailyForecastGMP(t *testing.T) {
 	sampleJSON, err := testData.Open("testdata/daily_forecast_gmp.json")
 	if err != nil {
@@ -223,7 +265,10 @@ func TestParseHourlyForecastGMP(t *testing.T) {
 	}
 	defer sampleJSON.Close()
 
-	timestamp, _ := time.Parse(time.RFC3339, "2025-08-05T11:00:00Z")
+	timestamp, err := time.Parse(time.RFC3339, "2025-08-05T11:00:00Z")
+	if err != nil {
+		t.Fatalf("failed to parse timestamp: %v", err)
+	}
 	expectedForecast := HourlyForecast{
 		SourceAPI:        "Google Weather API",
 		ForecastDateTime: timestamp,
@@ -237,21 +282,41 @@ func TestParseHourlyForecastGMP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseHourlyForecastGMP failed with error: %v", err)
 	}
-	if len(parsedForecast) < 1 {
-		t.Fatal("parsedForecast is empty")
+
+	if len(parsedForecast) == 0 {
+		t.Fatal("parsedForecast is empty, expected at least one forecast")
 	}
-	if parsedForecast[0] != expectedForecast {
-		t.Errorf("Expected parsed weather to be %v, got %v", expectedForecast, parsedForecast[0])
+	firstForecast := parsedForecast[0]
+
+	if firstForecast.SourceAPI != expectedForecast.SourceAPI {
+		t.Errorf("SourceAPI: got %q, want %q", firstForecast.SourceAPI, expectedForecast.SourceAPI)
+	}
+	if !firstForecast.ForecastDateTime.Equal(expectedForecast.ForecastDateTime) {
+		t.Errorf("ForecastDateTime: got %v, want %v", firstForecast.ForecastDateTime, expectedForecast.ForecastDateTime)
+	}
+	if firstForecast.Temperature != expectedForecast.Temperature {
+		t.Errorf("Temperature: got %f, want %f", firstForecast.Temperature, expectedForecast.Temperature)
+	}
+	if firstForecast.Humidity != expectedForecast.Humidity {
+		t.Errorf("Humidity: got %d, want %d", firstForecast.Humidity, expectedForecast.Humidity)
+	}
+	if firstForecast.WindSpeed != expectedForecast.WindSpeed {
+		t.Errorf("WindSpeed: got %f, want %f", firstForecast.WindSpeed, expectedForecast.WindSpeed)
+	}
+	if firstForecast.Precipitation != expectedForecast.Precipitation {
+		t.Errorf("Precipitation: got %f, want %f", firstForecast.Precipitation, expectedForecast.Precipitation)
 	}
 }
 
 func TestParseDailyForecastOWM(t *testing.T) {
-	sampleJSON, _ := testData.Open("testdata/daily_forecast_owm.json")
+	sampleJSON, err := testData.Open("testdata/daily_forecast_owm.json")
+	if err != nil {
+		t.Fatalf("failed to open test data: %v", err)
+	}
 	defer sampleJSON.Close()
-	forecast := make([]DailyForecast, 5)
 
 	timestamp := time.Unix(1754388000, 0)
-	forecast[0] = DailyForecast{
+	expectedForecast := DailyForecast{
 		SourceAPI:     "OpenWeatherMap API",
 		ForecastDate:  timestamp,
 		MinTemp:       13.6,
@@ -259,10 +324,102 @@ func TestParseDailyForecastOWM(t *testing.T) {
 		Precipitation: 9.15,
 	}
 
-	parsedForecast, _ := ParseDailyForecastOWM(sampleJSON)
+	parsedForecast, err := ParseDailyForecastOWM(sampleJSON)
+	if err != nil {
+		t.Fatalf("ParseDailyForecastOWM failed with error: %v", err)
+	}
 
-	if parsedForecast[0] != forecast[0] {
-		t.Errorf("Expected parsed weather to be %v, got %v", forecast[0], parsedForecast[0])
+	if len(parsedForecast) == 0 {
+		t.Fatal("parsedForecast is empty, expected at least one forecast")
+	}
+	firstForecast := parsedForecast[0]
+
+	if firstForecast.SourceAPI != expectedForecast.SourceAPI {
+		t.Errorf("SourceAPI: got %q, want %q", firstForecast.SourceAPI, expectedForecast.SourceAPI)
+	}
+	if !firstForecast.ForecastDate.Equal(expectedForecast.ForecastDate) {
+		t.Errorf("ForecastDate: got %v, want %v", firstForecast.ForecastDate, expectedForecast.ForecastDate)
+	}
+	if firstForecast.MinTemp != expectedForecast.MinTemp {
+		t.Errorf("MinTemp: got %f, want %f", firstForecast.MinTemp, expectedForecast.MinTemp)
+	}
+	if firstForecast.MaxTemp != expectedForecast.MaxTemp {
+		t.Errorf("MaxTemp: got %f, want %f", firstForecast.MaxTemp, expectedForecast.MaxTemp)
+	}
+	if firstForecast.Precipitation != expectedForecast.Precipitation {
+		t.Errorf("Precipitation: got %f, want %f", firstForecast.Precipitation, expectedForecast.Precipitation)
+	}
+}
+
+func TestParseDailyForecastOWM_Error(t *testing.T) {
+	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
+
+	parsedForecast, err := ParseDailyForecastOWM(invalidJSON)
+	if err == nil {
+		t.Fatal("expected an error for invalid JSON, but got nil")
+	}
+
+	if len(parsedForecast) != 1 {
+		t.Fatalf("expected a slice with a single item, but got %d items", len(parsedForecast))
+	}
+
+	expected := DailyForecast{SourceAPI: "OpenWeatherMap API"}
+	if parsedForecast[0] != expected {
+		t.Errorf("expected forecast to be %v, but got %v", expected, parsedForecast[0])
+	}
+}
+
+func TestParseHourlyForecastGMP_Error(t *testing.T) {
+	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
+
+	parsedForecast, err := ParseHourlyForecastGMP(invalidJSON)
+	if err == nil {
+		t.Fatal("expected an error for invalid JSON, but got nil")
+	}
+
+	if len(parsedForecast) != 1 {
+		t.Fatalf("expected a slice with a single item, but got %d items", len(parsedForecast))
+	}
+
+	expected := HourlyForecast{SourceAPI: "Google Weather API"}
+	if parsedForecast[0] != expected {
+		t.Errorf("expected forecast to be %v, but got %v", expected, parsedForecast[0])
+	}
+}
+
+func TestParseHourlyForecastOWM_Error(t *testing.T) {
+	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
+
+	parsedForecast, err := ParseHourlyForecastOWM(invalidJSON)
+	if err == nil {
+		t.Fatal("expected an error for invalid JSON, but got nil")
+	}
+
+	if len(parsedForecast) != 1 {
+		t.Fatalf("expected a slice with a single item, but got %d items", len(parsedForecast))
+	}
+
+	expected := HourlyForecast{SourceAPI: "OpenWeatherMap API"}
+	if parsedForecast[0] != expected {
+		t.Errorf("expected forecast to be %v, but got %v", expected, parsedForecast[0])
+	}
+}
+
+func TestParseHourlyForecastOMeteo_Error(t *testing.T) {
+	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
+
+	parsedForecast, err := ParseHourlyForecastOMeteo(invalidJSON)
+	if err == nil {
+		t.Fatal("expected an error for invalid JSON, but got nil")
+	}
+
+	if len(parsedForecast) != 1 {
+		t.Fatalf("expected a slice with a single item, but got %d items", len(parsedForecast))
+	}
+
+	expected := HourlyForecast{SourceAPI: "Open-Meteo API"}
+	if parsedForecast[0] != expected {
+		t.Errorf("expected forecast to be %v, but got %v", expected, parsedForecast[0])
 	}
 }
 
@@ -287,11 +444,28 @@ func TestParseHourlyForecastOWM(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseHourlyForecastOWM failed with error: %v", err)
 	}
-	if len(parsedForecast) < 1 {
-		t.Fatal("parsedForecast is empty")
+	if len(parsedForecast) == 0 {
+		t.Fatal("parsedForecast is empty, expected at least one forecast")
 	}
-	if parsedForecast[0] != expectedForecast {
-		t.Errorf("Expected parsed weather to be %v, got %v", expectedForecast, parsedForecast[0])
+	firstForecast := parsedForecast[0]
+
+	if firstForecast.SourceAPI != expectedForecast.SourceAPI {
+		t.Errorf("SourceAPI: got %q, want %q", firstForecast.SourceAPI, expectedForecast.SourceAPI)
+	}
+	if !firstForecast.ForecastDateTime.Equal(expectedForecast.ForecastDateTime) {
+		t.Errorf("ForecastDateTime: got %v, want %v", firstForecast.ForecastDateTime, expectedForecast.ForecastDateTime)
+	}
+	if firstForecast.Temperature != expectedForecast.Temperature {
+		t.Errorf("Temperature: got %f, want %f", firstForecast.Temperature, expectedForecast.Temperature)
+	}
+	if firstForecast.Humidity != expectedForecast.Humidity {
+		t.Errorf("Humidity: got %d, want %d", firstForecast.Humidity, expectedForecast.Humidity)
+	}
+	if firstForecast.WindSpeed != expectedForecast.WindSpeed {
+		t.Errorf("WindSpeed: got %f, want %f", firstForecast.WindSpeed, expectedForecast.WindSpeed)
+	}
+	if firstForecast.Precipitation != expectedForecast.Precipitation {
+		t.Errorf("Precipitation: got %f, want %f", firstForecast.Precipitation, expectedForecast.Precipitation)
 	}
 }
 
@@ -316,21 +490,40 @@ func TestParseHourlyForecastOMeteo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseHourlyForecastOMeteo failed with error: %v", err)
 	}
-	if len(parsedForecast) < 1 {
+	if len(parsedForecast) == 0 {
 		t.Fatal("parsedForecast is empty, expected at least one forecast")
 	}
-	if parsedForecast[0] != expectedForecast {
-		t.Errorf("Expected parsed weather to be %v, got %v", expectedForecast, parsedForecast[0])
+	firstForecast := parsedForecast[0]
+
+	if firstForecast.SourceAPI != expectedForecast.SourceAPI {
+		t.Errorf("SourceAPI: got %q, want %q", firstForecast.SourceAPI, expectedForecast.SourceAPI)
+	}
+	if !firstForecast.ForecastDateTime.Equal(expectedForecast.ForecastDateTime) {
+		t.Errorf("ForecastDateTime: got %v, want %v", firstForecast.ForecastDateTime, expectedForecast.ForecastDateTime)
+	}
+	if firstForecast.Temperature != expectedForecast.Temperature {
+		t.Errorf("Temperature: got %f, want %f", firstForecast.Temperature, expectedForecast.Temperature)
+	}
+	if firstForecast.Humidity != expectedForecast.Humidity {
+		t.Errorf("Humidity: got %d, want %d", firstForecast.Humidity, expectedForecast.Humidity)
+	}
+	if firstForecast.WindSpeed != expectedForecast.WindSpeed {
+		t.Errorf("WindSpeed: got %f, want %f", firstForecast.WindSpeed, expectedForecast.WindSpeed)
+	}
+	if firstForecast.Precipitation != expectedForecast.Precipitation {
+		t.Errorf("Precipitation: got %f, want %f", firstForecast.Precipitation, expectedForecast.Precipitation)
 	}
 }
 
 func TestParseDailyForecastOMeteo(t *testing.T) {
-	sampleJSON, _ := testData.Open("testdata/daily_forecast_ometeo.json")
+	sampleJSON, err := testData.Open("testdata/daily_forecast_ometeo.json")
+	if err != nil {
+		t.Fatalf("failed to open test data: %v", err)
+	}
 	defer sampleJSON.Close()
-	forecast := make([]DailyForecast, 5)
 
 	timestamp := time.Unix(1754344800, 0)
-	forecast[0] = DailyForecast{
+	expectedForecast := DailyForecast{
 		SourceAPI:           "Open-Meteo API",
 		ForecastDate:        timestamp,
 		MinTemp:             13.1,
@@ -339,9 +532,50 @@ func TestParseDailyForecastOMeteo(t *testing.T) {
 		PrecipitationChance: 100,
 	}
 
-	parsedForecast, _ := ParseDailyForecastOMeteo(sampleJSON)
+	parsedForecast, err := ParseDailyForecastOMeteo(sampleJSON)
+	if err != nil {
+		t.Fatalf("ParseDailyForecastOMeteo failed with error: %v", err)
+	}
 
-	if parsedForecast[0] != forecast[0] {
-		t.Errorf("Expected parsed weather to be %v, got %v", forecast[0], parsedForecast[0])
+	if len(parsedForecast) == 0 {
+		t.Fatal("parsedForecast is empty, expected at least one forecast")
+	}
+	firstForecast := parsedForecast[0]
+
+	if firstForecast.SourceAPI != expectedForecast.SourceAPI {
+		t.Errorf("SourceAPI: got %q, want %q", firstForecast.SourceAPI, expectedForecast.SourceAPI)
+	}
+	if !firstForecast.ForecastDate.Equal(expectedForecast.ForecastDate) {
+		t.Errorf("ForecastDate: got %v, want %v", firstForecast.ForecastDate, expectedForecast.ForecastDate)
+	}
+	if firstForecast.MinTemp != expectedForecast.MinTemp {
+		t.Errorf("MinTemp: got %f, want %f", firstForecast.MinTemp, expectedForecast.MinTemp)
+	}
+	if firstForecast.MaxTemp != expectedForecast.MaxTemp {
+		t.Errorf("MaxTemp: got %f, want %f", firstForecast.MaxTemp, expectedForecast.MaxTemp)
+	}
+	if firstForecast.Precipitation != expectedForecast.Precipitation {
+		t.Errorf("Precipitation: got %f, want %f", firstForecast.Precipitation, expectedForecast.Precipitation)
+	}
+	if firstForecast.PrecipitationChance != expectedForecast.PrecipitationChance {
+		t.Errorf("PrecipitationChance: got %d, want %d", firstForecast.PrecipitationChance, expectedForecast.PrecipitationChance)
+	}
+}
+
+func TestParseDailyForecastOMeteo_Error(t *testing.T) {
+	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
+
+	parsedForecast, err := ParseDailyForecastOMeteo(invalidJSON)
+	if err == nil {
+		t.Fatal("expected an error for invalid JSON, but got nil")
+	}
+
+	if len(parsedForecast) != 1 {
+		t.Fatalf("expected a slice with a single item, but got %d items", len(parsedForecast))
+	}
+
+	expected := DailyForecast{SourceAPI: "Open-Meteo API"}
+	if parsedForecast[0] != expected {
+		t.Errorf("expected forecast to be %v, but got %v", expected, parsedForecast[0])
 	}
 }
