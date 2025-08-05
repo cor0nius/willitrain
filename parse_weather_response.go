@@ -7,11 +7,11 @@ import (
 	"time"
 )
 
-func ParseCurrentWeatherGMP(body io.Reader) CurrentWeather {
+func ParseCurrentWeatherGMP(body io.Reader) (CurrentWeather, error) {
 	var response ResponseCurrentWeatherGMP
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
-		return CurrentWeather{SourceAPI: "Google Weather API", Error: err}
+		return CurrentWeather{SourceAPI: "Google Weather API"}, err
 	}
 
 	weather := CurrentWeather{
@@ -22,17 +22,16 @@ func ParseCurrentWeatherGMP(body io.Reader) CurrentWeather {
 		WindSpeed:     response.Wind.Speed.Value,
 		Precipitation: response.Precipitation.Qpf.Quantity,
 		Condition:     response.Condition.Description.Text,
-		Error:         nil,
 	}
 
-	return weather
+	return weather, nil
 }
 
-func ParseCurrentWeatherOWM(body io.Reader) CurrentWeather {
+func ParseCurrentWeatherOWM(body io.Reader) (CurrentWeather, error) {
 	var response ResponseCurrentWeatherOWM
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
-		return CurrentWeather{SourceAPI: "OpenWeatherMap API", Error: err}
+		return CurrentWeather{SourceAPI: "OpenWeatherMap API"}, err
 	}
 
 	weather := CurrentWeather{
@@ -43,17 +42,16 @@ func ParseCurrentWeatherOWM(body io.Reader) CurrentWeather {
 		WindSpeed:     Round(response.CurrentWeather.WindSpeed/3.6, 4),
 		Precipitation: response.CurrentWeather.Rain.Quantity + response.CurrentWeather.Snow.Quantity,
 		Condition:     response.CurrentWeather.Weather[0].Main,
-		Error:         nil,
 	}
 
-	return weather
+	return weather, nil
 }
 
-func ParseCurrentWeatherOMeteo(body io.Reader) CurrentWeather {
+func ParseCurrentWeatherOMeteo(body io.Reader) (CurrentWeather, error) {
 	var response ResponseCurrentWeatherOMeteo
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
-		return CurrentWeather{SourceAPI: "Open-Meteo API", Error: err}
+		return CurrentWeather{SourceAPI: "Open-Meteo API"}, err
 	}
 
 	weather := CurrentWeather{
@@ -64,10 +62,9 @@ func ParseCurrentWeatherOMeteo(body io.Reader) CurrentWeather {
 		WindSpeed:     response.CurrentWeather.WindSpeed10m,
 		Precipitation: response.CurrentWeather.Precipitation,
 		Condition:     interpretWeatherCode(response.CurrentWeather.WeatherCode),
-		Error:         nil,
 	}
 
-	return weather
+	return weather, nil
 }
 
 func ParseDailyForecastGMP(body io.Reader) ([]DailyForecast, error) {

@@ -21,10 +21,9 @@ func TestParseCurrentWeatherGMP(t *testing.T) {
 		WindSpeed:     6.,
 		Precipitation: 0.1321,
 		Condition:     "Cloudy",
-		Error:         nil,
 	}
 
-	parsedWeather := ParseCurrentWeatherGMP(sampleJSON)
+	parsedWeather, _ := ParseCurrentWeatherGMP(sampleJSON)
 
 	if parsedWeather != weather {
 		t.Errorf("Expected parsed weather to be %v, got %v", weather, parsedWeather)
@@ -43,10 +42,9 @@ func TestParseCurrentWeatherOWM(t *testing.T) {
 		WindSpeed:     Round(2.57/3.6, 4),
 		Precipitation: 0.32,
 		Condition:     "Rain",
-		Error:         nil,
 	}
 
-	parsedWeather := ParseCurrentWeatherOWM(sampleJSON)
+	parsedWeather, _ := ParseCurrentWeatherOWM(sampleJSON)
 
 	if parsedWeather != weather {
 		t.Errorf("Expected parsed weather to be %v, got %v", weather, parsedWeather)
@@ -65,10 +63,9 @@ func TestParseCurrentWeatherOMeteo(t *testing.T) {
 		WindSpeed:     9.,
 		Precipitation: 0.1,
 		Condition:     "slight rain",
-		Error:         nil,
 	}
 
-	parsedWeather := ParseCurrentWeatherOMeteo(sampleJSON)
+	parsedWeather, _ := ParseCurrentWeatherOMeteo(sampleJSON)
 
 	if parsedWeather != weather {
 		t.Errorf("Expected parsed weather to be %v, got %v", weather, parsedWeather)

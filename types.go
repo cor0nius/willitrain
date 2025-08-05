@@ -23,7 +23,6 @@ type CurrentWeather struct {
 	WindSpeed     float64   `json:"wind_speed_kmh"`
 	Precipitation float64   `json:"precipitation_mm"`
 	Condition     string    `json:"condition_text"`
-	Error         error     `json:"error"`
 }
 
 type DailyForecast struct {
