@@ -93,3 +93,46 @@ func TestParseDailyForecastGMP(t *testing.T) {
 		t.Errorf("Expected parsed weather to be %v, got %v", forecast[0], parsedForecast[0])
 	}
 }
+
+func TestParseDailyForecastOWM(t *testing.T) {
+	sampleJSON, _ := testData.Open("testdata/daily_forecast_owm.json")
+	defer sampleJSON.Close()
+	forecast := make([]DailyForecast, 5)
+
+	timestamp := time.Unix(1754388000, 0)
+	forecast[0] = DailyForecast{
+		SourceAPI:     "OpenWeatherMap API",
+		ForecastDate:  timestamp,
+		MinTemp:       13.6,
+		MaxTemp:       26.63,
+		Precipitation: 9.15,
+	}
+
+	parsedForecast, _ := ParseDailyForecastOWM(sampleJSON)
+
+	if parsedForecast[0] != forecast[0] {
+		t.Errorf("Expected parsed weather to be %v, got %v", forecast[0], parsedForecast[0])
+	}
+}
+
+func TestParseDailyForecastOMeteo(t *testing.T) {
+	sampleJSON, _ := testData.Open("testdata/daily_forecast_ometeo.json")
+	defer sampleJSON.Close()
+	forecast := make([]DailyForecast, 5)
+
+	timestamp := time.Unix(1754344800, 0)
+	forecast[0] = DailyForecast{
+		SourceAPI:           "Open-Meteo API",
+		ForecastDate:        timestamp,
+		MinTemp:             13.1,
+		MaxTemp:             25.4,
+		Precipitation:       13.3,
+		PrecipitationChance: 100,
+	}
+
+	parsedForecast, _ := ParseDailyForecastOMeteo(sampleJSON)
+
+	if parsedForecast[0] != forecast[0] {
+		t.Errorf("Expected parsed weather to be %v, got %v", forecast[0], parsedForecast[0])
+	}
+}

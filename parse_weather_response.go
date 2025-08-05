@@ -90,6 +90,51 @@ func ParseDailyForecastGMP(body io.Reader) ([]DailyForecast, error) {
 	return forecast, nil
 }
 
+func ParseDailyForecastOWM(body io.Reader) ([]DailyForecast, error) {
+	var response ResponseDailyForecastOWM
+
+	forecast := make([]DailyForecast, 5)
+	for i := range forecast {
+		forecast[i].SourceAPI = "OpenWeatherMap API"
+	}
+
+	if err := json.NewDecoder(body).Decode(&response); err != nil {
+		return forecast, err
+	}
+
+	for i := range forecast {
+		forecast[i].ForecastDate = time.Unix(response.DailyForecast[i].Dt, 0)
+		forecast[i].MinTemp = response.DailyForecast[i].Temp.Min
+		forecast[i].MaxTemp = response.DailyForecast[i].Temp.Max
+		forecast[i].Precipitation = response.DailyForecast[i].Rain + response.DailyForecast[i].Snow
+	}
+
+	return forecast, nil
+}
+
+func ParseDailyForecastOMeteo(body io.Reader) ([]DailyForecast, error) {
+	var response ResponseDailyForecastOMeteo
+
+	forecast := make([]DailyForecast, 5)
+	for i := range forecast {
+		forecast[i].SourceAPI = "Open-Meteo API"
+	}
+
+	if err := json.NewDecoder(body).Decode(&response); err != nil {
+		return forecast, err
+	}
+
+	for i := range forecast {
+		forecast[i].ForecastDate = time.Unix(response.DailyForecast.Time[i], 0)
+		forecast[i].MinTemp = response.DailyForecast.Temperature2mMin[i]
+		forecast[i].MaxTemp = response.DailyForecast.Temperature2mMax[i]
+		forecast[i].Precipitation = response.DailyForecast.PrecipitationSum[i]
+		forecast[i].PrecipitationChance = response.DailyForecast.PrecipitationProbabilityMax[i]
+	}
+
+	return forecast, nil
+}
+
 type ResponseCurrentWeatherGMP struct {
 	Timestamp     time.Time        `json:"currentTime"`
 	Temperature   Temperature      `json:"temperature"`
@@ -107,8 +152,16 @@ type ResponseCurrentWeatherOWM struct {
 	CurrentWeather Current `json:"current"`
 }
 
+type ResponseDailyForecastOWM struct {
+	DailyForecast []Daily `json:"daily"`
+}
+
 type ResponseCurrentWeatherOMeteo struct {
 	CurrentWeather Current `json:"current"`
+}
+
+type ResponseDailyForecastOMeteo struct {
+	DailyForecast Daily `json:"daily"`
 }
 
 type ForecastDay struct {
@@ -142,6 +195,27 @@ type Current struct {
 	Snow               Snow      `json:"snow"`
 	Weather            []Weather `json:"weather"`
 	WeatherCode        int       `json:"weather_code"`
+}
+
+type Daily struct {
+	Dt                          int64     `json:"dt"`
+	Time                        []int64   `json:"time"`
+	Temp                        Temp      `json:"Temp"`
+	Temperature2mMax            []float64 `json:"temperature_2m_max"`
+	Temperature2mMin            []float64 `json:"temperature_2m_min"`
+	WindSpeed                   float64   `json:"wind_speed"`
+	WindSpeed10mMax             []float64 `json:"wind_speed_10m_max"`
+	PrecipitationSum            []float64 `json:"precipitation_sum"`
+	Rain                        float64   `json:"rain"`
+	Snow                        float64   `json:"snow"`
+	PrecipitationProbabilityMax []int     `json:"precipitation_probability_max"`
+	Weather                     []Weather `json:"weather"`
+	WeatherCode                 []int     `json:"weather_code"`
+}
+
+type Temp struct {
+	Min float64 `json:"min"`
+	Max float64 `json:"max"`
 }
 
 type Temperature struct {
