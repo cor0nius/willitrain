@@ -40,7 +40,7 @@ type HourlyForecast struct {
 	Location         Location  `json:"location"`
 	SourceAPI        string    `json:"source_api"`
 	ForecastDateTime time.Time `json:"forecast_datetime"`
-	Temperature      float64   `json:"min_temp_c"`
+	Temperature      float64   `json:"temperature_c"`
 	Humidity         int       `json:"humidity"`
 	WindSpeed        float64   `json:"wind_speed_kmh"`
 	Precipitation    float64   `json:"precipitation_mm"`
