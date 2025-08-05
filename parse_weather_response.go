@@ -135,6 +135,21 @@ func ParseDailyForecastOMeteo(body io.Reader) ([]DailyForecast, error) {
 	return forecast, nil
 }
 
+func ParseHourlyForecastGMP(body io.Reader) ([]HourlyForecast, error) {
+	// Implementation for parsing hourly forecast from Google Weather API
+	return nil, nil // Placeholder return
+}
+
+func ParseHourlyForecastOWM(body io.Reader) ([]HourlyForecast, error) {
+	// Implementation for parsing hourly forecast from OpenWeatherMap API
+	return nil, nil // Placeholder return
+}
+
+func ParseHourlyForecastOMeteo(body io.Reader) ([]HourlyForecast, error) {
+	// Implementation for parsing hourly forecast from Open-Meteo API
+	return nil, nil // Placeholder return
+}
+
 type ResponseCurrentWeatherGMP struct {
 	Timestamp     time.Time        `json:"currentTime"`
 	Temperature   Temperature      `json:"temperature"`
@@ -148,12 +163,20 @@ type ResponseDailyForecastGMP struct {
 	ForecastDays []ForecastDay `json:"forecastDays"`
 }
 
+type ResponseHourlyForecastGMP struct {
+	ForecastHours []ForecastHour `json:"forecastHours"`
+}
+
 type ResponseCurrentWeatherOWM struct {
 	CurrentWeather Current `json:"current"`
 }
 
 type ResponseDailyForecastOWM struct {
 	DailyForecast []Daily `json:"daily"`
+}
+
+type ResponseHourlyForecastOWM struct {
+	HourlyForecast []Hourly `json:"hourly"`
 }
 
 type ResponseCurrentWeatherOMeteo struct {
@@ -164,11 +187,24 @@ type ResponseDailyForecastOMeteo struct {
 	DailyForecast Daily `json:"daily"`
 }
 
+type ResponseHourlyForecastOMeteo struct {
+	HourlyForecast Hourly `json:"hourly"`
+}
+
 type ForecastDay struct {
 	Interval        Interval        `json:"interval"`
 	DaytimeForecast ForecastDayPart `json:"daytimeForecast"`
 	MaxTemperature  Temperature     `json:"maxTemperature"`
 	MinTemperature  Temperature     `json:"minTemperature"`
+}
+
+type ForecastHour struct {
+	Interval      Interval         `json:"interval"`
+	Condition     WeatherCondition `json:"weatherCondition"`
+	Temperature   Temperature      `json:"temperature"`
+	Precipitation Precipitation    `json:"precipitation"`
+	Wind          Wind             `json:"wind"`
+	Humidity      int              `json:"relativeHumidity"`
 }
 
 type Interval struct {
@@ -211,6 +247,23 @@ type Daily struct {
 	PrecipitationProbabilityMax []int     `json:"precipitation_probability_max"`
 	Weather                     []Weather `json:"weather"`
 	WeatherCode                 []int     `json:"weather_code"`
+}
+
+type Hourly struct {
+	Dt                       int64     `json:"dt"`
+	Time                     []int64   `json:"time"`
+	Temp                     float64   `json:"temp"`
+	Temperature2m            []float64 `json:"temperature_2m"`
+	Humidity                 int       `json:"humidity"`
+	RelativeHumidity2m       []int     `json:"relative_humidity_2m"`
+	WindSpeed                float64   `json:"wind_speed"`
+	WindSpeed10m             []float64 `json:"wind_speed_10m"`
+	Precipitation            []float64 `json:"precipitation"`
+	PrecipitationProbability []int     `json:"precipitation_probability"`
+	Rain                     Rain      `json:"rain"`
+	Snow                     Snow      `json:"snow"`
+	Weather                  []Weather `json:"weather"`
+	WeatherCode              []int     `json:"weather_code"`
 }
 
 type Temp struct {

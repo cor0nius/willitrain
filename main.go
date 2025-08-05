@@ -81,7 +81,7 @@ func main() {
 	}
 	log.Printf("Geocoded location: %+v", wroclaw)
 
-	wroclawCurrentWeather := cfg.WrapForDailyForecast(wroclaw)
+	wroclawCurrentWeather := cfg.WrapForHourlyForecast(wroclaw)
 	for service, url := range wroclawCurrentWeather {
 		log.Printf("Current weather URL for %s: %s", service, url)
 	}
