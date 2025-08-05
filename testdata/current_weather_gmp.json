@@ -1,0 +1,96 @@
+{
+    "currentTime": "2025-08-04T09:44:48.736691285Z",
+    "timeZone": {
+        "id": "Europe/Warsaw"
+    },
+    "isDaytime": true,
+    "weatherCondition": {
+        "iconBaseUri": "https://maps.gstatic.com/weather/v1/cloudy",
+        "description": {
+            "text": "Cloudy",
+            "languageCode": "en"
+        },
+        "type": "CLOUDY"
+    },
+    "temperature": {
+        "degrees": 18.2,
+        "unit": "CELSIUS"
+    },
+    "feelsLikeTemperature": {
+        "degrees": 18.2,
+        "unit": "CELSIUS"
+    },
+    "dewPoint": {
+        "degrees": 13.4,
+        "unit": "CELSIUS"
+    },
+    "heatIndex": {
+        "degrees": 18.2,
+        "unit": "CELSIUS"
+    },
+    "windChill": {
+        "degrees": 18.2,
+        "unit": "CELSIUS"
+    },
+    "relativeHumidity": 74,
+    "uvIndex": 2,
+    "precipitation": {
+        "probability": {
+            "percent": 13,
+            "type": "RAIN"
+        },
+        "snowQpf": {
+            "quantity": 0,
+            "unit": "MILLIMETERS"
+        },
+        "qpf": {
+            "quantity": 0.1321,
+            "unit": "MILLIMETERS"
+        }
+    },
+    "thunderstormProbability": 3,
+    "airPressure": {
+        "meanSeaLevelMillibars": 1018.55
+    },
+    "wind": {
+        "direction": {
+            "degrees": 225,
+            "cardinal": "SOUTHWEST"
+        },
+        "speed": {
+            "value": 6,
+            "unit": "KILOMETERS_PER_HOUR"
+        },
+        "gust": {
+            "value": 12,
+            "unit": "KILOMETERS_PER_HOUR"
+        }
+    },
+    "visibility": {
+        "distance": 16,
+        "unit": "KILOMETERS"
+    },
+    "cloudCover": 100,
+    "currentConditionsHistory": {
+        "temperatureChange": {
+            "degrees": 1.1,
+            "unit": "CELSIUS"
+        },
+        "maxTemperature": {
+            "degrees": 20.6,
+            "unit": "CELSIUS"
+        },
+        "minTemperature": {
+            "degrees": 12.1,
+            "unit": "CELSIUS"
+        },
+        "snowQpf": {
+            "quantity": 0,
+            "unit": "MILLIMETERS"
+        },
+        "qpf": {
+            "quantity": 2.9008,
+            "unit": "MILLIMETERS"
+        }
+    }
+}

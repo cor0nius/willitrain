@@ -8,13 +8,9 @@ import (
 )
 
 func ParseCurrentWeatherGMP(body io.Reader) CurrentWeather {
-	data, err := io.ReadAll(body)
-	if err != nil {
-		return CurrentWeather{SourceAPI: "Google Weather API", Error: err}
-	}
-
 	var response ResponseCurrentWeatherGMP
-	if err = json.Unmarshal(data, &response); err != nil {
+
+	if err := json.NewDecoder(body).Decode(&response); err != nil {
 		return CurrentWeather{SourceAPI: "Google Weather API", Error: err}
 	}
 
@@ -33,13 +29,9 @@ func ParseCurrentWeatherGMP(body io.Reader) CurrentWeather {
 }
 
 func ParseCurrentWeatherOWM(body io.Reader) CurrentWeather {
-	data, err := io.ReadAll(body)
-	if err != nil {
-		return CurrentWeather{SourceAPI: "OpenWeatherMap API", Error: err}
-	}
-
 	var response ResponseCurrentWeatherOWM
-	if err = json.Unmarshal(data, &response); err != nil {
+
+	if err := json.NewDecoder(body).Decode(&response); err != nil {
 		return CurrentWeather{SourceAPI: "OpenWeatherMap API", Error: err}
 	}
 
@@ -58,13 +50,9 @@ func ParseCurrentWeatherOWM(body io.Reader) CurrentWeather {
 }
 
 func ParseCurrentWeatherOMeteo(body io.Reader) CurrentWeather {
-	data, err := io.ReadAll(body)
-	if err != nil {
-		return CurrentWeather{SourceAPI: "Open-Meteo API", Error: err}
-	}
-
 	var response ResponseCurrentWeatherOMeteo
-	if err = json.Unmarshal(data, &response); err != nil {
+
+	if err := json.NewDecoder(body).Decode(&response); err != nil {
 		return CurrentWeather{SourceAPI: "Open-Meteo API", Error: err}
 	}
 
@@ -82,6 +70,29 @@ func ParseCurrentWeatherOMeteo(body io.Reader) CurrentWeather {
 	return weather
 }
 
+func ParseDailyForecastGMP(body io.Reader) ([]DailyForecast, error) {
+	var response ResponseDailyForecastGMP
+
+	forecast := make([]DailyForecast, 5)
+	for i := range forecast {
+		forecast[i].SourceAPI = "Google Weather API"
+	}
+
+	if err := json.NewDecoder(body).Decode(&response); err != nil {
+		return forecast, err
+	}
+
+	for i := range forecast {
+		forecast[i].ForecastDate = response.ForecastDays[i].Interval.StartTime
+		forecast[i].MinTemp = response.ForecastDays[i].MinTemperature.Degrees
+		forecast[i].MaxTemp = response.ForecastDays[i].MaxTemperature.Degrees
+		forecast[i].Precipitation = response.ForecastDays[i].DaytimeForecast.Precipitation.Qpf.Quantity
+		forecast[i].PrecipitationChance = response.ForecastDays[i].DaytimeForecast.Precipitation.Probability.Percent
+	}
+
+	return forecast, nil
+}
+
 type ResponseCurrentWeatherGMP struct {
 	Timestamp     time.Time        `json:"currentTime"`
 	Temperature   Temperature      `json:"temperature"`
@@ -91,12 +102,33 @@ type ResponseCurrentWeatherGMP struct {
 	Condition     WeatherCondition `json:"weatherCondition"`
 }
 
+type ResponseDailyForecastGMP struct {
+	ForecastDays []ForecastDay `json:"forecastDays"`
+}
+
 type ResponseCurrentWeatherOWM struct {
 	CurrentWeather Current `json:"current"`
 }
 
 type ResponseCurrentWeatherOMeteo struct {
 	CurrentWeather Current `json:"current"`
+}
+
+type ForecastDay struct {
+	Interval        Interval        `json:"interval"`
+	DaytimeForecast ForecastDayPart `json:"daytimeForecast"`
+	MaxTemperature  Temperature     `json:"maxTemperature"`
+	MinTemperature  Temperature     `json:"minTemperature"`
+}
+
+type Interval struct {
+	StartTime time.Time `json:"startTime"`
+}
+
+type ForecastDayPart struct {
+	Condition     WeatherCondition `json:"weatherCondition"`
+	Precipitation Precipitation    `json:"precipitation"`
+	Wind          Wind             `json:"wind"`
 }
 
 type Current struct {
@@ -128,11 +160,16 @@ type Speed struct {
 }
 
 type Precipitation struct {
-	Qpf Qpf `json:"qpf"`
+	Qpf         Qpf                      `json:"qpf"`
+	Probability PrecipitationProbability `json:"probability"`
 }
 
 type Qpf struct {
 	Quantity float64 `json:"quantity"`
+}
+
+type PrecipitationProbability struct {
+	Percent int `json:"percent"`
 }
 
 type Rain struct {
