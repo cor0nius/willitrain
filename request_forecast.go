@@ -24,7 +24,17 @@ func (cfg *apiConfig) requestCurrentWeather(location Location) ([]CurrentWeather
 		},
 	}
 
-	return processForecastRequests(urls, providers)
+	results, err := processForecastRequests(urls, providers)
+	if err != nil {
+		return nil, err
+	}
+
+	// Populate the Location field for each result
+	for i := range results {
+		results[i].Location = location
+	}
+
+	return results, nil
 }
 
 func (cfg *apiConfig) requestDailyForecast(location Location) ([]DailyForecast, error) {
@@ -53,6 +63,11 @@ func (cfg *apiConfig) requestDailyForecast(location Location) ([]DailyForecast, 
 	var allForecasts []DailyForecast
 	for _, forecastSlice := range results {
 		allForecasts = append(allForecasts, forecastSlice...)
+	}
+
+	// Populate the Location field for each result
+	for i := range allForecasts {
+		allForecasts[i].Location = location
 	}
 
 	return allForecasts, nil
@@ -84,6 +99,11 @@ func (cfg *apiConfig) requestHourlyForecast(location Location) ([]HourlyForecast
 	var allForecasts []HourlyForecast
 	for _, forecastSlice := range results {
 		allForecasts = append(allForecasts, forecastSlice...)
+	}
+
+	// Populate the Location field for each result
+	for i := range allForecasts {
+		allForecasts[i].Location = location
 	}
 
 	return allForecasts, nil

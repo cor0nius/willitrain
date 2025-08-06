@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/cor0nius/willitrain/internal/database"
@@ -74,15 +75,22 @@ func main() {
 		owmKey:           owmKey,
 	}
 
-	wroclaw, err := cfg.Geocode("Wroclaw")
-	if err != nil {
-		log.Printf("Geocoding error: %v", err)
-		return
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
-	log.Printf("Geocoded location: %+v", wroclaw)
 
-	wroclawCurrentWeather := cfg.WrapForHourlyForecast(wroclaw)
-	for service, url := range wroclawCurrentWeather {
-		log.Printf("Current weather URL for %s: %s", service, url)
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/currentweather", cfg.handlerCurrentWeather)
+	mux.HandleFunc("/dailyforecast", cfg.handlerDailyForecast)
+	mux.HandleFunc("/hourlyforecast", cfg.handlerHourlyForecast)
+
+	server := &http.Server{
+		Addr:    ":" + port,
+		Handler: mux,
 	}
+
+	log.Printf("Serving on port: %s\n", port)
+	log.Fatal(server.ListenAndServe())
 }
