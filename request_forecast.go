@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"log"
 	"sync"
 )
@@ -8,27 +9,103 @@ import (
 func (cfg *apiConfig) requestCurrentWeather(location Location) ([]CurrentWeather, error) {
 	urls := cfg.WrapForCurrentWeather(location)
 
+	providers := map[string]forecastProvider[CurrentWeather]{
+		"gmpWrappedURL": {
+			parser:   ParseCurrentWeatherGMP,
+			errorVal: CurrentWeather{SourceAPI: "Google Weather API"},
+		},
+		"owmWrappedURL": {
+			parser:   ParseCurrentWeatherOWM,
+			errorVal: CurrentWeather{SourceAPI: "OpenWeatherMap API"},
+		},
+		"ometeoWrappedURL": {
+			parser:   ParseCurrentWeatherOMeteo,
+			errorVal: CurrentWeather{SourceAPI: "Open-Meteo API"},
+		},
+	}
+
+	return cfg.processForecastRequests[CurrentWeather](urls, providers)
+}
+
+func (cfg *apiConfig) requestDailyForecast(location Location) ([]DailyForecast, error) {
+	urls := cfg.WrapForDailyForecast(location)
+
+	providers := map[string]forecastProvider[[]DailyForecast]{
+		"gmpWrappedURL": {
+			parser:   ParseDailyForecastGMP,
+			errorVal: []DailyForecast{{SourceAPI: "Google Weather API"}},
+		},
+		"owmWrappedURL": {
+			parser:   ParseDailyForecastOWM,
+			errorVal: []DailyForecast{{SourceAPI: "OpenWeatherMap API"}},
+		},
+		"ometeoWrappedURL": {
+			parser:   ParseDailyForecastOMeteo,
+			errorVal: []DailyForecast{{SourceAPI: "Open-Meteo API"}},
+		},
+	}
+
+	results, err := cfg.processForecastRequests[[]DailyForecast](urls, providers)
+	if err != nil {
+		return nil, err
+	}
+
+	var allForecasts []DailyForecast
+	for _, forecastSlice := range results {
+		allForecasts = append(allForecasts, forecastSlice...)
+	}
+
+	return allForecasts, nil
+}
+
+func (cfg *apiConfig) requestHourlyForecast(location Location) ([]HourlyForecast, error) {
+	urls := cfg.WrapForHourlyForecast(location)
+
+	providers := map[string]forecastProvider[[]HourlyForecast]{
+		"gmpWrappedURL": {
+			parser:   ParseHourlyForecastGMP,
+			errorVal: []HourlyForecast{{SourceAPI: "Google Weather API"}},
+		},
+		"owmWrappedURL": {
+			parser:   ParseHourlyForecastOWM,
+			errorVal: []HourlyForecast{{SourceAPI: "OpenWeatherMap API"}},
+		},
+		"ometeoWrappedURL": {
+			parser:   ParseHourlyForecastOMeteo,
+			errorVal: []HourlyForecast{{SourceAPI: "Open-Meteo API"}},
+		},
+	}
+
+	results, err := cfg.processForecastRequests[[]HourlyForecast](urls, providers)
+	if err != nil {
+		return nil, err
+	}
+
+	var allForecasts []HourlyForecast
+	for _, forecastSlice := range results {
+		allForecasts = append(allForecasts, forecastSlice...)
+	}
+
+	return allForecasts, nil
+}
+
+func (cfg *apiConfig) processForecastRequests[T Forecast](
+	urls map[string]string,
+	providers map[string]forecastProvider[T],
+) ([]T, error) {
 	var wg sync.WaitGroup
 	results := make(chan struct {
-		t   CurrentWeather
+		t   T
 		err error
 	}, len(urls))
 
 	for key, url := range urls {
-		wg.Add(1)
-		go func(key, url string) {
-			switch key {
-			case "gmpWrappedURL":
-				fetchForecastFromAPI(url, ParseCurrentWeatherGMP, CurrentWeather{SourceAPI: "Google Weather API"}, &wg, results)
-			case "owmWrappedURL":
-				fetchForecastFromAPI(url, ParseCurrentWeatherOWM, CurrentWeather{SourceAPI: "OpenWeatherMap API"}, &wg, results)
-			case "ometeoWrappedURL":
-				fetchForecastFromAPI(url, ParseCurrentWeatherOMeteo, CurrentWeather{SourceAPI: "Open-Meteo API"}, &wg, results)
-			default:
-				log.Printf("Unknown weather API key for current weather: %s", key)
-				wg.Done()
-			}
-		}(key, url)
+		if provider, ok := providers[key]; ok {
+			wg.Add(1)
+			go fetchForecastFromAPI(url, provider.parser, provider.errorVal, &wg, results)
+		} else {
+			log.Printf("No provider found for key: %s", key)
+		}
 	}
 
 	go func() {
@@ -36,25 +113,37 @@ func (cfg *apiConfig) requestCurrentWeather(location Location) ([]CurrentWeather
 		close(results)
 	}()
 
-	var allWeather []CurrentWeather
+	var allResults []T
 	for res := range results {
 		if res.err != nil {
-			log.Printf("Error fetching current weather from %s: %v", res.t.SourceAPI, res.err)
+			var sourceAPI string
+			v := any(res.t)
+			switch v := v.(type) {
+			case CurrentWeather:
+				sourceAPI = v.SourceAPI
+			case []DailyForecast:
+				if len(v) > 0 {
+					sourceAPI = v[0].SourceAPI
+				}
+			case []HourlyForecast:
+				if len(v) > 0 {
+					sourceAPI = v[0].SourceAPI
+				}
+			}
+			if sourceAPI != "" {
+				log.Printf("Error fetching forecast from %s: %v", sourceAPI, res.err)
+			} else {
+				log.Printf("Error fetching forecast: %v", res.err)
+			}
+		} else {
+			allResults = append(allResults, res.t)
 		}
-		allWeather = append(allWeather, res.t)
 	}
 
-	return allWeather, nil
+	return allResults, nil
 }
 
-func requestDailyForecast(location Location) ([]DailyForecast, error) {
-	// Implementation for requesting daily forecast data
-	// This is a placeholder function and should be replaced with actual logic
-	return []DailyForecast{}, nil
-}
-
-func requestHourlyForecast(location Location) ([]HourlyForecast, error) {
-	// Implementation for requesting hourly forecast data
-	// This is a placeholder function and should be replaced with actual logic
-	return []HourlyForecast{}, nil
+type forecastProvider[T Forecast] struct {
+	parser   func(io.Reader) (T, error)
+	errorVal T
 }
