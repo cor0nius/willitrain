@@ -24,7 +24,7 @@ func (cfg *apiConfig) requestCurrentWeather(location Location) ([]CurrentWeather
 		},
 	}
 
-	return cfg.processForecastRequests[CurrentWeather](urls, providers)
+	return processForecastRequests(urls, providers)
 }
 
 func (cfg *apiConfig) requestDailyForecast(location Location) ([]DailyForecast, error) {
@@ -45,7 +45,7 @@ func (cfg *apiConfig) requestDailyForecast(location Location) ([]DailyForecast, 
 		},
 	}
 
-	results, err := cfg.processForecastRequests[[]DailyForecast](urls, providers)
+	results, err := processForecastRequests(urls, providers)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (cfg *apiConfig) requestHourlyForecast(location Location) ([]HourlyForecast
 		},
 	}
 
-	results, err := cfg.processForecastRequests[[]HourlyForecast](urls, providers)
+	results, err := processForecastRequests(urls, providers)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (cfg *apiConfig) requestHourlyForecast(location Location) ([]HourlyForecast
 	return allForecasts, nil
 }
 
-func (cfg *apiConfig) processForecastRequests[T Forecast](
+func processForecastRequests[T Forecast](
 	urls map[string]string,
 	providers map[string]forecastProvider[T],
 ) ([]T, error) {
