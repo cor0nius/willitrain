@@ -45,3 +45,7 @@ type HourlyForecast struct {
 	WindSpeed        float64   `json:"wind_speed_kmh"`
 	Precipitation    float64   `json:"precipitation_mm"`
 }
+
+type Forecast interface {
+	CurrentWeather | []DailyForecast | []HourlyForecast
+}
