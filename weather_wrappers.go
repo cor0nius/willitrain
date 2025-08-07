@@ -26,7 +26,7 @@ func (cfg *apiConfig) WrapForDailyForecast(location Location) map[string]string 
 
 	owmWrappedURL := fmt.Sprintf("%slat=%.2f&lon=%.2f&exclude=current,minutely,hourly,alerts&units=metric&appid=%s", cfg.owmWeatherURL, location.Latitude, location.Longitude, cfg.owmKey)
 
-	ometeoParameters := "temperature_2m_max,temperature_2m_mean,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,weather_code"
+	ometeoParameters := "temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,weather_code,relative_humidity_2m_max"
 	ometeoWrappedURL := fmt.Sprintf("%slatitude=%.2f&longitude=%.2f&daily=%s&timezone=auto&timeformat=unixtime", cfg.ometeoWeatherURL, location.Latitude, location.Longitude, ometeoParameters)
 
 	return map[string]string{

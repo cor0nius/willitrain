@@ -68,7 +68,7 @@ func TestURLWrappers(t *testing.T) {
 			expectedURLs: map[string]string{
 				"gmpWrappedURL":    "https://weather.googleapis.com/v1/forecast/days:lookup?key=" + gmpKey + "&location.latitude=51.11&location.longitude=17.04",
 				"owmWrappedURL":    "https://api.openweathermap.org/data/3.0/onecall?lat=51.11&lon=17.04&exclude=current,minutely,hourly,alerts&units=metric&appid=" + owmKey,
-				"ometeoWrappedURL": "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&daily=temperature_2m_max,temperature_2m_mean,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,weather_code&timezone=auto&timeformat=unixtime",
+				"ometeoWrappedURL": "https://api.open-meteo.com/v1/forecast?latitude=51.11&longitude=17.04&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,weather_code,relative_humidity_2m_max&timezone=auto&timeformat=unixtime",
 			},
 		},
 		{

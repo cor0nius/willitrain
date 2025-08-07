@@ -208,8 +208,8 @@ func TestParseDailyForecastGMP(t *testing.T) {
 		MaxTemp:             25.6,
 		Precipitation:       1.5748,
 		PrecipitationChance: 50,
-		WindSpeed:           14.0,
-		Humidity:            61,
+		WindSpeed:           16.0,
+		Humidity:            68,
 	}
 
 	parsedForecast, err := ParseDailyForecastGMP(sampleJSON)
@@ -284,8 +284,8 @@ func TestParseHourlyForecastGMP(t *testing.T) {
 		Humidity:            61,
 		WindSpeed:           14.,
 		Precipitation:       0.,
-		PrecipitationChance: 0,
-		Condition:           "Partly cloudy",
+		PrecipitationChance: 5,
+		Condition:           "Partly sunny",
 	}
 
 	parsedForecast, err := ParseHourlyForecastGMP(sampleJSON)
@@ -338,9 +338,9 @@ func TestParseDailyForecastOWM(t *testing.T) {
 		MinTemp:             13.6,
 		MaxTemp:             26.63,
 		Precipitation:       9.15,
-		PrecipitationChance: 93,
-		WindSpeed:           Round(6.13*3.6, 4),
-		Humidity:            50,
+		PrecipitationChance: 100,
+		WindSpeed:           Round(7.27*3.6, 4),
+		Humidity:            58,
 	}
 
 	parsedForecast, err := ParseDailyForecastOWM(sampleJSON)
@@ -566,16 +566,16 @@ func TestParseDailyForecastOMeteo(t *testing.T) {
 	}
 	defer sampleJSON.Close()
 
-	timestamp := time.Unix(1754344800, 0)
+	timestamp := time.Unix(1754517600, 0)
 	expectedForecast := DailyForecast{
 		SourceAPI:           "Open-Meteo API",
 		ForecastDate:        timestamp,
-		MinTemp:             13.1,
-		MaxTemp:             25.4,
-		Precipitation:       13.3,
-		PrecipitationChance: 100,
-		WindSpeed:           15.3,
-		Humidity:            94,
+		MinTemp:             11.7,
+		MaxTemp:             24.1,
+		Precipitation:       0.0,
+		PrecipitationChance: 0,
+		WindSpeed:           10.0,
+		Humidity:            83,
 	}
 
 	parsedForecast, err := ParseDailyForecastOMeteo(sampleJSON)

@@ -1,7 +1,7 @@
 {
     "latitude": 51.12,
     "longitude": 17.039999,
-    "generationtime_ms": 0.2511739730834961,
+    "generationtime_ms": 0.2639293670654297,
     "utc_offset_seconds": 7200,
     "timezone": "Europe/Warsaw",
     "timezone_abbreviation": "GMT+2",
@@ -14,7 +14,8 @@
         "precipitation_sum": "mm",
         "precipitation_probability_max": "%",
         "wind_speed_10m_max": "km/h",
-        "weather_code": "wmo code"
+        "weather_code": "wmo code",
+        "relative_humidity_2m_max": "%"
     },
     "daily": {
         "time": [
@@ -29,28 +30,19 @@
         "temperature_2m_max": [
             24.1,
             25.0,
-            27.3,
-            26.9,
-            24.8,
+            28.1,
+            25.4,
+            23.7,
             26.5,
             30.5
-        ],
-        "temperature_2m_mean": [
-            18.5,
-            20.1,
-            21.2,
-            21.7,
-            18.8,
-            19.0,
-            21.8
         ],
         "temperature_2m_min": [
             11.7,
             14.9,
             14.5,
-            17.0,
-            13.1,
-            11.5,
+            16.3,
+            12.7,
+            11.8,
             13.8
         ],
         "precipitation_sum": [
@@ -64,19 +56,19 @@
         ],
         "precipitation_probability_max": [
             0,
-            5,
+            13,
             3,
-            10,
-            5,
+            8,
+            1,
             0,
             5
         ],
         "wind_speed_10m_max": [
             10.0,
             15.1,
-            9.0,
+            7.7,
             17.6,
-            5.8,
+            6.4,
             9.5,
             12.6
         ],
@@ -86,8 +78,17 @@
             3,
             3,
             3,
-            0,
+            1,
             1
+        ],
+        "relative_humidity_2m_max": [
+            83,
+            82,
+            84,
+            92,
+            85,
+            88,
+            85
         ]
     }
 }
