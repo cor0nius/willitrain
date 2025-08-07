@@ -208,6 +208,8 @@ func TestParseDailyForecastGMP(t *testing.T) {
 		MaxTemp:             25.6,
 		Precipitation:       1.5748,
 		PrecipitationChance: 50,
+		WindSpeed:           14.0,
+		Humidity:            61,
 	}
 
 	parsedForecast, err := ParseDailyForecastGMP(sampleJSON)
@@ -237,6 +239,12 @@ func TestParseDailyForecastGMP(t *testing.T) {
 	}
 	if firstForecast.PrecipitationChance != expectedForecast.PrecipitationChance {
 		t.Errorf("PrecipitationChance: got %d, want %d", firstForecast.PrecipitationChance, expectedForecast.PrecipitationChance)
+	}
+	if firstForecast.WindSpeed != expectedForecast.WindSpeed {
+		t.Errorf("WindSpeed: got %f, want %f", firstForecast.WindSpeed, expectedForecast.WindSpeed)
+	}
+	if firstForecast.Humidity != expectedForecast.Humidity {
+		t.Errorf("Humidity: got %d, want %d", firstForecast.Humidity, expectedForecast.Humidity)
 	}
 }
 
@@ -270,12 +278,14 @@ func TestParseHourlyForecastGMP(t *testing.T) {
 		t.Fatalf("failed to parse timestamp: %v", err)
 	}
 	expectedForecast := HourlyForecast{
-		SourceAPI:        "Google Weather API",
-		ForecastDateTime: timestamp,
-		Temperature:      23.5,
-		Humidity:         61,
-		WindSpeed:        14.,
-		Precipitation:    0.,
+		SourceAPI:           "Google Weather API",
+		ForecastDateTime:    timestamp,
+		Temperature:         23.5,
+		Humidity:            61,
+		WindSpeed:           14.,
+		Precipitation:       0.,
+		PrecipitationChance: 0,
+		Condition:           "Partly cloudy",
 	}
 
 	parsedForecast, err := ParseHourlyForecastGMP(sampleJSON)
@@ -306,6 +316,12 @@ func TestParseHourlyForecastGMP(t *testing.T) {
 	if firstForecast.Precipitation != expectedForecast.Precipitation {
 		t.Errorf("Precipitation: got %f, want %f", firstForecast.Precipitation, expectedForecast.Precipitation)
 	}
+	if firstForecast.PrecipitationChance != expectedForecast.PrecipitationChance {
+		t.Errorf("PrecipitationChance: got %d, want %d", firstForecast.PrecipitationChance, expectedForecast.PrecipitationChance)
+	}
+	if firstForecast.Condition != expectedForecast.Condition {
+		t.Errorf("Condition: got %q, want %q", firstForecast.Condition, expectedForecast.Condition)
+	}
 }
 
 func TestParseDailyForecastOWM(t *testing.T) {
@@ -317,11 +333,14 @@ func TestParseDailyForecastOWM(t *testing.T) {
 
 	timestamp := time.Unix(1754388000, 0)
 	expectedForecast := DailyForecast{
-		SourceAPI:     "OpenWeatherMap API",
-		ForecastDate:  timestamp,
-		MinTemp:       13.6,
-		MaxTemp:       26.63,
-		Precipitation: 9.15,
+		SourceAPI:           "OpenWeatherMap API",
+		ForecastDate:        timestamp,
+		MinTemp:             13.6,
+		MaxTemp:             26.63,
+		Precipitation:       9.15,
+		PrecipitationChance: 93,
+		WindSpeed:           Round(6.13*3.6, 4),
+		Humidity:            50,
 	}
 
 	parsedForecast, err := ParseDailyForecastOWM(sampleJSON)
@@ -348,6 +367,15 @@ func TestParseDailyForecastOWM(t *testing.T) {
 	}
 	if firstForecast.Precipitation != expectedForecast.Precipitation {
 		t.Errorf("Precipitation: got %f, want %f", firstForecast.Precipitation, expectedForecast.Precipitation)
+	}
+	if firstForecast.PrecipitationChance != expectedForecast.PrecipitationChance {
+		t.Errorf("PrecipitationChance: got %d, want %d", firstForecast.PrecipitationChance, expectedForecast.PrecipitationChance)
+	}
+	if firstForecast.WindSpeed != expectedForecast.WindSpeed {
+		t.Errorf("WindSpeed: got %f, want %f", firstForecast.WindSpeed, expectedForecast.WindSpeed)
+	}
+	if firstForecast.Humidity != expectedForecast.Humidity {
+		t.Errorf("Humidity: got %d, want %d", firstForecast.Humidity, expectedForecast.Humidity)
 	}
 }
 
@@ -432,12 +460,14 @@ func TestParseHourlyForecastOWM(t *testing.T) {
 
 	timestamp := time.Unix(1754391600, 0)
 	expectedForecast := HourlyForecast{
-		SourceAPI:        "OpenWeatherMap API",
-		ForecastDateTime: timestamp,
-		Temperature:      25.19,
-		Humidity:         56,
-		WindSpeed:        Round(4.06*3.6, 4),
-		Precipitation:    0.,
+		SourceAPI:           "OpenWeatherMap API",
+		ForecastDateTime:    timestamp,
+		Temperature:         25.19,
+		Humidity:            56,
+		WindSpeed:           Round(4.06*3.6, 4),
+		Precipitation:       0.,
+		PrecipitationChance: 0,
+		Condition:           "Clear",
 	}
 
 	parsedForecast, err := ParseHourlyForecastOWM(sampleJSON)
@@ -467,6 +497,12 @@ func TestParseHourlyForecastOWM(t *testing.T) {
 	if firstForecast.Precipitation != expectedForecast.Precipitation {
 		t.Errorf("Precipitation: got %f, want %f", firstForecast.Precipitation, expectedForecast.Precipitation)
 	}
+	if firstForecast.PrecipitationChance != expectedForecast.PrecipitationChance {
+		t.Errorf("PrecipitationChance: got %d, want %d", firstForecast.PrecipitationChance, expectedForecast.PrecipitationChance)
+	}
+	if firstForecast.Condition != expectedForecast.Condition {
+		t.Errorf("Condition: got %q, want %q", firstForecast.Condition, expectedForecast.Condition)
+	}
 }
 
 func TestParseHourlyForecastOMeteo(t *testing.T) {
@@ -478,12 +514,14 @@ func TestParseHourlyForecastOMeteo(t *testing.T) {
 
 	timestamp := time.Unix(1754344800, 0)
 	expectedForecast := HourlyForecast{
-		SourceAPI:        "Open-Meteo API",
-		ForecastDateTime: timestamp,
-		Temperature:      16.1,
-		Humidity:         74,
-		WindSpeed:        7.3,
-		Precipitation:    0.,
+		SourceAPI:           "Open-Meteo API",
+		ForecastDateTime:    timestamp,
+		Temperature:         16.1,
+		Humidity:            74,
+		WindSpeed:           7.3,
+		Precipitation:       0.,
+		PrecipitationChance: 0,
+		Condition:           "partly cloudy",
 	}
 
 	parsedForecast, err := ParseHourlyForecastOMeteo(sampleJSON)
@@ -513,6 +551,12 @@ func TestParseHourlyForecastOMeteo(t *testing.T) {
 	if firstForecast.Precipitation != expectedForecast.Precipitation {
 		t.Errorf("Precipitation: got %f, want %f", firstForecast.Precipitation, expectedForecast.Precipitation)
 	}
+	if firstForecast.PrecipitationChance != expectedForecast.PrecipitationChance {
+		t.Errorf("PrecipitationChance: got %d, want %d", firstForecast.PrecipitationChance, expectedForecast.PrecipitationChance)
+	}
+	if firstForecast.Condition != expectedForecast.Condition {
+		t.Errorf("Condition: got %q, want %q", firstForecast.Condition, expectedForecast.Condition)
+	}
 }
 
 func TestParseDailyForecastOMeteo(t *testing.T) {
@@ -530,6 +574,8 @@ func TestParseDailyForecastOMeteo(t *testing.T) {
 		MaxTemp:             25.4,
 		Precipitation:       13.3,
 		PrecipitationChance: 100,
+		WindSpeed:           15.3,
+		Humidity:            94,
 	}
 
 	parsedForecast, err := ParseDailyForecastOMeteo(sampleJSON)
@@ -559,6 +605,12 @@ func TestParseDailyForecastOMeteo(t *testing.T) {
 	}
 	if firstForecast.PrecipitationChance != expectedForecast.PrecipitationChance {
 		t.Errorf("PrecipitationChance: got %d, want %d", firstForecast.PrecipitationChance, expectedForecast.PrecipitationChance)
+	}
+	if firstForecast.WindSpeed != expectedForecast.WindSpeed {
+		t.Errorf("WindSpeed: got %f, want %f", firstForecast.WindSpeed, expectedForecast.WindSpeed)
+	}
+	if firstForecast.Humidity != expectedForecast.Humidity {
+		t.Errorf("Humidity: got %d, want %d", firstForecast.Humidity, expectedForecast.Humidity)
 	}
 }
 

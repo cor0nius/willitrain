@@ -99,6 +99,8 @@ func ParseDailyForecastGMP(body io.Reader) ([]DailyForecast, error) {
 			MaxTemp:             day.MaxTemperature.Degrees,
 			Precipitation:       day.DaytimeForecast.Precipitation.Qpf.Quantity,
 			PrecipitationChance: day.DaytimeForecast.Precipitation.Probability.Percent,
+			WindSpeed:           day.DaytimeForecast.Wind.Speed.Value,
+			Humidity:            day.DaytimeForecast.RelativeHumidity,
 		})
 	}
 
@@ -121,11 +123,14 @@ func ParseDailyForecastOWM(body io.Reader) ([]DailyForecast, error) {
 			break
 		}
 		forecast = append(forecast, DailyForecast{
-			SourceAPI:     "OpenWeatherMap API",
-			ForecastDate:  time.Unix(day.Dt, 0),
-			MinTemp:       day.Temp.Min,
-			MaxTemp:       day.Temp.Max,
-			Precipitation: day.Rain + day.Snow,
+			SourceAPI:           "OpenWeatherMap API",
+			ForecastDate:        time.Unix(day.Dt, 0),
+			MinTemp:             day.Temp.Min,
+			MaxTemp:             day.Temp.Max,
+			Precipitation:       day.Rain + day.Snow,
+			PrecipitationChance: int(day.Pop * 100),
+			WindSpeed:           Round(day.WindSpeed*3.6, 4),
+			Humidity:            day.Humidity,
 		})
 	}
 
@@ -156,6 +161,8 @@ func ParseDailyForecastOMeteo(body io.Reader) ([]DailyForecast, error) {
 			MaxTemp:             response.DailyForecast.Temperature2mMax[i],
 			Precipitation:       response.DailyForecast.PrecipitationSum[i],
 			PrecipitationChance: response.DailyForecast.PrecipitationProbabilityMax[i],
+			WindSpeed:           response.DailyForecast.WindSpeed10mMax[i],
+			Humidity:            response.DailyForecast.RelativeHumidity2mMax[i],
 		})
 	}
 
@@ -178,12 +185,14 @@ func ParseHourlyForecastGMP(body io.Reader) ([]HourlyForecast, error) {
 			break
 		}
 		forecast = append(forecast, HourlyForecast{
-			SourceAPI:        "Google Weather API",
-			ForecastDateTime: hour.Interval.StartTime,
-			Temperature:      hour.Temperature.Degrees,
-			Humidity:         hour.Humidity,
-			WindSpeed:        hour.Wind.Speed.Value,
-			Precipitation:    hour.Precipitation.Qpf.Quantity,
+			SourceAPI:           "Google Weather API",
+			ForecastDateTime:    hour.Interval.StartTime,
+			Temperature:         hour.Temperature.Degrees,
+			Humidity:            hour.Humidity,
+			WindSpeed:           hour.Wind.Speed.Value,
+			Precipitation:       hour.Precipitation.Qpf.Quantity,
+			PrecipitationChance: hour.Precipitation.Probability.Percent,
+			Condition:           hour.Condition.Description.Text,
 		})
 	}
 
@@ -206,12 +215,14 @@ func ParseHourlyForecastOWM(body io.Reader) ([]HourlyForecast, error) {
 			break
 		}
 		forecast = append(forecast, HourlyForecast{
-			SourceAPI:        "OpenWeatherMap API",
-			ForecastDateTime: time.Unix(hour.Dt, 0),
-			Temperature:      hour.Temp,
-			Humidity:         hour.Humidity,
-			WindSpeed:        Round(hour.WindSpeed*3.6, 4),
-			Precipitation:    hour.Rain.Quantity + hour.Snow.Quantity,
+			SourceAPI:           "OpenWeatherMap API",
+			ForecastDateTime:    time.Unix(hour.Dt, 0),
+			Temperature:         hour.Temp,
+			Humidity:            hour.Humidity,
+			WindSpeed:           Round(hour.WindSpeed*3.6, 4),
+			Precipitation:       hour.Rain.Quantity + hour.Snow.Quantity,
+			PrecipitationChance: int(hour.Pop * 100),
+			Condition:           hour.Weather[0].Main,
 		})
 	}
 
@@ -236,12 +247,14 @@ func ParseHourlyForecastOMeteo(body io.Reader) ([]HourlyForecast, error) {
 
 	for i := 0; i < numHours; i++ {
 		forecast = append(forecast, HourlyForecast{
-			SourceAPI:        "Open-Meteo API",
-			ForecastDateTime: time.Unix(response.HourlyForecast.Time[i], 0),
-			Temperature:      response.HourlyForecast.Temperature2m[i],
-			Humidity:         response.HourlyForecast.RelativeHumidity2m[i],
-			WindSpeed:        response.HourlyForecast.WindSpeed10m[i],
-			Precipitation:    response.HourlyForecast.Precipitation[i],
+			SourceAPI:           "Open-Meteo API",
+			ForecastDateTime:    time.Unix(response.HourlyForecast.Time[i], 0),
+			Temperature:         response.HourlyForecast.Temperature2m[i],
+			Humidity:            response.HourlyForecast.RelativeHumidity2m[i],
+			WindSpeed:           response.HourlyForecast.WindSpeed10m[i],
+			Precipitation:       response.HourlyForecast.Precipitation[i],
+			PrecipitationChance: response.HourlyForecast.PrecipitationProbability[i],
+			Condition:           interpretWeatherCode(response.HourlyForecast.WeatherCode[i]),
 		})
 	}
 
@@ -287,9 +300,10 @@ type Interval struct {
 }
 
 type ForecastDayPart struct {
-	Condition     WeatherCondition `json:"weatherCondition"`
-	Precipitation Precipitation    `json:"precipitation"`
-	Wind          Wind             `json:"wind"`
+	Condition        WeatherCondition `json:"weatherCondition"`
+	Precipitation    Precipitation    `json:"precipitation"`
+	Wind             Wind             `json:"wind"`
+	RelativeHumidity int              `json:"relativeHumidity"`
 }
 
 type Temperature struct {
@@ -349,11 +363,14 @@ type CurrentOWM struct {
 }
 
 type DailyOWM struct {
-	Dt      int64     `json:"dt"`
-	Temp    Temp      `json:"temp"`
-	Rain    float64   `json:"rain"`
-	Snow    float64   `json:"snow"`
-	Weather []Weather `json:"weather"`
+	Dt        int64     `json:"dt"`
+	Temp      Temp      `json:"temp"`
+	Rain      float64   `json:"rain"`
+	Snow      float64   `json:"snow"`
+	Weather   []Weather `json:"weather"`
+	Pop       float64   `json:"pop"`
+	WindSpeed float64   `json:"wind_speed"`
+	Humidity  int       `json:"humidity"`
 }
 
 type HourlyOWM struct {
@@ -364,6 +381,7 @@ type HourlyOWM struct {
 	Rain      Rain      `json:"rain"`
 	Snow      Snow      `json:"snow"`
 	Weather   []Weather `json:"weather"`
+	Pop       float64   `json:"pop"`
 }
 
 type Temp struct {
@@ -412,6 +430,8 @@ type DailyOMeteo struct {
 	PrecipitationSum            []float64 `json:"precipitation_sum"`
 	PrecipitationProbabilityMax []int     `json:"precipitation_probability_max"`
 	WeatherCode                 []int     `json:"weather_code"`
+	WindSpeed10mMax             []float64 `json:"wind_speed_10m_max"`
+	RelativeHumidity2mMax       []int     `json:"relative_humidity_2m_max"`
 }
 
 type HourlyOMeteo struct {
