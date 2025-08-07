@@ -22,20 +22,24 @@ INSERT INTO hourly_forecasts (
     temperature_c,
     humidity,
     wind_speed_kmh,
-    precipitation_mm
+    precipitation_mm,
+    precipitation_chance_percent,
+    condition_text
 )
-VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)
-RETURNING id, location_id, source_api, forecast_datetime_utc, temperature_c, humidity, wind_speed_kmh, precipitation_mm
+VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, location_id, source_api, forecast_datetime_utc, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text
 `
 
 type CreateHourlyForecastParams struct {
-	LocationID          uuid.UUID
-	SourceApi           string
-	ForecastDatetimeUtc time.Time
-	TemperatureC        sql.NullFloat64
-	Humidity            sql.NullInt32
-	WindSpeedKmh        sql.NullFloat64
-	PrecipitationMm     sql.NullFloat64
+	LocationID                 uuid.UUID
+	SourceApi                  string
+	ForecastDatetimeUtc        time.Time
+	TemperatureC               sql.NullFloat64
+	Humidity                   sql.NullInt32
+	WindSpeedKmh               sql.NullFloat64
+	PrecipitationMm            sql.NullFloat64
+	PrecipitationChancePercent sql.NullInt32
+	ConditionText              sql.NullString
 }
 
 func (q *Queries) CreateHourlyForecast(ctx context.Context, arg CreateHourlyForecastParams) (HourlyForecast, error) {
@@ -47,6 +51,8 @@ func (q *Queries) CreateHourlyForecast(ctx context.Context, arg CreateHourlyFore
 		arg.Humidity,
 		arg.WindSpeedKmh,
 		arg.PrecipitationMm,
+		arg.PrecipitationChancePercent,
+		arg.ConditionText,
 	)
 	var i HourlyForecast
 	err := row.Scan(
@@ -58,6 +64,8 @@ func (q *Queries) CreateHourlyForecast(ctx context.Context, arg CreateHourlyFore
 		&i.Humidity,
 		&i.WindSpeedKmh,
 		&i.PrecipitationMm,
+		&i.PrecipitationChancePercent,
+		&i.ConditionText,
 	)
 	return i, err
 }
@@ -104,7 +112,7 @@ func (q *Queries) DeleteHourlyForecastsFromAPI(ctx context.Context, sourceApi st
 }
 
 const getHourlyForecastAtLocationAndTime = `-- name: GetHourlyForecastAtLocationAndTime :many
-SELECT id, location_id, source_api, forecast_datetime_utc, temperature_c, humidity, wind_speed_kmh, precipitation_mm FROM hourly_forecasts WHERE location_id=$1 AND forecast_datetime_utc=$2
+SELECT id, location_id, source_api, forecast_datetime_utc, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text FROM hourly_forecasts WHERE location_id=$1 AND forecast_datetime_utc=$2
 `
 
 type GetHourlyForecastAtLocationAndTimeParams struct {
@@ -130,6 +138,8 @@ func (q *Queries) GetHourlyForecastAtLocationAndTime(ctx context.Context, arg Ge
 			&i.Humidity,
 			&i.WindSpeedKmh,
 			&i.PrecipitationMm,
+			&i.PrecipitationChancePercent,
+			&i.ConditionText,
 		); err != nil {
 			return nil, err
 		}
@@ -145,7 +155,7 @@ func (q *Queries) GetHourlyForecastAtLocationAndTime(ctx context.Context, arg Ge
 }
 
 const getHourlyForecastAtLocationAndTimeFromAPI = `-- name: GetHourlyForecastAtLocationAndTimeFromAPI :one
-SELECT id, location_id, source_api, forecast_datetime_utc, temperature_c, humidity, wind_speed_kmh, precipitation_mm FROM hourly_forecasts WHERE location_id=$1 AND forecast_datetime_utc=$2 AND source_api=$3
+SELECT id, location_id, source_api, forecast_datetime_utc, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text FROM hourly_forecasts WHERE location_id=$1 AND forecast_datetime_utc=$2 AND source_api=$3
 `
 
 type GetHourlyForecastAtLocationAndTimeFromAPIParams struct {
@@ -166,24 +176,28 @@ func (q *Queries) GetHourlyForecastAtLocationAndTimeFromAPI(ctx context.Context,
 		&i.Humidity,
 		&i.WindSpeedKmh,
 		&i.PrecipitationMm,
+		&i.PrecipitationChancePercent,
+		&i.ConditionText,
 	)
 	return i, err
 }
 
 const updateHourlyForecast = `-- name: UpdateHourlyForecast :one
 UPDATE hourly_forecasts
-SET forecast_datetime_utc=$2, temperature_c=$3, humidity=$4, wind_speed_kmh=$5, precipitation_mm=$6
+SET forecast_datetime_utc=$2, temperature_c=$3, humidity=$4, wind_speed_kmh=$5, precipitation_mm=$6, precipitation_chance_percent=$7, condition_text=$8
 WHERE id=$1
-RETURNING id, location_id, source_api, forecast_datetime_utc, temperature_c, humidity, wind_speed_kmh, precipitation_mm
+RETURNING id, location_id, source_api, forecast_datetime_utc, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text
 `
 
 type UpdateHourlyForecastParams struct {
-	ID                  uuid.UUID
-	ForecastDatetimeUtc time.Time
-	TemperatureC        sql.NullFloat64
-	Humidity            sql.NullInt32
-	WindSpeedKmh        sql.NullFloat64
-	PrecipitationMm     sql.NullFloat64
+	ID                         uuid.UUID
+	ForecastDatetimeUtc        time.Time
+	TemperatureC               sql.NullFloat64
+	Humidity                   sql.NullInt32
+	WindSpeedKmh               sql.NullFloat64
+	PrecipitationMm            sql.NullFloat64
+	PrecipitationChancePercent sql.NullInt32
+	ConditionText              sql.NullString
 }
 
 func (q *Queries) UpdateHourlyForecast(ctx context.Context, arg UpdateHourlyForecastParams) (HourlyForecast, error) {
@@ -194,6 +208,8 @@ func (q *Queries) UpdateHourlyForecast(ctx context.Context, arg UpdateHourlyFore
 		arg.Humidity,
 		arg.WindSpeedKmh,
 		arg.PrecipitationMm,
+		arg.PrecipitationChancePercent,
+		arg.ConditionText,
 	)
 	var i HourlyForecast
 	err := row.Scan(
@@ -205,6 +221,8 @@ func (q *Queries) UpdateHourlyForecast(ctx context.Context, arg UpdateHourlyFore
 		&i.Humidity,
 		&i.WindSpeedKmh,
 		&i.PrecipitationMm,
+		&i.PrecipitationChancePercent,
+		&i.ConditionText,
 	)
 	return i, err
 }

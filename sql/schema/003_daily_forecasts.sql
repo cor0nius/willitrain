@@ -6,9 +6,10 @@ CREATE TABLE daily_forecasts (
     forecast_date DATE NOT NULL,
     min_temp_c FLOAT,
     max_temp_c FLOAT,
-    avg_temp_c FLOAT,
     precipitation_mm FLOAT,
-    precipitation_chance_percent INT
+    precipitation_chance_percent INT,
+    wind_speed_kmh FLOAT,
+    humidity INT
 );
 
 -- +goose Down

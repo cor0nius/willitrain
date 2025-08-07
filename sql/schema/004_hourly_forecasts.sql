@@ -7,7 +7,9 @@ CREATE TABLE hourly_forecasts (
     temperature_c FLOAT,
     humidity INT,
     wind_speed_kmh FLOAT,
-    precipitation_mm FLOAT
+    precipitation_mm FLOAT,
+    precipitation_chance_percent INT,
+    condition_text TEXT
 );
 
 -- +goose Down

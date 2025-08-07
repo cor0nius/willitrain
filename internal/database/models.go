@@ -30,20 +30,23 @@ type DailyForecast struct {
 	ForecastDate               time.Time
 	MinTempC                   sql.NullFloat64
 	MaxTempC                   sql.NullFloat64
-	AvgTempC                   sql.NullFloat64
 	PrecipitationMm            sql.NullFloat64
 	PrecipitationChancePercent sql.NullInt32
+	WindSpeedKmh               sql.NullFloat64
+	Humidity                   sql.NullInt32
 }
 
 type HourlyForecast struct {
-	ID                  uuid.UUID
-	LocationID          uuid.UUID
-	SourceApi           string
-	ForecastDatetimeUtc time.Time
-	TemperatureC        sql.NullFloat64
-	Humidity            sql.NullInt32
-	WindSpeedKmh        sql.NullFloat64
-	PrecipitationMm     sql.NullFloat64
+	ID                         uuid.UUID
+	LocationID                 uuid.UUID
+	SourceApi                  string
+	ForecastDatetimeUtc        time.Time
+	TemperatureC               sql.NullFloat64
+	Humidity                   sql.NullInt32
+	WindSpeedKmh               sql.NullFloat64
+	PrecipitationMm            sql.NullFloat64
+	PrecipitationChancePercent sql.NullInt32
+	ConditionText              sql.NullString
 }
 
 type Location struct {
