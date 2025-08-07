@@ -5,6 +5,7 @@ import (
 )
 
 func (cfg *apiConfig) handlerCurrentWeather(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if r.Method != http.MethodGet {
 		respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
 		return
@@ -16,15 +17,18 @@ func (cfg *apiConfig) handlerCurrentWeather(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	location, err := cfg.Geocode(cityName)
+	location, err := cfg.getOrCreateLocation(ctx, cityName)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Could not geocode city", err)
+		// getOrCreateLocation handles logging persistence errors, so we just need
+		// to handle the case where we can't get a location at all.
+		respondWithError(w, http.StatusInternalServerError, "Error getting location data", err)
 		return
 	}
 
-	weather, err := cfg.requestCurrentWeather(location)
+	// Get weather data, either from cache or by fetching from APIs
+	weather, err := cfg.getCachedOrFetchCurrentWeather(ctx, location)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Could not fetch current weather", err)
+		respondWithError(w, http.StatusInternalServerError, "Error getting current weather data", err)
 		return
 	}
 
@@ -32,6 +36,7 @@ func (cfg *apiConfig) handlerCurrentWeather(w http.ResponseWriter, r *http.Reque
 }
 
 func (cfg *apiConfig) handlerDailyForecast(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if r.Method != http.MethodGet {
 		respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
 		return
@@ -43,15 +48,15 @@ func (cfg *apiConfig) handlerDailyForecast(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	location, err := cfg.Geocode(cityName)
+	location, err := cfg.getOrCreateLocation(ctx, cityName)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Could not geocode city", err)
+		respondWithError(w, http.StatusInternalServerError, "Error getting location data", err)
 		return
 	}
 
-	forecast, err := cfg.requestDailyForecast(location)
+	forecast, err := cfg.getCachedOrFetchDailyForecast(ctx, location)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Could not fetch daily forecast", err)
+		respondWithError(w, http.StatusInternalServerError, "Error getting daily forecast data", err)
 		return
 	}
 
@@ -59,6 +64,7 @@ func (cfg *apiConfig) handlerDailyForecast(w http.ResponseWriter, r *http.Reques
 }
 
 func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if r.Method != http.MethodGet {
 		respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
 		return
@@ -70,15 +76,15 @@ func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	location, err := cfg.Geocode(cityName)
+	location, err := cfg.getOrCreateLocation(ctx, cityName)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Could not geocode city", err)
+		respondWithError(w, http.StatusInternalServerError, "Error getting location data", err)
 		return
 	}
 
-	forecast, err := cfg.requestHourlyForecast(location)
+	forecast, err := cfg.getCachedOrFetchHourlyForecast(ctx, location)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Could not fetch hourly forecast", err)
+		respondWithError(w, http.StatusInternalServerError, "Error getting hourly forecast data", err)
 		return
 	}
 

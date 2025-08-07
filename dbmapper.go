@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/cor0nius/willitrain/internal/database"
+	"github.com/google/uuid"
 )
 
 func databaseLocationToLocation(dbLocation database.Location) Location {
@@ -43,6 +44,33 @@ func currentWeatherToCreateCurrentWeatherParams(weather CurrentWeather) database
 		LocationID: weather.Location.LocationID,
 		SourceApi:  weather.SourceAPI,
 		UpdatedAt:  weather.Timestamp,
+		TemperatureC: sql.NullFloat64{
+			Float64: weather.Temperature,
+			Valid:   true,
+		},
+		Humidity: sql.NullInt32{
+			Int32: int32(weather.Humidity),
+			Valid: true,
+		},
+		WindSpeedKmh: sql.NullFloat64{
+			Float64: weather.WindSpeed,
+			Valid:   true,
+		},
+		PrecipitationMm: sql.NullFloat64{
+			Float64: weather.Precipitation,
+			Valid:   true,
+		},
+		ConditionText: sql.NullString{
+			String: weather.Condition,
+			Valid:  true,
+		},
+	}
+}
+
+func currentWeatherToUpdateCurrentWeatherParams(weather CurrentWeather, dbWeatherID uuid.UUID) database.UpdateCurrentWeatherParams {
+	return database.UpdateCurrentWeatherParams{
+		ID:        dbWeatherID,
+		UpdatedAt: weather.Timestamp,
 		TemperatureC: sql.NullFloat64{
 			Float64: weather.Temperature,
 			Valid:   true,
@@ -112,6 +140,37 @@ func dailyForecastToCreateDailyForecastParams(forecast DailyForecast) database.C
 	}
 }
 
+func dailyForecastToUpdateDailyForecastParams(forecast DailyForecast, dbForecastID uuid.UUID) database.UpdateDailyForecastParams {
+	return database.UpdateDailyForecastParams{
+		ID:           dbForecastID,
+		ForecastDate: forecast.ForecastDate,
+		MinTempC: sql.NullFloat64{
+			Float64: forecast.MinTemp,
+			Valid:   true,
+		},
+		MaxTempC: sql.NullFloat64{
+			Float64: forecast.MaxTemp,
+			Valid:   true,
+		},
+		PrecipitationMm: sql.NullFloat64{
+			Float64: forecast.Precipitation,
+			Valid:   true,
+		},
+		PrecipitationChancePercent: sql.NullInt32{
+			Int32: int32(forecast.PrecipitationChance),
+			Valid: true,
+		},
+		WindSpeedKmh: sql.NullFloat64{
+			Float64: forecast.WindSpeed,
+			Valid:   true,
+		},
+		Humidity: sql.NullInt32{
+			Int32: int32(forecast.Humidity),
+			Valid: true,
+		},
+	}
+}
+
 func databaseHourlyForecastToHourlyForecast(dbForecast database.HourlyForecast, location Location) HourlyForecast {
 	return HourlyForecast{
 		Location:            location,
@@ -130,6 +189,37 @@ func hourlyForecastToCreateHourlyForecastParams(forecast HourlyForecast) databas
 	return database.CreateHourlyForecastParams{
 		LocationID:          forecast.Location.LocationID,
 		SourceApi:           forecast.SourceAPI,
+		ForecastDatetimeUtc: forecast.ForecastDateTime,
+		TemperatureC: sql.NullFloat64{
+			Float64: forecast.Temperature,
+			Valid:   true,
+		},
+		Humidity: sql.NullInt32{
+			Int32: int32(forecast.Humidity),
+			Valid: true,
+		},
+		WindSpeedKmh: sql.NullFloat64{
+			Float64: forecast.WindSpeed,
+			Valid:   true,
+		},
+		PrecipitationMm: sql.NullFloat64{
+			Float64: forecast.Precipitation,
+			Valid:   true,
+		},
+		PrecipitationChancePercent: sql.NullInt32{
+			Int32: int32(forecast.PrecipitationChance),
+			Valid: true,
+		},
+		ConditionText: sql.NullString{
+			String: forecast.Condition,
+			Valid:  true,
+		},
+	}
+}
+
+func hourlyForecastToUpdateHourlyForecastParams(forecast HourlyForecast, dbForecastID uuid.UUID) database.UpdateHourlyForecastParams {
+	return database.UpdateHourlyForecastParams{
+		ID:                  dbForecastID,
 		ForecastDatetimeUtc: forecast.ForecastDateTime,
 		TemperatureC: sql.NullFloat64{
 			Float64: forecast.Temperature,
