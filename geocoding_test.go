@@ -1,182 +1,151 @@
 package main
 
 import (
-	"os"
-	"strings"
+	"encoding/json"
+	"errors"
+	"math"
+	"net/http"
+	"net/http/httptest"
 	"testing"
-
-	"github.com/joho/godotenv"
 )
 
-func TestWrapForGeocode(t *testing.T) {
-	err := godotenv.Load()
-	if err != nil {
-		t.Fatalf("Error loading .env file")
-	}
-
-	gmpGeocodeURL := os.Getenv("GMP_GEOCODE_URL")
-	if gmpGeocodeURL == "" {
-		t.Fatal("GMP_GEOCODE_URL must be set")
-	}
-
-	gmpKey := os.Getenv("GMP_KEY")
-	if gmpKey == "" {
-		t.Fatal("Missing API Key for Google Maps Platform")
-	}
-
-	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
-
-	cityName := "Wroclaw"
-	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?address=wroclaw&key=" + gmpKey
-
-	wrappedURL := cfg.WrapForGeocode(cityName)
-	if err != nil {
-		t.Fatalf("WrapForGeocode failed: %v", err)
-	}
-
-	if wrappedURL != expectedURL {
-		t.Errorf("Expected %s, got %s", expectedURL, wrappedURL)
-	}
-
-	if !strings.Contains(wrappedURL, "address=wroclaw") {
-		t.Error("Wrapped URL does not contain the expected address parameter")
-	}
-
-	if !strings.Contains(wrappedURL, gmpKey) {
-		t.Error("Wrapped URL does not contain the API key")
-	}
-
-	if !strings.HasPrefix(wrappedURL, "https://maps.googleapis.com/maps/api/geocode/") {
-		t.Error("Wrapped URL does not start with the expected base URL")
-	}
-
-	if strings.Contains(wrappedURL, " ") {
-		t.Error("Wrapped URL contains spaces, which should be replaced with '%20'")
-	}
+func setupMockServer(handler http.HandlerFunc) *httptest.Server {
+	return httptest.NewServer(handler)
 }
 
 func TestGeocode(t *testing.T) {
-	err := godotenv.Load()
+	server := setupMockServer(func(w http.ResponseWriter, r *http.Request) {
+		data, err := testData.ReadFile("testdata/geocode_gmp.json")
+		if err != nil {
+			t.Fatalf("Failed to read test data: %v", err)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	})
+	defer server.Close()
+
+	cfg := &apiConfig{
+		gmpGeocodeURL: server.URL + "/",
+		gmpKey:        "dummy-key",
+		httpClient:    server.Client(),
+	}
+
+	location, err := cfg.Geocode("Wroclaw")
 	if err != nil {
-		t.Fatalf("Error loading .env file")
-	}
-
-	gmpGeocodeURL := os.Getenv("GMP_GEOCODE_URL")
-	if gmpGeocodeURL == "" {
-		t.Fatal("GMP_GEOCODE_URL must be set")
-	}
-
-	gmpKey := os.Getenv("GMP_KEY")
-	if gmpKey == "" {
-		t.Fatal("Missing API Key for Google Maps Platform")
-	}
-
-	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
-
-	cityName := "Wroclaw"
-
-	location, err := cfg.Geocode(cityName)
-	if err != nil {
-		t.Fatalf("Geocode failed: %v", err)
-	}
-
-	if location.CityName == "" || location.CountryCode == "" {
-		t.Error("Geocode did not return valid location data")
-	}
-
-	if location.Latitude == 0 || location.Longitude == 0 {
-		t.Error("Geocode did not return valid latitude or longitude")
+		t.Fatalf("Geocode() returned an unexpected error: %v", err)
 	}
 
 	if location.CityName != "Wrocław" {
 		t.Errorf("Expected city name 'Wrocław', got '%s'", location.CityName)
 	}
-
-	if location.CountryCode == "" {
-		t.Error("Expected a valid country code, got empty string")
+	if location.CountryCode != "PL" {
+		t.Errorf("Expected country code 'PL', got '%s'", location.CountryCode)
 	}
-}
-
-func TestWrapForReverseGeocode(t *testing.T) {
-	err := godotenv.Load()
-	if err != nil {
-		t.Fatalf("Error loading .env file")
+	expectedLat := 51.1092948
+	if math.Abs(location.Latitude-expectedLat) > 0.0001 {
+		t.Errorf("Expected latitude %f, got %f", expectedLat, location.Latitude)
 	}
-
-	gmpGeocodeURL := os.Getenv("GMP_GEOCODE_URL")
-	if gmpGeocodeURL == "" {
-		t.Fatal("GMP_GEOCODE_URL must be set")
-	}
-
-	gmpKey := os.Getenv("GMP_KEY")
-	if gmpKey == "" {
-		t.Fatal("Missing API Key for Google Maps Platform")
-	}
-
-	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
-
-	lat, lng := 51.1093, 17.0386 // Coordinates for Wroclaw
-	expectedURL := "https://maps.googleapis.com/maps/api/geocode/json?latlng=51.11,17.04&key=" + gmpKey
-
-	wrappedURL := cfg.WrapForReverseGeocode(lat, lng)
-	if err != nil {
-		t.Fatalf("WrapForReverseGeocode failed: %v", err)
-	}
-
-	if wrappedURL != expectedURL {
-		t.Errorf("Expected %s, got %s", expectedURL, wrappedURL)
-	}
-
-	if !strings.Contains(wrappedURL, "latlng=51.11,17.04") {
-		t.Error("Wrapped URL does not contain the expected latlng parameter")
-	}
-
-	if !strings.Contains(wrappedURL, gmpKey) {
-		t.Error("Wrapped URL does not contain the API key")
-	}
-
-	if !strings.HasPrefix(wrappedURL, "https://maps.googleapis.com/maps/api/geocode/") {
-		t.Error("Wrapped URL does not start with the expected base URL")
+	expectedLng := 17.0386019
+	if math.Abs(location.Longitude-expectedLng) > 0.0001 {
+		t.Errorf("Expected longitude %f, got %f", expectedLng, location.Longitude)
 	}
 }
 
 func TestReverseGeocode(t *testing.T) {
-	err := godotenv.Load()
+	server := setupMockServer(func(w http.ResponseWriter, r *http.Request) {
+		data, err := testData.ReadFile("testdata/reverse_geocode_gmp.json")
+		if err != nil {
+			t.Fatalf("Failed to read test data: %v", err)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	})
+	defer server.Close()
+
+	cfg := &apiConfig{
+		gmpGeocodeURL: server.URL + "/",
+		gmpKey:        "dummy-key",
+		httpClient:    server.Client(),
+	}
+
+	location, err := cfg.ReverseGeocode(51.11, 17.04)
 	if err != nil {
-		t.Fatalf("Error loading .env file")
-	}
-
-	gmpGeocodeURL := os.Getenv("GMP_GEOCODE_URL")
-	if gmpGeocodeURL == "" {
-		t.Fatal("GMP_GEOCODE_URL must be set")
-	}
-
-	gmpKey := os.Getenv("GMP_KEY")
-	if gmpKey == "" {
-		t.Fatal("Missing API Key for Google Maps Platform")
-	}
-
-	cfg := apiConfig{gmpGeocodeURL: gmpGeocodeURL, gmpKey: gmpKey}
-	lat, lng := 51.1093, 17.0386 // Coordinates for Wroclaw
-
-	location, err := cfg.ReverseGeocode(lat, lng)
-	if err != nil {
-		t.Fatalf("ReverseGeocode failed: %v", err)
-	}
-
-	if location.CityName == "" || location.CountryCode == "" {
-		t.Error("ReverseGeocode did not return valid location data")
+		t.Fatalf("ReverseGeocode() returned an unexpected error: %v", err)
 	}
 
 	if location.CityName != "Wrocław" {
 		t.Errorf("Expected city name 'Wrocław', got '%s'", location.CityName)
 	}
+	if location.CountryCode != "PL" {
+		t.Errorf("Expected country code 'PL', got '%s'", location.CountryCode)
+	}
+	expectedLat := 51.1100303
+	if math.Abs(location.Latitude-expectedLat) > 0.0001 {
+		t.Errorf("Expected latitude %f, got %f", expectedLat, location.Latitude)
+	}
+	expectedLng := 17.039911
+	if math.Abs(location.Longitude-expectedLng) > 0.0001 {
+		t.Errorf("Expected longitude %f, got %f", expectedLng, location.Longitude)
+	}
+}
 
-	if location.CountryCode == "" {
-		t.Error("Expected a valid country code, got empty string")
+func TestGeocode_APIError(t *testing.T) {
+	server := setupMockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	defer server.Close()
+
+	cfg := &apiConfig{
+		gmpGeocodeURL: server.URL + "/",
+		gmpKey:        "dummy-key",
+		httpClient:    server.Client(),
 	}
 
-	if location.Latitude == 0 || location.Longitude == 0 {
-		t.Error("Expected valid latitude and longitude, got zero values")
+	_, err := cfg.Geocode("Wroclaw")
+	if err == nil {
+		t.Fatal("Expected an error, but got nil")
+	}
+}
+
+func TestGeocode_ZeroResults(t *testing.T) {
+	server := setupMockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "ZERO_RESULTS", "results": []}`))
+	})
+	defer server.Close()
+
+	cfg := &apiConfig{
+		gmpGeocodeURL: server.URL + "/",
+		gmpKey:        "dummy-key",
+		httpClient:    server.Client(),
+	}
+
+	_, err := cfg.Geocode("nonexistentcity")
+	if !errors.Is(err, ErrNoResultsFound) {
+		t.Errorf("Expected ErrNoResultsFound, but got %v", err)
+	}
+}
+
+func TestGeocode_MalformedJSON(t *testing.T) {
+	server := setupMockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "OK", "results": [invalid]}`)) // Malformed JSON
+	})
+	defer server.Close()
+
+	cfg := &apiConfig{
+		gmpGeocodeURL: server.URL + "/",
+		gmpKey:        "dummy-key",
+		httpClient:    server.Client(),
+	}
+
+	_, err := cfg.Geocode("anycity")
+	if err == nil {
+		t.Fatal("Expected an error for malformed JSON, but got nil")
+	}
+
+	var syntaxError *json.SyntaxError
+	if !errors.As(err, &syntaxError) {
+		t.Errorf("Expected a *json.SyntaxError, but got %T", err)
 	}
 }

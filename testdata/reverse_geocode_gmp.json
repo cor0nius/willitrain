@@ -1,0 +1,1001 @@
+{
+    "plus_code": {
+        "compound_code": "426Q+2X5 Wrocław, Poland",
+        "global_code": "9F3V426Q+2X5"
+    },
+    "results": [
+        {
+            "address_components": [
+                {
+                    "long_name": "2A",
+                    "short_name": "2A",
+                    "types": [
+                        "street_number"
+                    ]
+                },
+                {
+                    "long_name": "Jana Ewangelisty Purkyniego",
+                    "short_name": "Jana Ewangelisty Purkyniego",
+                    "types": [
+                        "route"
+                    ]
+                },
+                {
+                    "long_name": "Stare Miasto",
+                    "short_name": "Stare Miasto",
+                    "types": [
+                        "political",
+                        "sublocality",
+                        "sublocality_level_1"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "locality",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Powiat Wrocław",
+                    "short_name": "Powiat Wrocław",
+                    "types": [
+                        "administrative_area_level_2",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Województwo dolnośląskie",
+                    "short_name": "Województwo dolnośląskie",
+                    "types": [
+                        "administrative_area_level_1",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "50-155",
+                    "short_name": "50-155",
+                    "types": [
+                        "postal_code"
+                    ]
+                }
+            ],
+            "formatted_address": "Jana Ewangelisty Purkyniego 2A, 50-155 Wrocław, Poland",
+            "geometry": {
+                "location": {
+                    "lat": 51.1100303,
+                    "lng": 17.039911
+                },
+                "location_type": "ROOFTOP",
+                "viewport": {
+                    "northeast": {
+                        "lat": 51.1113792802915,
+                        "lng": 17.0412599802915
+                    },
+                    "southwest": {
+                        "lat": 51.1086813197085,
+                        "lng": 17.0385620197085
+                    }
+                }
+            },
+            "navigation_points": [
+                {
+                    "location": {
+                        "latitude": 51.1106189,
+                        "longitude": 17.0399572
+                    }
+                }
+            ],
+            "place_id": "ChIJA5vsz3fCD0cRDIyy_NrJqa4",
+            "plus_code": {
+                "compound_code": "426Q+2X Wrocław, Poland",
+                "global_code": "9F3V426Q+2X"
+            },
+            "types": [
+                "street_address"
+            ]
+        },
+        {
+            "address_components": [
+                {
+                    "long_name": "lokal nr 215 (II piętro",
+                    "short_name": "lokal nr 215 (II piętro",
+                    "types": [
+                        "subpremise"
+                    ]
+                },
+                {
+                    "long_name": "1",
+                    "short_name": "1",
+                    "types": [
+                        "street_number"
+                    ]
+                },
+                {
+                    "long_name": "Jana Ewangelisty Purkyniego",
+                    "short_name": "Jana Ewangelisty Purkyniego",
+                    "types": [
+                        "route"
+                    ]
+                },
+                {
+                    "long_name": "Stare Miasto",
+                    "short_name": "Stare Miasto",
+                    "types": [
+                        "political",
+                        "sublocality",
+                        "sublocality_level_1"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "locality",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Powiat Wrocław",
+                    "short_name": "Powiat Wrocław",
+                    "types": [
+                        "administrative_area_level_2",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Województwo dolnośląskie",
+                    "short_name": "Województwo dolnośląskie",
+                    "types": [
+                        "administrative_area_level_1",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "50-155",
+                    "short_name": "50-155",
+                    "types": [
+                        "postal_code"
+                    ]
+                }
+            ],
+            "formatted_address": "Jana Ewangelisty Purkyniego 1/lokal nr 215 (II piętro, 50-155 Wrocław, Poland",
+            "geometry": {
+                "location": {
+                    "lat": 51.1101697,
+                    "lng": 17.0394914
+                },
+                "location_type": "ROOFTOP",
+                "viewport": {
+                    "northeast": {
+                        "lat": 51.1115186802915,
+                        "lng": 17.0408403802915
+                    },
+                    "southwest": {
+                        "lat": 51.1088207197085,
+                        "lng": 17.0381424197085
+                    }
+                }
+            },
+            "navigation_points": [
+                {
+                    "location": {
+                        "latitude": 51.1102021,
+                        "longitude": 17.0392031
+                    },
+                    "restricted_travel_modes": [
+                        "DRIVE"
+                    ]
+                },
+                {
+                    "location": {
+                        "latitude": 51.1106322,
+                        "longitude": 17.0395277
+                    },
+                    "restricted_travel_modes": [
+                        "WALK"
+                    ]
+                }
+            ],
+            "place_id": "ChIJLXFNKmXCD0cRzVc0jJGle3Y",
+            "plus_code": {
+                "compound_code": "426Q+3Q Wrocław, Poland",
+                "global_code": "9F3V426Q+3Q"
+            },
+            "types": [
+                "establishment",
+                "lawyer",
+                "point_of_interest"
+            ]
+        },
+        {
+            "address_components": [
+                {
+                    "long_name": "1",
+                    "short_name": "1",
+                    "types": [
+                        "street_number"
+                    ]
+                },
+                {
+                    "long_name": "Jana Ewangelisty Purkyniego",
+                    "short_name": "Jana Ewangelisty Purkyniego",
+                    "types": [
+                        "route"
+                    ]
+                },
+                {
+                    "long_name": "Stare Miasto",
+                    "short_name": "Stare Miasto",
+                    "types": [
+                        "political",
+                        "sublocality",
+                        "sublocality_level_1"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "locality",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Powiat Wrocław",
+                    "short_name": "Powiat Wrocław",
+                    "types": [
+                        "administrative_area_level_2",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Województwo dolnośląskie",
+                    "short_name": "Województwo dolnośląskie",
+                    "types": [
+                        "administrative_area_level_1",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "50-149",
+                    "short_name": "50-149",
+                    "types": [
+                        "postal_code"
+                    ]
+                }
+            ],
+            "formatted_address": "Jana Ewangelisty Purkyniego 1, 50-149 Wrocław, Poland",
+            "geometry": {
+                "bounds": {
+                    "northeast": {
+                        "lat": 51.1103693,
+                        "lng": 17.0399726
+                    },
+                    "southwest": {
+                        "lat": 51.1100552,
+                        "lng": 17.0393102
+                    }
+                },
+                "location": {
+                    "lat": 51.1102568,
+                    "lng": 17.0395908
+                },
+                "location_type": "ROOFTOP",
+                "viewport": {
+                    "northeast": {
+                        "lat": 51.1115612302915,
+                        "lng": 17.0409903802915
+                    },
+                    "southwest": {
+                        "lat": 51.1088632697085,
+                        "lng": 17.0382924197085
+                    }
+                }
+            },
+            "navigation_points": [
+                {
+                    "location": {
+                        "latitude": 51.1106293,
+                        "longitude": 17.0396195
+                    }
+                }
+            ],
+            "place_id": "ChIJWU490nfCD0cR3LQjpI9QvBY",
+            "types": [
+                "premise",
+                "street_address"
+            ]
+        },
+        {
+            "address_components": [
+                {
+                    "long_name": "426Q+2X",
+                    "short_name": "426Q+2X",
+                    "types": [
+                        "plus_code"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "locality",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "administrative_area_level_2",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Lower Silesian Voivodeship",
+                    "short_name": "Lower Silesian Voivodeship",
+                    "types": [
+                        "administrative_area_level_1",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "51",
+                    "short_name": "51",
+                    "types": [
+                        "postal_code",
+                        "postal_code_prefix"
+                    ]
+                }
+            ],
+            "formatted_address": "426Q+2X Wrocław, Poland",
+            "geometry": {
+                "bounds": {
+                    "northeast": {
+                        "lat": 51.110125,
+                        "lng": 17.04
+                    },
+                    "southwest": {
+                        "lat": 51.11,
+                        "lng": 17.039875
+                    }
+                },
+                "location": {
+                    "lat": 51.11,
+                    "lng": 17.04
+                },
+                "location_type": "GEOMETRIC_CENTER",
+                "viewport": {
+                    "northeast": {
+                        "lat": 51.1114114802915,
+                        "lng": 17.0412864802915
+                    },
+                    "southwest": {
+                        "lat": 51.1087135197085,
+                        "lng": 17.0385885197085
+                    }
+                }
+            },
+            "place_id": "GhIJrkfhehSOSUARCtejcD0KMUA",
+            "plus_code": {
+                "compound_code": "426Q+2X Wrocław, Poland",
+                "global_code": "9F3V426Q+2X"
+            },
+            "types": [
+                "plus_code"
+            ]
+        },
+        {
+            "address_components": [
+                {
+                    "long_name": "50-149",
+                    "short_name": "50-149",
+                    "types": [
+                        "postal_code"
+                    ]
+                },
+                {
+                    "long_name": "Stare Miasto",
+                    "short_name": "Stare Miasto",
+                    "types": [
+                        "political",
+                        "sublocality",
+                        "sublocality_level_1"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "locality",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "administrative_area_level_2",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Lower Silesian Voivodeship",
+                    "short_name": "Lower Silesian Voivodeship",
+                    "types": [
+                        "administrative_area_level_1",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                }
+            ],
+            "formatted_address": "50-149 Wrocław, Poland",
+            "geometry": {
+                "bounds": {
+                    "northeast": {
+                        "lat": 51.111483,
+                        "lng": 17.0414057
+                    },
+                    "southwest": {
+                        "lat": 51.109067,
+                        "lng": 17.0305024
+                    }
+                },
+                "location": {
+                    "lat": 51.1102542,
+                    "lng": 17.0366833
+                },
+                "location_type": "APPROXIMATE",
+                "viewport": {
+                    "northeast": {
+                        "lat": 51.1116239802915,
+                        "lng": 17.0414057
+                    },
+                    "southwest": {
+                        "lat": 51.1089260197085,
+                        "lng": 17.0305024
+                    }
+                }
+            },
+            "place_id": "ChIJNUZcOXbCD0cR2rZP5HSnRdg",
+            "types": [
+                "postal_code"
+            ]
+        },
+        {
+            "address_components": [
+                {
+                    "long_name": "Stare Miasto",
+                    "short_name": "Stare Miasto",
+                    "types": [
+                        "political",
+                        "sublocality",
+                        "sublocality_level_1"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "locality",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "administrative_area_level_2",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Lower Silesian Voivodeship",
+                    "short_name": "Lower Silesian Voivodeship",
+                    "types": [
+                        "administrative_area_level_1",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "51",
+                    "short_name": "51",
+                    "types": [
+                        "postal_code",
+                        "postal_code_prefix"
+                    ]
+                }
+            ],
+            "formatted_address": "Stare Miasto, Wrocław, Poland",
+            "geometry": {
+                "bounds": {
+                    "northeast": {
+                        "lat": 51.1313437,
+                        "lng": 17.0525838
+                    },
+                    "southwest": {
+                        "lat": 51.0988159,
+                        "lng": 16.9961904
+                    }
+                },
+                "location": {
+                    "lat": 51.1087443,
+                    "lng": 17.0143368
+                },
+                "location_type": "APPROXIMATE",
+                "viewport": {
+                    "northeast": {
+                        "lat": 51.1313437,
+                        "lng": 17.0525838
+                    },
+                    "southwest": {
+                        "lat": 51.0988159,
+                        "lng": 16.9961904
+                    }
+                }
+            },
+            "place_id": "ChIJJTb9l-HpD0cRJAXnTqkWtIA",
+            "types": [
+                "political",
+                "sublocality",
+                "sublocality_level_1"
+            ]
+        },
+        {
+            "address_components": [
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "locality",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "administrative_area_level_2",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Lower Silesian Voivodeship",
+                    "short_name": "Lower Silesian Voivodeship",
+                    "types": [
+                        "administrative_area_level_1",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "51",
+                    "short_name": "51",
+                    "types": [
+                        "postal_code",
+                        "postal_code_prefix"
+                    ]
+                }
+            ],
+            "formatted_address": "Wrocław, Poland",
+            "geometry": {
+                "bounds": {
+                    "northeast": {
+                        "lat": 51.2100604,
+                        "lng": 17.1762191
+                    },
+                    "southwest": {
+                        "lat": 51.0426685,
+                        "lng": 16.8073393
+                    }
+                },
+                "location": {
+                    "lat": 51.1092948,
+                    "lng": 17.0386019
+                },
+                "location_type": "APPROXIMATE",
+                "viewport": {
+                    "northeast": {
+                        "lat": 51.2100604,
+                        "lng": 17.1762191
+                    },
+                    "southwest": {
+                        "lat": 51.0426685,
+                        "lng": 16.8073393
+                    }
+                }
+            },
+            "place_id": "ChIJv4q11MLpD0cR9eAFwq5WCbc",
+            "types": [
+                "locality",
+                "political"
+            ]
+        },
+        {
+            "address_components": [
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "administrative_area_level_2",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "locality",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Lower Silesian Voivodeship",
+                    "short_name": "Lower Silesian Voivodeship",
+                    "types": [
+                        "administrative_area_level_1",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "51",
+                    "short_name": "51",
+                    "types": [
+                        "postal_code",
+                        "postal_code_prefix"
+                    ]
+                }
+            ],
+            "formatted_address": "Wrocław, Poland",
+            "geometry": {
+                "bounds": {
+                    "northeast": {
+                        "lat": 51.2100604,
+                        "lng": 17.1762193
+                    },
+                    "southwest": {
+                        "lat": 51.0426682,
+                        "lng": 16.8073399
+                    }
+                },
+                "location": {
+                    "lat": 51.1407764,
+                    "lng": 16.9831788
+                },
+                "location_type": "APPROXIMATE",
+                "viewport": {
+                    "northeast": {
+                        "lat": 51.2100604,
+                        "lng": 17.1762193
+                    },
+                    "southwest": {
+                        "lat": 51.0426682,
+                        "lng": 16.8073399
+                    }
+                }
+            },
+            "place_id": "ChIJv4q11MLpD0cRwFAALURV1YE",
+            "types": [
+                "administrative_area_level_2",
+                "political"
+            ]
+        },
+        {
+            "address_components": [
+                {
+                    "long_name": "Wrocław Voivodeship",
+                    "short_name": "Wrocław Voivodeship",
+                    "types": [
+                        "administrative_area_level_3",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "locality",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "administrative_area_level_2",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Lower Silesian Voivodeship",
+                    "short_name": "Lower Silesian Voivodeship",
+                    "types": [
+                        "administrative_area_level_1",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "51",
+                    "short_name": "51",
+                    "types": [
+                        "postal_code",
+                        "postal_code_prefix"
+                    ]
+                }
+            ],
+            "formatted_address": "Wrocław Voivodeship, Wrocław, Poland",
+            "geometry": {
+                "bounds": {
+                    "northeast": {
+                        "lat": 51.2100604,
+                        "lng": 17.1762193
+                    },
+                    "southwest": {
+                        "lat": 51.0426682,
+                        "lng": 16.8073399
+                    }
+                },
+                "location": {
+                    "lat": 51.1092749,
+                    "lng": 17.0386209
+                },
+                "location_type": "APPROXIMATE",
+                "viewport": {
+                    "northeast": {
+                        "lat": 51.2100604,
+                        "lng": 17.1762193
+                    },
+                    "southwest": {
+                        "lat": 51.0426682,
+                        "lng": 16.8073399
+                    }
+                }
+            },
+            "place_id": "ChIJN7FWaQXqD0cRyAbs_UFat5U",
+            "types": [
+                "administrative_area_level_3",
+                "political"
+            ]
+        },
+        {
+            "address_components": [
+                {
+                    "long_name": "53",
+                    "short_name": "53",
+                    "types": [
+                        "postal_code",
+                        "postal_code_prefix"
+                    ]
+                },
+                {
+                    "long_name": "Lower Silesian Voivodeship",
+                    "short_name": "Lower Silesian Voivodeship",
+                    "types": [
+                        "administrative_area_level_1",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                }
+            ],
+            "formatted_address": "Poland",
+            "geometry": {
+                "bounds": {
+                    "northeast": {
+                        "lat": 51.2114736,
+                        "lng": 17.1763478
+                    },
+                    "southwest": {
+                        "lat": 51.042657,
+                        "lng": 16.80738
+                    }
+                },
+                "location": {
+                    "lat": 51.1407764,
+                    "lng": 16.9831788
+                },
+                "location_type": "APPROXIMATE",
+                "viewport": {
+                    "northeast": {
+                        "lat": 51.2114736,
+                        "lng": 17.1763478
+                    },
+                    "southwest": {
+                        "lat": 51.042657,
+                        "lng": 16.80738
+                    }
+                }
+            },
+            "navigation_points": [
+                {
+                    "location": {
+                        "latitude": 51.1412312,
+                        "longitude": 16.9818218
+                    }
+                }
+            ],
+            "place_id": "ChIJN7FWaQXqD0cRNeO__r2YaHo",
+            "types": [
+                "postal_code",
+                "postal_code_prefix"
+            ]
+        },
+        {
+            "address_components": [
+                {
+                    "long_name": "Lower Silesian Voivodeship",
+                    "short_name": "Lower Silesian Voivodeship",
+                    "types": [
+                        "administrative_area_level_1",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                }
+            ],
+            "formatted_address": "Lower Silesian Voivodeship, Poland",
+            "geometry": {
+                "bounds": {
+                    "northeast": {
+                        "lat": 51.8047535,
+                        "lng": 17.7952648
+                    },
+                    "southwest": {
+                        "lat": 50.09634,
+                        "lng": 14.8173428
+                    }
+                },
+                "location": {
+                    "lat": 51.1339861,
+                    "lng": 16.8841961
+                },
+                "location_type": "APPROXIMATE",
+                "viewport": {
+                    "northeast": {
+                        "lat": 51.8047535,
+                        "lng": 17.7952648
+                    },
+                    "southwest": {
+                        "lat": 50.09634,
+                        "lng": 14.8173428
+                    }
+                }
+            },
+            "place_id": "ChIJ8UOYsiKqD0cRIMAOrTIOAgE",
+            "types": [
+                "administrative_area_level_1",
+                "political"
+            ]
+        },
+        {
+            "address_components": [
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                }
+            ],
+            "formatted_address": "Poland",
+            "geometry": {
+                "bounds": {
+                    "northeast": {
+                        "lat": 54.9054761,
+                        "lng": 24.1458743
+                    },
+                    "southwest": {
+                        "lat": 49.002046,
+                        "lng": 14.1228641
+                    }
+                },
+                "location": {
+                    "lat": 51.919438,
+                    "lng": 19.145136
+                },
+                "location_type": "APPROXIMATE",
+                "viewport": {
+                    "northeast": {
+                        "lat": 54.9054761,
+                        "lng": 24.1458743
+                    },
+                    "southwest": {
+                        "lat": 49.002046,
+                        "lng": 14.1228641
+                    }
+                }
+            },
+            "place_id": "ChIJuwtkpGSZAEcR6lXMScpzdQk",
+            "types": [
+                "country",
+                "political"
+            ]
+        }
+    ],
+    "status": "OK"
+}

@@ -43,17 +43,17 @@ func (cfg *apiConfig) performGeocodeRequest(queryParams map[string]string) (Loca
 
 	resp, err := cfg.httpClient.Get(baseURL.String())
 	if err != nil {
-		return Location{}, err
+		return Location{}, fmt.Errorf("geocoding API request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return Location{}, fmt.Errorf("geocoding API request failed with status: %s", resp.Status)
+		return Location{}, fmt.Errorf("geocoding API request returned non-200 status: %s", resp.Status)
 	}
 
 	var responseJSON Response
 	if err := json.NewDecoder(resp.Body).Decode(&responseJSON); err != nil {
-		return Location{}, err
+		return Location{}, fmt.Errorf("failed to decode geocoding response: %w", err)
 	}
 
 	if responseJSON.Status != "OK" {

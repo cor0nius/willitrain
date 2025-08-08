@@ -1,0 +1,82 @@
+{
+    "results": [
+        {
+            "address_components": [
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "locality",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Wrocław",
+                    "short_name": "Wrocław",
+                    "types": [
+                        "administrative_area_level_2",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Lower Silesian Voivodeship",
+                    "short_name": "Lower Silesian Voivodeship",
+                    "types": [
+                        "administrative_area_level_1",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "Poland",
+                    "short_name": "PL",
+                    "types": [
+                        "country",
+                        "political"
+                    ]
+                },
+                {
+                    "long_name": "51",
+                    "short_name": "51",
+                    "types": [
+                        "postal_code",
+                        "postal_code_prefix"
+                    ]
+                }
+            ],
+            "formatted_address": "Wrocław, Poland",
+            "geometry": {
+                "bounds": {
+                    "northeast": {
+                        "lat": 51.2100604,
+                        "lng": 17.1762191
+                    },
+                    "southwest": {
+                        "lat": 51.0426685,
+                        "lng": 16.8073393
+                    }
+                },
+                "location": {
+                    "lat": 51.1092948,
+                    "lng": 17.0386019
+                },
+                "location_type": "APPROXIMATE",
+                "viewport": {
+                    "northeast": {
+                        "lat": 51.2100604,
+                        "lng": 17.1762191
+                    },
+                    "southwest": {
+                        "lat": 51.0426685,
+                        "lng": 16.8073393
+                    }
+                }
+            },
+            "place_id": "ChIJv4q11MLpD0cR9eAFwq5WCbc",
+            "types": [
+                "locality",
+                "political"
+            ]
+        }
+    ],
+    "status": "OK"
+}
