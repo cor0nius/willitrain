@@ -28,6 +28,7 @@ type DailyForecast struct {
 	LocationID                 uuid.UUID
 	SourceApi                  string
 	ForecastDate               time.Time
+	UpdatedAt                  time.Time
 	MinTempC                   sql.NullFloat64
 	MaxTempC                   sql.NullFloat64
 	PrecipitationMm            sql.NullFloat64
@@ -41,6 +42,7 @@ type HourlyForecast struct {
 	LocationID                 uuid.UUID
 	SourceApi                  string
 	ForecastDatetimeUtc        time.Time
+	UpdatedAt                  time.Time
 	TemperatureC               sql.NullFloat64
 	Humidity                   sql.NullInt32
 	WindSpeedKmh               sql.NullFloat64

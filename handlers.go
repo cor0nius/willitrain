@@ -19,13 +19,10 @@ func (cfg *apiConfig) handlerCurrentWeather(w http.ResponseWriter, r *http.Reque
 
 	location, err := cfg.getOrCreateLocation(ctx, cityName)
 	if err != nil {
-		// getOrCreateLocation handles logging persistence errors, so we just need
-		// to handle the case where we can't get a location at all.
 		respondWithError(w, http.StatusInternalServerError, "Error getting location data", err)
 		return
 	}
 
-	// Get weather data, either from cache or by fetching from APIs
 	weather, err := cfg.getCachedOrFetchCurrentWeather(ctx, location)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error getting current weather data", err)

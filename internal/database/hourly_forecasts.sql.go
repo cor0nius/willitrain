@@ -18,16 +18,17 @@ INSERT INTO hourly_forecasts (
     id,
     location_id,
     source_api,
+    updated_at,
     forecast_datetime_utc,
     temperature_c,
     humidity,
     wind_speed_kmh,
     precipitation_mm,
     precipitation_chance_percent,
-    condition_text
+    condition_text 
 )
-VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, location_id, source_api, forecast_datetime_utc, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text
+VALUES (gen_random_uuid(), $1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, location_id, source_api, forecast_datetime_utc, updated_at, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text
 `
 
 type CreateHourlyForecastParams struct {
@@ -60,6 +61,7 @@ func (q *Queries) CreateHourlyForecast(ctx context.Context, arg CreateHourlyFore
 		&i.LocationID,
 		&i.SourceApi,
 		&i.ForecastDatetimeUtc,
+		&i.UpdatedAt,
 		&i.TemperatureC,
 		&i.Humidity,
 		&i.WindSpeedKmh,
@@ -111,8 +113,47 @@ func (q *Queries) DeleteHourlyForecastsFromAPI(ctx context.Context, sourceApi st
 	return err
 }
 
+const getAllHourlyForecastsAtLocation = `-- name: GetAllHourlyForecastsAtLocation :many
+SELECT id, location_id, source_api, forecast_datetime_utc, updated_at, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text FROM hourly_forecasts WHERE location_id=$1
+`
+
+func (q *Queries) GetAllHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]HourlyForecast, error) {
+	rows, err := q.db.QueryContext(ctx, getAllHourlyForecastsAtLocation, locationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []HourlyForecast
+	for rows.Next() {
+		var i HourlyForecast
+		if err := rows.Scan(
+			&i.ID,
+			&i.LocationID,
+			&i.SourceApi,
+			&i.ForecastDatetimeUtc,
+			&i.UpdatedAt,
+			&i.TemperatureC,
+			&i.Humidity,
+			&i.WindSpeedKmh,
+			&i.PrecipitationMm,
+			&i.PrecipitationChancePercent,
+			&i.ConditionText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getHourlyForecastAtLocationAndTime = `-- name: GetHourlyForecastAtLocationAndTime :many
-SELECT id, location_id, source_api, forecast_datetime_utc, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text FROM hourly_forecasts WHERE location_id=$1 AND forecast_datetime_utc=$2
+SELECT id, location_id, source_api, forecast_datetime_utc, updated_at, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text FROM hourly_forecasts WHERE location_id=$1 AND forecast_datetime_utc=$2
 `
 
 type GetHourlyForecastAtLocationAndTimeParams struct {
@@ -134,6 +175,7 @@ func (q *Queries) GetHourlyForecastAtLocationAndTime(ctx context.Context, arg Ge
 			&i.LocationID,
 			&i.SourceApi,
 			&i.ForecastDatetimeUtc,
+			&i.UpdatedAt,
 			&i.TemperatureC,
 			&i.Humidity,
 			&i.WindSpeedKmh,
@@ -155,7 +197,7 @@ func (q *Queries) GetHourlyForecastAtLocationAndTime(ctx context.Context, arg Ge
 }
 
 const getHourlyForecastAtLocationAndTimeFromAPI = `-- name: GetHourlyForecastAtLocationAndTimeFromAPI :one
-SELECT id, location_id, source_api, forecast_datetime_utc, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text FROM hourly_forecasts WHERE location_id=$1 AND forecast_datetime_utc=$2 AND source_api=$3
+SELECT id, location_id, source_api, forecast_datetime_utc, updated_at, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text FROM hourly_forecasts WHERE location_id=$1 AND forecast_datetime_utc=$2 AND source_api=$3
 `
 
 type GetHourlyForecastAtLocationAndTimeFromAPIParams struct {
@@ -172,6 +214,7 @@ func (q *Queries) GetHourlyForecastAtLocationAndTimeFromAPI(ctx context.Context,
 		&i.LocationID,
 		&i.SourceApi,
 		&i.ForecastDatetimeUtc,
+		&i.UpdatedAt,
 		&i.TemperatureC,
 		&i.Humidity,
 		&i.WindSpeedKmh,
@@ -184,9 +227,9 @@ func (q *Queries) GetHourlyForecastAtLocationAndTimeFromAPI(ctx context.Context,
 
 const updateHourlyForecast = `-- name: UpdateHourlyForecast :one
 UPDATE hourly_forecasts
-SET forecast_datetime_utc=$2, temperature_c=$3, humidity=$4, wind_speed_kmh=$5, precipitation_mm=$6, precipitation_chance_percent=$7, condition_text=$8
+SET updated_at=NOW(), forecast_datetime_utc=$2, temperature_c=$3, humidity=$4, wind_speed_kmh=$5, precipitation_mm=$6, precipitation_chance_percent=$7, condition_text=$8
 WHERE id=$1
-RETURNING id, location_id, source_api, forecast_datetime_utc, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text
+RETURNING id, location_id, source_api, forecast_datetime_utc, updated_at, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text
 `
 
 type UpdateHourlyForecastParams struct {
@@ -217,6 +260,7 @@ func (q *Queries) UpdateHourlyForecast(ctx context.Context, arg UpdateHourlyFore
 		&i.LocationID,
 		&i.SourceApi,
 		&i.ForecastDatetimeUtc,
+		&i.UpdatedAt,
 		&i.TemperatureC,
 		&i.Humidity,
 		&i.WindSpeedKmh,

@@ -19,6 +19,7 @@ type apiConfig struct {
 	ometeoWeatherURL string
 	gmpKey           string
 	owmKey           string
+	httpClient       *http.Client
 }
 
 func main() {
@@ -73,6 +74,9 @@ func main() {
 		ometeoWeatherURL: ometeoWeatherURL,
 		gmpKey:           gmpKey,
 		owmKey:           owmKey,
+		httpClient: &http.Client{
+			Timeout: http.DefaultClient.Timeout,
+		},
 	}
 
 	port := os.Getenv("PORT")

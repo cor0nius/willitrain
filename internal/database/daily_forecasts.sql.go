@@ -18,16 +18,17 @@ INSERT INTO daily_forecasts (
     id,
     location_id,
     source_api,
+    updated_at,
     forecast_date,
     min_temp_c,
     max_temp_c,
     precipitation_mm,
     precipitation_chance_percent,
     wind_speed_kmh,
-    humidity
+    humidity 
 )
-VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, location_id, source_api, forecast_date, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity
+VALUES (gen_random_uuid(), $1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, location_id, source_api, forecast_date, updated_at, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity
 `
 
 type CreateDailyForecastParams struct {
@@ -60,6 +61,7 @@ func (q *Queries) CreateDailyForecast(ctx context.Context, arg CreateDailyForeca
 		&i.LocationID,
 		&i.SourceApi,
 		&i.ForecastDate,
+		&i.UpdatedAt,
 		&i.MinTempC,
 		&i.MaxTempC,
 		&i.PrecipitationMm,
@@ -111,8 +113,47 @@ func (q *Queries) DeleteDailyForecastsFromApi(ctx context.Context, sourceApi str
 	return err
 }
 
+const getAllDailyForecastsAtLocation = `-- name: GetAllDailyForecastsAtLocation :many
+SELECT id, location_id, source_api, forecast_date, updated_at, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity FROM daily_forecasts WHERE location_id=$1
+`
+
+func (q *Queries) GetAllDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]DailyForecast, error) {
+	rows, err := q.db.QueryContext(ctx, getAllDailyForecastsAtLocation, locationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DailyForecast
+	for rows.Next() {
+		var i DailyForecast
+		if err := rows.Scan(
+			&i.ID,
+			&i.LocationID,
+			&i.SourceApi,
+			&i.ForecastDate,
+			&i.UpdatedAt,
+			&i.MinTempC,
+			&i.MaxTempC,
+			&i.PrecipitationMm,
+			&i.PrecipitationChancePercent,
+			&i.WindSpeedKmh,
+			&i.Humidity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDailyForecastAtLocationAndDate = `-- name: GetDailyForecastAtLocationAndDate :many
-SELECT id, location_id, source_api, forecast_date, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity FROM daily_forecasts WHERE location_id=$1 AND forecast_date=$2
+SELECT id, location_id, source_api, forecast_date, updated_at, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity FROM daily_forecasts WHERE location_id=$1 AND forecast_date=$2
 `
 
 type GetDailyForecastAtLocationAndDateParams struct {
@@ -134,6 +175,7 @@ func (q *Queries) GetDailyForecastAtLocationAndDate(ctx context.Context, arg Get
 			&i.LocationID,
 			&i.SourceApi,
 			&i.ForecastDate,
+			&i.UpdatedAt,
 			&i.MinTempC,
 			&i.MaxTempC,
 			&i.PrecipitationMm,
@@ -155,7 +197,7 @@ func (q *Queries) GetDailyForecastAtLocationAndDate(ctx context.Context, arg Get
 }
 
 const getDailyForecastAtLocationAndDateFromAPI = `-- name: GetDailyForecastAtLocationAndDateFromAPI :one
-SELECT id, location_id, source_api, forecast_date, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity FROM daily_forecasts WHERE location_id=$1 AND forecast_date=$2 AND source_api=$3
+SELECT id, location_id, source_api, forecast_date, updated_at, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity FROM daily_forecasts WHERE location_id=$1 AND forecast_date=$2 AND source_api=$3
 `
 
 type GetDailyForecastAtLocationAndDateFromAPIParams struct {
@@ -172,6 +214,7 @@ func (q *Queries) GetDailyForecastAtLocationAndDateFromAPI(ctx context.Context, 
 		&i.LocationID,
 		&i.SourceApi,
 		&i.ForecastDate,
+		&i.UpdatedAt,
 		&i.MinTempC,
 		&i.MaxTempC,
 		&i.PrecipitationMm,
@@ -184,9 +227,9 @@ func (q *Queries) GetDailyForecastAtLocationAndDateFromAPI(ctx context.Context, 
 
 const updateDailyForecast = `-- name: UpdateDailyForecast :one
 UPDATE daily_forecasts
-SET forecast_date=$2, min_temp_c=$3, max_temp_c=$4, precipitation_mm=$5, precipitation_chance_percent=$6, wind_speed_kmh=$7, humidity=$8
+SET updated_at=NOW(), forecast_date=$2, min_temp_c=$3, max_temp_c=$4, precipitation_mm=$5, precipitation_chance_percent=$6, wind_speed_kmh=$7, humidity=$8
 WHERE id=$1
-RETURNING id, location_id, source_api, forecast_date, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity
+RETURNING id, location_id, source_api, forecast_date, updated_at, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity
 `
 
 type UpdateDailyForecastParams struct {
@@ -217,6 +260,7 @@ func (q *Queries) UpdateDailyForecast(ctx context.Context, arg UpdateDailyForeca
 		&i.LocationID,
 		&i.SourceApi,
 		&i.ForecastDate,
+		&i.UpdatedAt,
 		&i.MinTempC,
 		&i.MaxTempC,
 		&i.PrecipitationMm,

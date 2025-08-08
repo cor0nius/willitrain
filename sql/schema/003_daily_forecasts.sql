@@ -4,6 +4,7 @@ CREATE TABLE daily_forecasts (
     location_id UUID REFERENCES locations(id) ON DELETE CASCADE NOT NULL,
     source_api TEXT NOT NULL,
     forecast_date DATE NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
     min_temp_c FLOAT,
     max_temp_c FLOAT,
     precipitation_mm FLOAT,

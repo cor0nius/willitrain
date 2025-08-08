@@ -98,6 +98,7 @@ func databaseDailyForecastToDailyForecast(dbForecast database.DailyForecast, loc
 	return DailyForecast{
 		Location:            location,
 		SourceAPI:           dbForecast.SourceApi,
+		Timestamp:           dbForecast.UpdatedAt,
 		ForecastDate:        dbForecast.ForecastDate,
 		MinTemp:             dbForecast.MinTempC.Float64,
 		MaxTemp:             dbForecast.MaxTempC.Float64,
@@ -175,6 +176,7 @@ func databaseHourlyForecastToHourlyForecast(dbForecast database.HourlyForecast, 
 	return HourlyForecast{
 		Location:            location,
 		SourceAPI:           dbForecast.SourceApi,
+		Timestamp:           dbForecast.UpdatedAt,
 		ForecastDateTime:    dbForecast.ForecastDatetimeUtc,
 		Temperature:         dbForecast.TemperatureC.Float64,
 		Humidity:            int(dbForecast.Humidity.Int32),

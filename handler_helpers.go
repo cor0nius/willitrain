@@ -19,25 +19,20 @@ const hourlyForecastCacheTTL = 1 * time.Hour
 // If not, it calls the geocoding API to get the location details,
 // persists the new location to the DB, and then returns the new location data.
 func (cfg *apiConfig) getOrCreateLocation(ctx context.Context, cityName string) (Location, error) {
-	// Step 1: Check for Location in Database First
 	dbLocation, err := cfg.dbQueries.GetLocationByName(ctx, cityName)
 	if err == nil {
-		// Location found in DB, map and return it.
 		return databaseLocationToLocation(dbLocation), nil
 	}
 
 	if err != sql.ErrNoRows {
-		// A different database error occurred.
 		return Location{}, fmt.Errorf("database error when fetching location: %w", err)
 	}
 
-	// Step 2: Location not found, so geocode it.
 	geocodedLocation, geoErr := cfg.Geocode(cityName)
 	if geoErr != nil {
 		return Location{}, fmt.Errorf("could not geocode city: %w", geoErr)
 	}
 
-	// Step 3: Persist the new location to the database.
 	persistedLocation, createErr := cfg.dbQueries.CreateLocation(ctx, locationToCreateLocationParams(geocodedLocation))
 	if createErr != nil {
 		log.Printf("Could not persist new location %s: %v", cityName, createErr)
@@ -50,34 +45,28 @@ func (cfg *apiConfig) getOrCreateLocation(ctx context.Context, cityName string) 
 
 // getCachedOrFetchCurrentWeather checks for fresh cached data and fetches from APIs if it's stale or missing.
 func (cfg *apiConfig) getCachedOrFetchCurrentWeather(ctx context.Context, location Location) ([]CurrentWeather, error) {
-	// Step 1: Check for Cached Weather Data
 	dbWeathers, err := cfg.dbQueries.GetCurrentWeatherAtLocation(ctx, location.LocationID)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("database error when fetching weather: %w", err)
 	}
 
-	if err == nil { // This means sql.ErrNoRows was not returned, so some rows were found.
+	if err == nil {
 		var cachedWeather []CurrentWeather
 		for _, dbw := range dbWeathers {
 			if dbw.UpdatedAt.After(time.Now().UTC().Add(-weatherCacheTTL)) {
 				cachedWeather = append(cachedWeather, databaseCurrentWeatherToCurrentWeather(dbw, location))
 			}
 		}
-
-		// If we have any fresh data, return it.
-		// A more robust implementation might fetch only for the stale sources.
 		if len(cachedWeather) > 0 {
 			return cachedWeather, nil
 		}
 	}
 
-	// Step 2: Fetch from APIs if Weather Cache is Stale or Empty
 	weather, err := cfg.requestCurrentWeather(location)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch current weather: %w", err)
 	}
 
-	// Step 3: Persist New Weather Data using the helper function
 	cfg.persistCurrentWeather(ctx, weather)
 
 	return weather, nil
@@ -85,40 +74,31 @@ func (cfg *apiConfig) getCachedOrFetchCurrentWeather(ctx context.Context, locati
 
 // getCachedOrFetchDailyForecast checks for fresh cached data and fetches from APIs if it's stale or missing.
 func (cfg *apiConfig) getCachedOrFetchDailyForecast(ctx context.Context, location Location) ([]DailyForecast, error) {
-	// Step 1: Check for Cached Weather Data
-	// NOTE: This assumes a `GetDailyForecastsByLocation` method exists in dbQueries,
-	// which would fetch all forecast entries for a given location. This query needs to be added.
-	dbForecasts, err := cfg.dbQueries.GetDailyForecastsByLocation(ctx, location.LocationID)
+	dbForecasts, err := cfg.dbQueries.GetAllDailyForecastsAtLocation(ctx, location.LocationID)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("database error when fetching daily forecast: %w", err)
 	}
 
-	if err == nil { // This means sql.ErrNoRows was not returned, so some rows were found.
+	if err == nil {
 		var cachedForecasts []DailyForecast
 		isCacheFresh := false
-		// NOTE: This also assumes the `database.DailyForecast` struct has an `UpdatedAt` field.
 		for _, dbf := range dbForecasts {
-			// Check if at least one of the forecast entries is fresh.
 			if dbf.UpdatedAt.After(time.Now().UTC().Add(-dailyForecastCacheTTL)) {
 				isCacheFresh = true
 			}
 			cachedForecasts = append(cachedForecasts, databaseDailyForecastToDailyForecast(dbf, location))
 		}
 
-		// If we have any fresh data, return the whole cached set.
 		if isCacheFresh && len(cachedForecasts) > 0 {
 			return cachedForecasts, nil
 		}
 	}
 
-	// Step 2: Fetch from APIs if Cache is Stale or Empty
 	forecast, err := cfg.requestDailyForecast(location)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch daily forecast: %w", err)
 	}
 
-	// Step 3: Persist New Weather Data using the helper function
-	// This assumes persistDailyForecast will correctly set the new UpdatedAt timestamp.
 	cfg.persistDailyForecast(ctx, forecast)
 
 	return forecast, nil
@@ -126,40 +106,31 @@ func (cfg *apiConfig) getCachedOrFetchDailyForecast(ctx context.Context, locatio
 
 // getCachedOrFetchHourlyForecast checks for fresh cached data and fetches from APIs if it's stale or missing.
 func (cfg *apiConfig) getCachedOrFetchHourlyForecast(ctx context.Context, location Location) ([]HourlyForecast, error) {
-	// Step 1: Check for Cached Weather Data
-	// NOTE: This assumes a `GetHourlyForecastsByLocation` method exists in dbQueries,
-	// which would fetch all forecast entries for a given location. This query needs to be added.
-	dbForecasts, err := cfg.dbQueries.GetHourlyForecastsByLocation(ctx, location.LocationID)
+	dbForecasts, err := cfg.dbQueries.GetAllHourlyForecastsAtLocation(ctx, location.LocationID)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("database error when fetching hourly forecast: %w", err)
 	}
 
-	if err == nil { // This means sql.ErrNoRows was not returned, so some rows were found.
+	if err == nil {
 		var cachedForecasts []HourlyForecast
 		isCacheFresh := false
-		// NOTE: This also assumes the `database.HourlyForecast` struct has an `UpdatedAt` field.
 		for _, dbf := range dbForecasts {
-			// Check if at least one of the forecast entries is fresh.
 			if dbf.UpdatedAt.After(time.Now().UTC().Add(-hourlyForecastCacheTTL)) {
 				isCacheFresh = true
 			}
 			cachedForecasts = append(cachedForecasts, databaseHourlyForecastToHourlyForecast(dbf, location))
 		}
 
-		// If we have any fresh data, return the whole cached set.
 		if isCacheFresh && len(cachedForecasts) > 0 {
 			return cachedForecasts, nil
 		}
 	}
 
-	// Step 2: Fetch from APIs if Cache is Stale or Empty
 	forecast, err := cfg.requestHourlyForecast(location)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch hourly forecast: %w", err)
 	}
 
-	// Step 3: Persist New Weather Data using the helper function
-	// This assumes persistHourlyForecast will correctly set the new UpdatedAt timestamp.
 	cfg.persistHourlyForecast(ctx, forecast)
 
 	return forecast, nil
@@ -178,18 +149,15 @@ func (cfg *apiConfig) upsertWeatherItem(
 	existing, err := getItemFunc()
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// Record doesn't exist, so create it.
 			if _, createErr := createItemFunc(); createErr != nil {
 				log.Printf("Error creating cache for %s at %s from %s: %v", logInfo["type"], logInfo["location"], logInfo["api"], createErr)
 			}
 		} else {
-			// A different database error occurred while checking for an existing record.
 			log.Printf("Error getting cache for %s at %s from %s: %v", logInfo["type"], logInfo["location"], logInfo["api"], err)
 		}
 		return
 	}
 
-	// Record exists, so update it.
 	if _, updateErr := updateItemFunc(existing); updateErr != nil {
 		log.Printf("Error updating cache for %s at %s from %s: %v", logInfo["type"], logInfo["location"], logInfo["api"], updateErr)
 	}
@@ -198,7 +166,6 @@ func (cfg *apiConfig) upsertWeatherItem(
 // persistCurrentWeather handles persisting current weather data using the generic upsert helper.
 func (cfg *apiConfig) persistCurrentWeather(ctx context.Context, weatherData []CurrentWeather) {
 	for _, weather := range weatherData {
-		// This closure captures the specific 'weather' item for the functions below.
 		cfg.upsertWeatherItem(ctx,
 			func() (any, error) { // getItem
 				return cfg.dbQueries.GetCurrentWeatherAtLocationFromAPI(ctx, database.GetCurrentWeatherAtLocationFromAPIParams{
@@ -228,7 +195,6 @@ func (cfg *apiConfig) persistCurrentWeather(ctx context.Context, weatherData []C
 // persistDailyForecast handles persisting daily forecast data using the generic upsert helper.
 func (cfg *apiConfig) persistDailyForecast(ctx context.Context, forecastData []DailyForecast) {
 	for _, forecast := range forecastData {
-		// This closure captures the specific 'forecast' item for the functions below.
 		cfg.upsertWeatherItem(ctx,
 			func() (any, error) { // getItem
 				return cfg.dbQueries.GetDailyForecastAtLocationAndDateFromAPI(ctx, database.GetDailyForecastAtLocationAndDateFromAPIParams{
@@ -259,7 +225,6 @@ func (cfg *apiConfig) persistDailyForecast(ctx context.Context, forecastData []D
 // persistHourlyForecast handles persisting hourly forecast data using the generic upsert helper.
 func (cfg *apiConfig) persistHourlyForecast(ctx context.Context, forecastData []HourlyForecast) {
 	for _, forecast := range forecastData {
-		// This closure captures the specific 'forecast' item for the functions below.
 		cfg.upsertWeatherItem(ctx,
 			func() (any, error) { // getItem
 				return cfg.dbQueries.GetHourlyForecastAtLocationAndTimeFromAPI(ctx, database.GetHourlyForecastAtLocationAndTimeFromAPIParams{
