@@ -52,6 +52,11 @@ func (s *Scheduler) Start() {
 }
 
 func (s *Scheduler) Stop() {
+	// TODO: Implement a more graceful shutdown.
+	// The current implementation signals the scheduler to stop, but doesn't wait
+	// for the currently running jobs to complete. A sync.WaitGroup could be
+	// added to the Scheduler struct and used in runUpdateForLocations to
+	// ensure that the Stop() method blocks until all active jobs are finished.
 	close(s.stop)
 }
 

@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/cor0nius/willitrain/internal/database"
 	"github.com/joho/godotenv"
@@ -12,14 +14,17 @@ import (
 )
 
 type apiConfig struct {
-	dbQueries        *database.Queries
-	gmpGeocodeURL    string
-	gmpWeatherURL    string
-	owmWeatherURL    string
-	ometeoWeatherURL string
-	gmpKey           string
-	owmKey           string
-	httpClient       *http.Client
+	dbQueries                *database.Queries
+	gmpGeocodeURL            string
+	gmpWeatherURL            string
+	owmWeatherURL            string
+	ometeoWeatherURL         string
+	gmpKey                   string
+	owmKey                   string
+	httpClient               *http.Client
+	schedulerCurrentInterval time.Duration
+	schedulerHourlyInterval  time.Duration
+	schedulerDailyInterval   time.Duration
 }
 
 func main() {
@@ -66,6 +71,24 @@ func main() {
 		log.Fatal("Missing API Key for OpenWeatherMap")
 	}
 
+	currentIntervalMin, err := strconv.Atoi(os.Getenv("CURRENT_INTERVAL_MIN"))
+	if err != nil {
+		log.Printf("CURRENT_INTERVAL_MIN not set or invalid, defaulting to 10 minutes: %v", err)
+		currentIntervalMin = 10
+	}
+
+	hourlyIntervalMin, err := strconv.Atoi(os.Getenv("HOURLY_INTERVAL_MIN"))
+	if err != nil {
+		log.Printf("HOURLY_INTERVAL_MIN not set or invalid, defaulting to 60 minutes: %v", err)
+		hourlyIntervalMin = 60
+	}
+
+	dailyIntervalMin, err := strconv.Atoi(os.Getenv("DAILY_INTERVAL_MIN"))
+	if err != nil {
+		log.Printf("DAILY_INTERVAL_MIN not set or invalid, defaulting to 720 minutes: %v", err)
+		dailyIntervalMin = 720
+	}
+
 	cfg := apiConfig{
 		dbQueries:        dbQueries,
 		gmpGeocodeURL:    gmpGeocodeURL,
@@ -77,6 +100,9 @@ func main() {
 		httpClient: &http.Client{
 			Timeout: http.DefaultClient.Timeout,
 		},
+		schedulerCurrentInterval: time.Duration(currentIntervalMin) * time.Minute,
+		schedulerHourlyInterval:  time.Duration(hourlyIntervalMin) * time.Minute,
+		schedulerDailyInterval:   time.Duration(dailyIntervalMin) * time.Minute,
 	}
 
 	port := os.Getenv("PORT")
