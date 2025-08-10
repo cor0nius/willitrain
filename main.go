@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
@@ -9,12 +10,13 @@ import (
 	"time"
 
 	"github.com/cor0nius/willitrain/internal/database"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
-	dbQueries                *database.Queries
+	dbQueries                dbQuerier
 	gmpGeocodeURL            string
 	gmpWeatherURL            string
 	owmWeatherURL            string
@@ -105,6 +107,13 @@ func main() {
 		schedulerDailyInterval:   time.Duration(dailyIntervalMin) * time.Minute,
 	}
 
+	scheduler := NewScheduler(&cfg,
+		cfg.schedulerCurrentInterval,
+		cfg.schedulerHourlyInterval,
+		cfg.schedulerDailyInterval,
+	)
+	scheduler.Start()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -123,4 +132,26 @@ func main() {
 
 	log.Printf("Serving on port: %s\n", port)
 	log.Fatal(server.ListenAndServe())
+}
+
+type dbQuerier interface {
+	CreateCurrentWeather(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error)
+	CreateDailyForecast(ctx context.Context, arg database.CreateDailyForecastParams) (database.DailyForecast, error)
+	CreateHourlyForecast(ctx context.Context, arg database.CreateHourlyForecastParams) (database.HourlyForecast, error)
+	CreateLocation(ctx context.Context, arg database.CreateLocationParams) (database.Location, error)
+	DeleteAllCurrentWeather(ctx context.Context) error
+	DeleteAllDailyForecasts(ctx context.Context) error
+	DeleteAllHourlyForecasts(ctx context.Context) error
+	DeleteAllLocations(ctx context.Context) error
+	GetAllDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.DailyForecast, error)
+	GetAllHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.HourlyForecast, error)
+	GetCurrentWeatherAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error)
+	GetCurrentWeatherAtLocationFromAPI(ctx context.Context, arg database.GetCurrentWeatherAtLocationFromAPIParams) (database.CurrentWeather, error)
+	GetDailyForecastAtLocationAndDateFromAPI(ctx context.Context, arg database.GetDailyForecastAtLocationAndDateFromAPIParams) (database.DailyForecast, error)
+	GetHourlyForecastAtLocationAndTimeFromAPI(ctx context.Context, arg database.GetHourlyForecastAtLocationAndTimeFromAPIParams) (database.HourlyForecast, error)
+	GetLocationByName(ctx context.Context, cityName string) (database.Location, error)
+	ListLocations(ctx context.Context) ([]database.Location, error)
+	UpdateCurrentWeather(ctx context.Context, arg database.UpdateCurrentWeatherParams) (database.CurrentWeather, error)
+	UpdateDailyForecast(ctx context.Context, arg database.UpdateDailyForecastParams) (database.DailyForecast, error)
+	UpdateHourlyForecast(ctx context.Context, arg database.UpdateHourlyForecastParams) (database.HourlyForecast, error)
 }

@@ -10,41 +10,53 @@ import (
 )
 
 type Scheduler struct {
-	cfg           *apiConfig
-	currentTicker *time.Ticker
-	hourlyTicker  *time.Ticker
-	dailyTicker   *time.Ticker
-	stop          chan struct{}
+	cfg                *apiConfig
+	currentChan        <-chan time.Time
+	hourlyChan         <-chan time.Time
+	dailyChan          <-chan time.Time
+	stop               chan struct{}
+	tickers            []*time.Ticker
+	currentWeatherJobs func()
+	hourlyForecastJobs func()
+	dailyForecastJobs  func()
 }
 
 func NewScheduler(cfg *apiConfig, currentInterval, hourlyInterval, dailyInterval time.Duration) *Scheduler {
-	return &Scheduler{
-		cfg:           cfg,
-		currentTicker: time.NewTicker(currentInterval),
-		hourlyTicker:  time.NewTicker(hourlyInterval),
-		dailyTicker:   time.NewTicker(dailyInterval),
-		stop:          make(chan struct{}),
+	currentTicker := time.NewTicker(currentInterval)
+	hourlyTicker := time.NewTicker(hourlyInterval)
+	dailyTicker := time.NewTicker(dailyInterval)
+	s := &Scheduler{
+		cfg:         cfg,
+		currentChan: currentTicker.C,
+		hourlyChan:  hourlyTicker.C,
+		dailyChan:   dailyTicker.C,
+		stop:        make(chan struct{}),
+		tickers:     []*time.Ticker{currentTicker, hourlyTicker, dailyTicker},
 	}
+	s.currentWeatherJobs = s.runCurrentWeatherJobs
+	s.hourlyForecastJobs = s.runHourlyForecastJobs
+	s.dailyForecastJobs = s.runDailyForecastJobs
+	return s
 }
 
 func (s *Scheduler) Start() {
 	go func() {
 		for {
 			select {
-			case <-s.currentTicker.C:
+			case <-s.currentChan:
 				log.Println("Scheduler: Running current weather jobs...")
-				s.runCurrentWeatherJobs()
-			case <-s.hourlyTicker.C:
+				s.currentWeatherJobs()
+			case <-s.hourlyChan:
 				log.Println("Scheduler: Running hourly forecast jobs...")
-				s.runHourlyForecastJobs()
-			case <-s.dailyTicker.C:
+				s.hourlyForecastJobs()
+			case <-s.dailyChan:
 				log.Println("Scheduler: Running daily forecast jobs...")
-				s.runDailyForecastJobs()
+				s.dailyForecastJobs()
 			case <-s.stop:
 				log.Println("Scheduler: Stopping...")
-				s.currentTicker.Stop()
-				s.hourlyTicker.Stop()
-				s.dailyTicker.Stop()
+				for _, ticker := range s.tickers {
+					ticker.Stop()
+				}
 				return
 			}
 		}
@@ -82,7 +94,7 @@ func (s *Scheduler) runUpdateForLocations(updateFunc func(context.Context, Locat
 }
 
 func (s *Scheduler) runCurrentWeatherJobs() {
-	s.runUpdateForLocations(func(ctx context.Context, location Location) {
+	updateFunc := func(ctx context.Context, location Location) {
 		weather, err := s.cfg.requestCurrentWeather(location)
 		if err != nil {
 			log.Printf("Scheduler: failed to request current weather for %s: %v", location.CityName, err)
@@ -90,11 +102,12 @@ func (s *Scheduler) runCurrentWeatherJobs() {
 		}
 		s.cfg.persistCurrentWeather(ctx, weather)
 		log.Printf("Scheduler: Updated current weather for %s", location.CityName)
-	})
+	}
+	s.runUpdateForLocations(updateFunc)
 }
 
 func (s *Scheduler) runHourlyForecastJobs() {
-	s.runUpdateForLocations(func(ctx context.Context, location Location) {
+	updateFunc := func(ctx context.Context, location Location) {
 		forecast, err := s.cfg.requestHourlyForecast(location)
 		if err != nil {
 			log.Printf("Scheduler: failed to request hourly forecast for %s: %v", location.CityName, err)
@@ -102,11 +115,12 @@ func (s *Scheduler) runHourlyForecastJobs() {
 		}
 		s.cfg.persistHourlyForecast(ctx, forecast)
 		log.Printf("Scheduler: Updated hourly forecast for %s", location.CityName)
-	})
+	}
+	s.runUpdateForLocations(updateFunc)
 }
 
 func (s *Scheduler) runDailyForecastJobs() {
-	s.runUpdateForLocations(func(ctx context.Context, location Location) {
+	updateFunc := func(ctx context.Context, location Location) {
 		forecast, err := s.cfg.requestDailyForecast(location)
 		if err != nil {
 			log.Printf("Scheduler: failed to request daily forecast for %s: %v", location.CityName, err)
@@ -114,5 +128,6 @@ func (s *Scheduler) runDailyForecastJobs() {
 		}
 		s.cfg.persistDailyForecast(ctx, forecast)
 		log.Printf("Scheduler: Updated daily forecast for %s", location.CityName)
-	})
+	}
+	s.runUpdateForLocations(updateFunc)
 }
