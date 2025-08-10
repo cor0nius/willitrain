@@ -10,8 +10,8 @@ import (
 	"github.com/cor0nius/willitrain/internal/database"
 )
 
-const weatherCacheTTL = 15 * time.Minute
-const dailyForecastCacheTTL = 24 * time.Hour
+const weatherCacheTTL = 10 * time.Minute
+const dailyForecastCacheTTL = 12 * time.Hour
 const hourlyForecastCacheTTL = 1 * time.Hour
 
 // getOrCreateLocation checks if a location exists in the database by name.

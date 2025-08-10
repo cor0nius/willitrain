@@ -13,11 +13,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 )
 
 type apiConfig struct {
 	dbQueries                dbQuerier
 	gmpGeocodeURL            string
+	cache                    Cache
 	gmpWeatherURL            string
 	owmWeatherURL            string
 	ometeoWeatherURL         string
@@ -42,6 +44,21 @@ func main() {
 		log.Printf("Couldn't connect to database: %v", err)
 	}
 	dbQueries := database.New(db)
+
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		log.Fatal("REDIS_URL must be set")
+	}
+	opt, err := redis.ParseURL(redisURL)
+	if err != nil {
+		log.Fatalf("Could not parse Redis URL: %v", err)
+	}
+	redisClient := redis.NewClient(opt)
+	if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
+		log.Fatalf("Could not connect to Redis: %v", err)
+	}
+
+	cache := NewRedisCache(redisClient)
 
 	gmpGeocodeURL := os.Getenv("GMP_GEOCODE_URL")
 	if gmpGeocodeURL == "" {
@@ -95,6 +112,7 @@ func main() {
 
 	cfg := apiConfig{
 		dbQueries:        dbQueries,
+		cache:            cache,
 		gmpGeocodeURL:    gmpGeocodeURL,
 		gmpWeatherURL:    gmpWeatherURL,
 		owmWeatherURL:    owmWeatherURL,
