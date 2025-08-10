@@ -91,6 +91,8 @@ func main() {
 		dailyIntervalMin = 720
 	}
 
+	devMode := os.Getenv("DEV_MODE")
+
 	cfg := apiConfig{
 		dbQueries:        dbQueries,
 		gmpGeocodeURL:    gmpGeocodeURL,
@@ -124,6 +126,11 @@ func main() {
 	mux.HandleFunc("/currentweather", cfg.handlerCurrentWeather)
 	mux.HandleFunc("/dailyforecast", cfg.handlerDailyForecast)
 	mux.HandleFunc("/hourlyforecast", cfg.handlerHourlyForecast)
+
+	if devMode == "true" {
+		log.Println("Development mode enabled. Registering /dev/reset-db endpoint.")
+		mux.HandleFunc("/dev/reset-db", cfg.handlerResetDB)
+	}
 
 	server := &http.Server{
 		Addr:    ":" + port,

@@ -60,6 +60,23 @@ func (cfg *apiConfig) handlerDailyForecast(w http.ResponseWriter, r *http.Reques
 	respondWithJSON(w, http.StatusOK, forecast)
 }
 
+func (cfg *apiConfig) handlerResetDB(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
+		return
+	}
+
+	ctx := r.Context()
+
+	err := cfg.dbQueries.DeleteAllLocations(ctx)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to reset database", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, map[string]string{"status": "database reset"})
+}
+
 func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if r.Method != http.MethodGet {
