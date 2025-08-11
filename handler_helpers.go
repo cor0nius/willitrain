@@ -3,16 +3,22 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/cor0nius/willitrain/internal/database"
+	"github.com/redis/go-redis/v9"
 )
 
 const weatherCacheTTL = 10 * time.Minute
 const dailyForecastCacheTTL = 12 * time.Hour
 const hourlyForecastCacheTTL = 1 * time.Hour
+
+const redisCurrentWeatherCacheTTL = 9 * time.Minute
+const redisDailyForecastCacheTTL = 11*time.Hour + 55*time.Minute
+const redisHourlyForecastCacheTTL = 55 * time.Minute
 
 // getOrCreateLocation checks if a location exists in the database by name.
 // If it exists, it returns the location data from the DB.
@@ -45,6 +51,19 @@ func (cfg *apiConfig) getOrCreateLocation(ctx context.Context, cityName string) 
 
 // getCachedOrFetchCurrentWeather checks for fresh cached data and fetches from APIs if it's stale or missing.
 func (cfg *apiConfig) getCachedOrFetchCurrentWeather(ctx context.Context, location Location) ([]CurrentWeather, error) {
+	cacheKey := fmt.Sprintf("currentweather:%s", location.LocationID.String())
+	cachedData, err := cfg.cache.Get(ctx, cacheKey)
+	if err == nil {
+		var weather []CurrentWeather
+		jsonErr := json.Unmarshal([]byte(cachedData), &weather)
+		if jsonErr == nil {
+			return weather, nil
+		}
+		log.Printf("Error unmarshalling current weather from Redis: %v", jsonErr)
+	} else if err != redis.Nil {
+		log.Printf("Error getting current weather from Redis: %v", err)
+	}
+
 	dbWeathers, err := cfg.dbQueries.GetCurrentWeatherAtLocation(ctx, location.LocationID)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("database error when fetching weather: %w", err)
@@ -58,6 +77,9 @@ func (cfg *apiConfig) getCachedOrFetchCurrentWeather(ctx context.Context, locati
 			}
 		}
 		if len(cachedWeather) > 0 {
+			if cacheErr := cfg.cache.Set(ctx, cacheKey, cachedWeather, redisCurrentWeatherCacheTTL); cacheErr != nil {
+				log.Printf("Error setting current weather to Redis: %v", cacheErr)
+			}
 			return cachedWeather, nil
 		}
 	}
@@ -68,12 +90,28 @@ func (cfg *apiConfig) getCachedOrFetchCurrentWeather(ctx context.Context, locati
 	}
 
 	cfg.persistCurrentWeather(ctx, weather)
+	if cacheErr := cfg.cache.Set(ctx, cacheKey, weather, redisCurrentWeatherCacheTTL); cacheErr != nil {
+		log.Printf("Error setting current weather to Redis after API fetch: %v", cacheErr)
+	}
 
 	return weather, nil
 }
 
 // getCachedOrFetchDailyForecast checks for fresh cached data and fetches from APIs if it's stale or missing.
 func (cfg *apiConfig) getCachedOrFetchDailyForecast(ctx context.Context, location Location) ([]DailyForecast, error) {
+	cacheKey := fmt.Sprintf("dailyforecast:%s", location.LocationID.String())
+	cachedData, err := cfg.cache.Get(ctx, cacheKey)
+	if err == nil {
+		var forecast []DailyForecast
+		jsonErr := json.Unmarshal([]byte(cachedData), &forecast)
+		if jsonErr == nil {
+			return forecast, nil
+		}
+		log.Printf("Error unmarshalling daily forecast from Redis: %v", jsonErr)
+	} else if err != redis.Nil {
+		log.Printf("Error getting daily forecast from Redis: %v", err)
+	}
+
 	dbForecasts, err := cfg.dbQueries.GetAllDailyForecastsAtLocation(ctx, location.LocationID)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("database error when fetching daily forecast: %w", err)
@@ -90,6 +128,9 @@ func (cfg *apiConfig) getCachedOrFetchDailyForecast(ctx context.Context, locatio
 		}
 
 		if isCacheFresh && len(cachedForecasts) > 0 {
+			if cacheErr := cfg.cache.Set(ctx, cacheKey, cachedForecasts, redisDailyForecastCacheTTL); cacheErr != nil {
+				log.Printf("Error setting daily forecast to Redis: %v", cacheErr)
+			}
 			return cachedForecasts, nil
 		}
 	}
@@ -100,12 +141,28 @@ func (cfg *apiConfig) getCachedOrFetchDailyForecast(ctx context.Context, locatio
 	}
 
 	cfg.persistDailyForecast(ctx, forecast)
+	if cacheErr := cfg.cache.Set(ctx, cacheKey, forecast, redisDailyForecastCacheTTL); cacheErr != nil {
+		log.Printf("Error setting daily forecast to Redis after API fetch: %v", cacheErr)
+	}
 
 	return forecast, nil
 }
 
 // getCachedOrFetchHourlyForecast checks for fresh cached data and fetches from APIs if it's stale or missing.
 func (cfg *apiConfig) getCachedOrFetchHourlyForecast(ctx context.Context, location Location) ([]HourlyForecast, error) {
+	cacheKey := fmt.Sprintf("hourlyforecast:%s", location.LocationID.String())
+	cachedData, err := cfg.cache.Get(ctx, cacheKey)
+	if err == nil {
+		var forecast []HourlyForecast
+		jsonErr := json.Unmarshal([]byte(cachedData), &forecast)
+		if jsonErr == nil {
+			return forecast, nil
+		}
+		log.Printf("Error unmarshalling hourly forecast from Redis: %v", jsonErr)
+	} else if err != redis.Nil {
+		log.Printf("Error getting hourly forecast from Redis: %v", err)
+	}
+
 	dbForecasts, err := cfg.dbQueries.GetAllHourlyForecastsAtLocation(ctx, location.LocationID)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("database error when fetching hourly forecast: %w", err)
@@ -122,6 +179,9 @@ func (cfg *apiConfig) getCachedOrFetchHourlyForecast(ctx context.Context, locati
 		}
 
 		if isCacheFresh && len(cachedForecasts) > 0 {
+			if cacheErr := cfg.cache.Set(ctx, cacheKey, cachedForecasts, redisHourlyForecastCacheTTL); cacheErr != nil {
+				log.Printf("Error setting hourly forecast to Redis: %v", cacheErr)
+			}
 			return cachedForecasts, nil
 		}
 	}
@@ -132,6 +192,9 @@ func (cfg *apiConfig) getCachedOrFetchHourlyForecast(ctx context.Context, locati
 	}
 
 	cfg.persistHourlyForecast(ctx, forecast)
+	if cacheErr := cfg.cache.Set(ctx, cacheKey, forecast, redisHourlyForecastCacheTTL); cacheErr != nil {
+		log.Printf("Error setting hourly forecast to Redis after API fetch: %v", cacheErr)
+	}
 
 	return forecast, nil
 }
