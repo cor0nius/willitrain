@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cor0nius/willitrain/internal/database"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -49,154 +50,134 @@ func (cfg *apiConfig) getOrCreateLocation(ctx context.Context, cityName string) 
 	return geocodedLocation, nil
 }
 
-// getCachedOrFetchCurrentWeather checks for fresh cached data and fetches from APIs if it's stale or missing.
-func (cfg *apiConfig) getCachedOrFetchCurrentWeather(ctx context.Context, location Location) ([]CurrentWeather, error) {
-	cacheKey := fmt.Sprintf("currentweather:%s", location.LocationID.String())
+type apiModel interface {
+	CurrentWeather | DailyForecast | HourlyForecast
+}
+
+type dbModel interface {
+	database.CurrentWeather | database.DailyForecast | database.HourlyForecast
+}
+
+// getCachedOrFetch is a generic helper that abstracts the caching logic for different weather types.
+// It checks Redis, then the DB, and finally fetches from the API if necessary.
+func getCachedOrFetch[T apiModel, D dbModel](
+	cfg *apiConfig,
+	ctx context.Context,
+	location Location,
+	cacheKeyPrefix string,
+	dbCacheTTL time.Duration,
+	redisCacheTTL time.Duration,
+	dbFetcher func(context.Context, uuid.UUID) ([]D, error),
+	apiFetcher func(Location) ([]T, error),
+	persister func(context.Context, []T),
+	modelConverter func(D, Location) T,
+	getTimestamp func(D) time.Time,
+) ([]T, error) {
+	// 1. Check Redis cache
+	cacheKey := fmt.Sprintf("%s:%s", cacheKeyPrefix, location.LocationID.String())
 	cachedData, err := cfg.cache.Get(ctx, cacheKey)
 	if err == nil {
-		var weather []CurrentWeather
-		jsonErr := json.Unmarshal([]byte(cachedData), &weather)
+		var items []T
+		jsonErr := json.Unmarshal([]byte(cachedData), &items)
 		if jsonErr == nil {
-			return weather, nil
+			return items, nil
 		}
-		log.Printf("Error unmarshalling current weather from Redis: %v", jsonErr)
+		log.Printf("Error unmarshalling %s from Redis: %v", cacheKeyPrefix, jsonErr)
 	} else if err != redis.Nil {
-		log.Printf("Error getting current weather from Redis: %v", err)
+		log.Printf("Error getting %s from Redis: %v", cacheKeyPrefix, err)
 	}
 
-	dbWeathers, err := cfg.dbQueries.GetCurrentWeatherAtLocation(ctx, location.LocationID)
+	// 2. Check Database cache
+	dbItems, err := dbFetcher(ctx, location.LocationID)
 	if err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("database error when fetching weather: %w", err)
+		return nil, fmt.Errorf("database error when fetching %s: %w", cacheKeyPrefix, err)
 	}
 
-	if err == nil {
-		var cachedWeather []CurrentWeather
-		for _, dbw := range dbWeathers {
-			if dbw.UpdatedAt.After(time.Now().UTC().Add(-weatherCacheTTL)) {
-				cachedWeather = append(cachedWeather, databaseCurrentWeatherToCurrentWeather(dbw, location))
+	if err == nil && len(dbItems) > 0 {
+		var freshItems []T
+		for _, dbi := range dbItems {
+			if getTimestamp(dbi).After(time.Now().UTC().Add(-dbCacheTTL)) {
+				freshItems = append(freshItems, modelConverter(dbi, location))
 			}
 		}
-		if len(cachedWeather) > 0 {
-			if cacheErr := cfg.cache.Set(ctx, cacheKey, cachedWeather, redisCurrentWeatherCacheTTL); cacheErr != nil {
-				log.Printf("Error setting current weather to Redis: %v", cacheErr)
+
+		if len(freshItems) > 0 {
+			if cacheErr := cfg.cache.Set(ctx, cacheKey, freshItems, redisCacheTTL); cacheErr != nil {
+				log.Printf("Error setting %s to Redis: %v", cacheKeyPrefix, cacheErr)
 			}
-			return cachedWeather, nil
+			return freshItems, nil
 		}
 	}
 
-	weather, err := cfg.requestCurrentWeather(location)
+	// 3. Fetch from API
+	apiItems, err := apiFetcher(location)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch current weather: %w", err)
+		return nil, fmt.Errorf("could not fetch %s: %w", cacheKeyPrefix, err)
 	}
 
-	cfg.persistCurrentWeather(ctx, weather)
-	if cacheErr := cfg.cache.Set(ctx, cacheKey, weather, redisCurrentWeatherCacheTTL); cacheErr != nil {
-		log.Printf("Error setting current weather to Redis after API fetch: %v", cacheErr)
+	persister(ctx, apiItems)
+	if cacheErr := cfg.cache.Set(ctx, cacheKey, apiItems, redisCacheTTL); cacheErr != nil {
+		log.Printf("Error setting %s to Redis after API fetch: %v", cacheKeyPrefix, cacheErr)
 	}
 
-	return weather, nil
+	return apiItems, nil
+}
+
+// getCachedOrFetchCurrentWeather checks for fresh cached data and fetches from APIs if it's stale or missing.
+func (cfg *apiConfig) getCachedOrFetchCurrentWeather(ctx context.Context, location Location) ([]CurrentWeather, error) {
+	return getCachedOrFetch[CurrentWeather, database.CurrentWeather](
+		cfg,
+		ctx,
+		location,
+		"currentweather",
+		weatherCacheTTL,
+		redisCurrentWeatherCacheTTL,
+		cfg.dbQueries.GetCurrentWeatherAtLocation,
+		cfg.requestCurrentWeather,
+		cfg.persistCurrentWeather,
+		databaseCurrentWeatherToCurrentWeather,
+		func(d database.CurrentWeather) time.Time {
+			return d.UpdatedAt
+		},
+	)
 }
 
 // getCachedOrFetchDailyForecast checks for fresh cached data and fetches from APIs if it's stale or missing.
 func (cfg *apiConfig) getCachedOrFetchDailyForecast(ctx context.Context, location Location) ([]DailyForecast, error) {
-	cacheKey := fmt.Sprintf("dailyforecast:%s", location.LocationID.String())
-	cachedData, err := cfg.cache.Get(ctx, cacheKey)
-	if err == nil {
-		var forecast []DailyForecast
-		jsonErr := json.Unmarshal([]byte(cachedData), &forecast)
-		if jsonErr == nil {
-			return forecast, nil
-		}
-		log.Printf("Error unmarshalling daily forecast from Redis: %v", jsonErr)
-	} else if err != redis.Nil {
-		log.Printf("Error getting daily forecast from Redis: %v", err)
-	}
-
-	dbForecasts, err := cfg.dbQueries.GetAllDailyForecastsAtLocation(ctx, location.LocationID)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("database error when fetching daily forecast: %w", err)
-	}
-
-	if err == nil {
-		var cachedForecasts []DailyForecast
-		isCacheFresh := false
-		for _, dbf := range dbForecasts {
-			if dbf.UpdatedAt.After(time.Now().UTC().Add(-dailyForecastCacheTTL)) {
-				isCacheFresh = true
-			}
-			cachedForecasts = append(cachedForecasts, databaseDailyForecastToDailyForecast(dbf, location))
-		}
-
-		if isCacheFresh && len(cachedForecasts) > 0 {
-			if cacheErr := cfg.cache.Set(ctx, cacheKey, cachedForecasts, redisDailyForecastCacheTTL); cacheErr != nil {
-				log.Printf("Error setting daily forecast to Redis: %v", cacheErr)
-			}
-			return cachedForecasts, nil
-		}
-	}
-
-	forecast, err := cfg.requestDailyForecast(location)
-	if err != nil {
-		return nil, fmt.Errorf("could not fetch daily forecast: %w", err)
-	}
-
-	cfg.persistDailyForecast(ctx, forecast)
-	if cacheErr := cfg.cache.Set(ctx, cacheKey, forecast, redisDailyForecastCacheTTL); cacheErr != nil {
-		log.Printf("Error setting daily forecast to Redis after API fetch: %v", cacheErr)
-	}
-
-	return forecast, nil
+	return getCachedOrFetch(
+		cfg,
+		ctx,
+		location,
+		"dailyforecast",
+		dailyForecastCacheTTL,
+		redisDailyForecastCacheTTL,
+		cfg.dbQueries.GetAllDailyForecastsAtLocation,
+		cfg.requestDailyForecast,
+		cfg.persistDailyForecast,
+		databaseDailyForecastToDailyForecast,
+		func(d database.DailyForecast) time.Time {
+			return d.UpdatedAt
+		},
+	)
 }
 
 // getCachedOrFetchHourlyForecast checks for fresh cached data and fetches from APIs if it's stale or missing.
 func (cfg *apiConfig) getCachedOrFetchHourlyForecast(ctx context.Context, location Location) ([]HourlyForecast, error) {
-	cacheKey := fmt.Sprintf("hourlyforecast:%s", location.LocationID.String())
-	cachedData, err := cfg.cache.Get(ctx, cacheKey)
-	if err == nil {
-		var forecast []HourlyForecast
-		jsonErr := json.Unmarshal([]byte(cachedData), &forecast)
-		if jsonErr == nil {
-			return forecast, nil
-		}
-		log.Printf("Error unmarshalling hourly forecast from Redis: %v", jsonErr)
-	} else if err != redis.Nil {
-		log.Printf("Error getting hourly forecast from Redis: %v", err)
-	}
-
-	dbForecasts, err := cfg.dbQueries.GetAllHourlyForecastsAtLocation(ctx, location.LocationID)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("database error when fetching hourly forecast: %w", err)
-	}
-
-	if err == nil {
-		var cachedForecasts []HourlyForecast
-		isCacheFresh := false
-		for _, dbf := range dbForecasts {
-			if dbf.UpdatedAt.After(time.Now().UTC().Add(-hourlyForecastCacheTTL)) {
-				isCacheFresh = true
-			}
-			cachedForecasts = append(cachedForecasts, databaseHourlyForecastToHourlyForecast(dbf, location))
-		}
-
-		if isCacheFresh && len(cachedForecasts) > 0 {
-			if cacheErr := cfg.cache.Set(ctx, cacheKey, cachedForecasts, redisHourlyForecastCacheTTL); cacheErr != nil {
-				log.Printf("Error setting hourly forecast to Redis: %v", cacheErr)
-			}
-			return cachedForecasts, nil
-		}
-	}
-
-	forecast, err := cfg.requestHourlyForecast(location)
-	if err != nil {
-		return nil, fmt.Errorf("could not fetch hourly forecast: %w", err)
-	}
-
-	cfg.persistHourlyForecast(ctx, forecast)
-	if cacheErr := cfg.cache.Set(ctx, cacheKey, forecast, redisHourlyForecastCacheTTL); cacheErr != nil {
-		log.Printf("Error setting hourly forecast to Redis after API fetch: %v", cacheErr)
-	}
-
-	return forecast, nil
+	return getCachedOrFetch(
+		cfg,
+		ctx,
+		location,
+		"hourlyforecast",
+		hourlyForecastCacheTTL,
+		redisHourlyForecastCacheTTL,
+		cfg.dbQueries.GetAllHourlyForecastsAtLocation,
+		cfg.requestHourlyForecast,
+		cfg.persistHourlyForecast,
+		databaseHourlyForecastToHourlyForecast,
+		func(d database.HourlyForecast) time.Time {
+			return d.UpdatedAt
+		},
+	)
 }
 
 // upsertWeatherItem is a generic helper for the "upsert" (update or insert) logic.

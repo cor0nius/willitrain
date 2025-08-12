@@ -54,6 +54,278 @@ func TestGetCachedOrFetchCurrentWeather_RedisHit(t *testing.T) {
 	}
 }
 
+func TestGetCachedOrFetchDailyForecast_RedisHit(t *testing.T) {
+	ctx := context.Background()
+	location := Location{LocationID: uuid.New(), CityName: "Testville"}
+	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+	expectedForecast := []DailyForecast{
+		{
+			Location:            location,
+			SourceAPI:           "TestCacheAPI",
+			Timestamp:           fixedTime,
+			ForecastDate:        time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+			MinTemp:             5.0,
+			MaxTemp:             15.0,
+			Precipitation:       1.2,
+			PrecipitationChance: 30,
+			WindSpeed:           10.0,
+			Humidity:            80,
+		},
+	}
+	expectedData, err := json.Marshal(expectedForecast)
+	if err != nil {
+		t.Fatalf("failed to marshal expected forecast: %v", err)
+	}
+
+	cache := &mockCache{
+		getFunc: func(ctx context.Context, key string) (string, error) {
+			return string(expectedData), nil
+		},
+	}
+
+	cfg := &apiConfig{
+		cache:     cache,
+		dbQueries: &mockFailingQuerier{t: t},
+	}
+
+	forecast, err := cfg.getCachedOrFetchDailyForecast(ctx, location)
+	if err != nil {
+		t.Fatalf("getCachedOrFetchDailyForecast returned an unexpected error: %v", err)
+	}
+
+	if !reflect.DeepEqual(forecast, expectedForecast) {
+		t.Errorf("returned forecast does not match expected forecast.\nGot: %v\nWant: %v", forecast, expectedForecast)
+	}
+}
+
+func TestGetCachedOrFetchDailyForecast_DBHit(t *testing.T) {
+	ctx := context.Background()
+	location := Location{LocationID: uuid.New(), CityName: "Testville"}
+	fixedTime := time.Now().UTC() // Use current time for freshness check
+
+	dbForecasts := []database.DailyForecast{
+		{
+			ID:                         uuid.New(),
+			LocationID:                 location.LocationID,
+			SourceApi:                  "TestDB_API",
+			UpdatedAt:                  fixedTime,
+			ForecastDate:               time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+			MinTempC:                   sql.NullFloat64{Float64: 5.0, Valid: true},
+			MaxTempC:                   sql.NullFloat64{Float64: 15.0, Valid: true},
+			PrecipitationMm:            sql.NullFloat64{Float64: 1.2, Valid: true},
+			PrecipitationChancePercent: sql.NullInt32{Int32: 30, Valid: true},
+			WindSpeedKmh:               sql.NullFloat64{Float64: 10.0, Valid: true},
+			Humidity:                   sql.NullInt32{Int32: 80, Valid: true},
+		},
+	}
+	expectedForecast := []DailyForecast{
+		databaseDailyForecastToDailyForecast(dbForecasts[0], location),
+	}
+
+	cache := &mockCache{
+		getFunc: func(ctx context.Context, key string) (string, error) {
+			return "", redis.Nil
+		},
+	}
+
+	db := &mockQuerierForDailyDBHit{
+		mockFailingQuerier: mockFailingQuerier{t: t},
+		forecastToReturn:   dbForecasts,
+	}
+
+	cfg := &apiConfig{
+		cache:     cache,
+		dbQueries: db,
+	}
+
+	forecast, err := cfg.getCachedOrFetchDailyForecast(ctx, location)
+	if err != nil {
+		t.Fatalf("getCachedOrFetchDailyForecast returned an unexpected error: %v", err)
+	}
+
+	forecast[0].Timestamp = expectedForecast[0].Timestamp
+	if !reflect.DeepEqual(forecast, expectedForecast) {
+		t.Errorf("returned forecast does not match expected forecast.\nGot: %v\nWant: %v", forecast, expectedForecast)
+	}
+}
+
+func TestGetCachedOrFetchHourlyForecast_RedisHit(t *testing.T) {
+	ctx := context.Background()
+	location := Location{LocationID: uuid.New(), CityName: "Testville"}
+	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+	expectedForecast := []HourlyForecast{
+		{
+			Location:            location,
+			SourceAPI:           "TestCacheAPI",
+			Timestamp:           fixedTime,
+			ForecastDateTime:    time.Date(2024, 1, 1, 13, 0, 0, 0, time.UTC),
+			Temperature:         10.0,
+			Humidity:            75,
+			WindSpeed:           15.0,
+			Precipitation:       0.5,
+			PrecipitationChance: 40,
+			Condition:           "Cloudy",
+		},
+	}
+	expectedData, err := json.Marshal(expectedForecast)
+	if err != nil {
+		t.Fatalf("failed to marshal expected forecast: %v", err)
+	}
+
+	cache := &mockCache{
+		getFunc: func(ctx context.Context, key string) (string, error) {
+			return string(expectedData), nil
+		},
+	}
+
+	cfg := &apiConfig{
+		cache:     cache,
+		dbQueries: &mockFailingQuerier{t: t},
+	}
+
+	forecast, err := cfg.getCachedOrFetchHourlyForecast(ctx, location)
+	if err != nil {
+		t.Fatalf("getCachedOrFetchHourlyForecast returned an unexpected error: %v", err)
+	}
+
+	if !reflect.DeepEqual(forecast, expectedForecast) {
+		t.Errorf("returned forecast does not match expected forecast.\nGot: %v\nWant: %v", forecast, expectedForecast)
+	}
+}
+
+func TestGetCachedOrFetchHourlyForecast_DBHit(t *testing.T) {
+	ctx := context.Background()
+	location := Location{LocationID: uuid.New(), CityName: "Testville"}
+	fixedTime := time.Now().UTC() // Use current time for freshness check
+
+	dbForecasts := []database.HourlyForecast{
+		{
+			ID:                         uuid.New(),
+			LocationID:                 location.LocationID,
+			SourceApi:                  "TestDB_API",
+			UpdatedAt:                  fixedTime,
+			ForecastDatetimeUtc:        time.Date(2024, 1, 1, 13, 0, 0, 0, time.UTC),
+			TemperatureC:               sql.NullFloat64{Float64: 10.0, Valid: true},
+			Humidity:                   sql.NullInt32{Int32: 75, Valid: true},
+			WindSpeedKmh:               sql.NullFloat64{Float64: 15.0, Valid: true},
+			PrecipitationMm:            sql.NullFloat64{Float64: 0.5, Valid: true},
+			PrecipitationChancePercent: sql.NullInt32{Int32: 40, Valid: true},
+			ConditionText:              sql.NullString{String: "Cloudy", Valid: true},
+		},
+	}
+	expectedForecast := []HourlyForecast{
+		databaseHourlyForecastToHourlyForecast(dbForecasts[0], location),
+	}
+
+	// 1. Mock Cache should miss
+	cache := &mockCache{
+		getFunc: func(ctx context.Context, key string) (string, error) {
+			return "", redis.Nil
+		},
+	}
+
+	// 2. Mock DB should return fresh data
+	db := &mockQuerierForHourlyDBHit{
+		mockFailingQuerier: mockFailingQuerier{t: t},
+		forecastToReturn:   dbForecasts,
+	}
+
+	// 3. API call should not happen.
+	cfg := &apiConfig{
+		cache:     cache,
+		dbQueries: db,
+	}
+
+	forecast, err := cfg.getCachedOrFetchHourlyForecast(ctx, location)
+	if err != nil {
+		t.Fatalf("getCachedOrFetchHourlyForecast returned an unexpected error: %v", err)
+	}
+
+	if cache.getCalls != 1 {
+		t.Errorf("expected 1 call to cache.Get, got %d", cache.getCalls)
+	}
+	if cache.setCalls != 1 {
+		t.Errorf("expected 1 call to cache.Set to warm the cache, got %d", cache.setCalls)
+	}
+	if !reflect.DeepEqual(forecast, expectedForecast) {
+		t.Errorf("returned forecast does not match expected forecast.\nGot: %v\nWant: %v", forecast, expectedForecast)
+	}
+}
+
+func TestGetCachedOrFetchHourlyForecast_APIFetch(t *testing.T) {
+	ctx := context.Background()
+	location := Location{LocationID: uuid.New(), CityName: "Testville", Latitude: 51.11, Longitude: 17.04}
+
+	// --- Setup Mock API Server ---
+	gmpData, err := testData.ReadFile("testdata/hourly_forecast_gmp.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	owmData, err := testData.ReadFile("testdata/hourly_forecast_owm.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ometeoData, err := testData.ReadFile("testdata/hourly_forecast_ometeo.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if strings.Contains(r.URL.Path, "/gmp") {
+			w.Write(gmpData)
+		} else if strings.Contains(r.URL.Path, "/owm") {
+			w.Write(owmData)
+		} else if strings.Contains(r.URL.Path, "/ometeo") {
+			w.Write(ometeoData)
+		}
+	}))
+	defer mockServer.Close()
+
+	// --- Setup Mocks ---
+	cache := &mockCache{
+		getFunc: func(ctx context.Context, key string) (string, error) {
+			return "", redis.Nil
+		},
+	}
+
+	db := &mockQuerierForHourlyAPIFetch{}
+
+	cfg := &apiConfig{
+		cache:            cache,
+		dbQueries:        db,
+		gmpWeatherURL:    mockServer.URL + "/gmp/",
+		owmWeatherURL:    mockServer.URL + "/owm?",
+		ometeoWeatherURL: mockServer.URL + "/ometeo?",
+		httpClient:       mockServer.Client(),
+		gmpKey:           "dummy",
+		owmKey:           "dummy",
+	}
+
+	forecast, err := cfg.getCachedOrFetchHourlyForecast(ctx, location)
+	if err != nil {
+		t.Fatalf("getCachedOrFetchHourlyForecast returned an unexpected error: %v", err)
+	}
+
+	if cache.getCalls != 1 {
+		t.Errorf("expected 1 call to cache.Get, got %d", cache.getCalls)
+	}
+	if cache.setCalls != 1 {
+		t.Errorf("expected 1 call to cache.Set, got %d", cache.setCalls)
+	}
+	if db.getHourlyForecastCalls != 1 {
+		t.Errorf("expected 1 call to GetAllHourlyForecastsAtLocation, got %d", db.getHourlyForecastCalls)
+	}
+	// Each of the 3 APIs returns 24 hours of data.
+	expectedCreateCalls := 24 * 3
+	if db.createHourlyForecastCalls != expectedCreateCalls {
+		t.Errorf("expected %d calls to CreateHourlyForecast, got %d", expectedCreateCalls, db.createHourlyForecastCalls)
+	}
+	if len(forecast) != expectedCreateCalls {
+		t.Errorf("expected %d forecast results from APIs, got %d", expectedCreateCalls, len(forecast))
+	}
+}
+
 func TestGetCachedOrFetchCurrentWeather_DBHit(t *testing.T) {
 	ctx := context.Background()
 	location := Location{LocationID: uuid.New(), CityName: "Testville"}
@@ -108,6 +380,81 @@ func TestGetCachedOrFetchCurrentWeather_DBHit(t *testing.T) {
 	weather[0].Timestamp = expectedWeather[0].Timestamp
 	if !reflect.DeepEqual(weather, expectedWeather) {
 		t.Errorf("returned weather does not match expected weather.\nGot: %v\nWant: %v", weather, expectedWeather)
+	}
+}
+
+func TestGetCachedOrFetchDailyForecast_APIFetch(t *testing.T) {
+	ctx := context.Background()
+	location := Location{LocationID: uuid.New(), CityName: "Testville", Latitude: 51.11, Longitude: 17.04}
+
+	// --- Setup Mock API Server ---
+	gmpData, err := testData.ReadFile("testdata/daily_forecast_gmp.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	owmData, err := testData.ReadFile("testdata/daily_forecast_owm.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ometeoData, err := testData.ReadFile("testdata/daily_forecast_ometeo.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if strings.Contains(r.URL.Path, "/gmp") {
+			w.Write(gmpData)
+		} else if strings.Contains(r.URL.Path, "/owm") {
+			w.Write(owmData)
+		} else if strings.Contains(r.URL.Path, "/ometeo") {
+			w.Write(ometeoData)
+		}
+	}))
+	defer mockServer.Close()
+
+	// --- Setup Mocks ---
+	cache := &mockCache{
+		getFunc: func(ctx context.Context, key string) (string, error) {
+			return "", redis.Nil
+		},
+	}
+
+	db := &mockQuerierForDailyAPIFetch{}
+
+	cfg := &apiConfig{
+		cache:            cache,
+		dbQueries:        db,
+		gmpWeatherURL:    mockServer.URL + "/gmp/",
+		owmWeatherURL:    mockServer.URL + "/owm?",
+		ometeoWeatherURL: mockServer.URL + "/ometeo?",
+		httpClient:       mockServer.Client(),
+		gmpKey:           "dummy",
+		owmKey:           "dummy",
+	}
+
+	forecast, err := cfg.getCachedOrFetchDailyForecast(ctx, location)
+	if err != nil {
+		t.Fatalf("getCachedOrFetchDailyForecast returned an unexpected error: %v", err)
+	}
+
+	if cache.getCalls != 1 {
+		t.Errorf("expected 1 call to cache.Get, got %d", cache.getCalls)
+	}
+	if cache.setCalls != 1 {
+		t.Errorf("expected 1 call to cache.Set, got %d", cache.setCalls)
+	}
+	if db.getDailyForecastCalls != 1 {
+		t.Errorf("expected 1 call to GetAllDailyForecastsAtLocation, got %d", db.getDailyForecastCalls)
+	}
+	// The test data files contain 5, 8, and 7 days of forecasts respectively.
+	// Our parsers limit this to 5 days each. So 5 * 3 = 15.
+	expectedCreateCalls := 5 * 3
+	if db.createDailyForecastCalls != expectedCreateCalls {
+		t.Errorf("expected %d calls to CreateDailyForecast, got %d", expectedCreateCalls, db.createDailyForecastCalls)
+	}
+	if len(forecast) != expectedCreateCalls {
+		t.Errorf("expected %d forecast results from APIs, got %d", expectedCreateCalls, len(forecast))
 	}
 }
 
@@ -304,6 +651,26 @@ func (m *mockQuerierForDBHit) GetCurrentWeatherAtLocation(ctx context.Context, l
 	return m.weatherToReturn, nil
 }
 
+type mockQuerierForDailyDBHit struct {
+	mockFailingQuerier
+	forecastToReturn []database.DailyForecast
+}
+
+func (m *mockQuerierForDailyDBHit) GetAllDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.DailyForecast, error) {
+	return m.forecastToReturn, nil
+}
+
+type mockQuerierForHourlyDBHit struct {
+	mockFailingQuerier
+	forecastToReturn           []database.HourlyForecast
+	getAllHourlyForecastsCalls int
+}
+
+func (m *mockQuerierForHourlyDBHit) GetAllHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.HourlyForecast, error) {
+	m.getAllHourlyForecastsCalls++
+	return m.forecastToReturn, nil
+}
+
 type mockQuerierForAPIFetch struct {
 	mockFailingQuerier
 	createCurrentWeatherCalls int
@@ -320,4 +687,50 @@ func (m *mockQuerierForAPIFetch) GetCurrentWeatherAtLocationFromAPI(ctx context.
 func (m *mockQuerierForAPIFetch) CreateCurrentWeather(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error) {
 	m.createCurrentWeatherCalls++
 	return database.CurrentWeather{}, nil
+}
+
+type mockQuerierForDailyAPIFetch struct {
+	mockFailingQuerier
+	createDailyForecastCalls int
+	getDailyForecastCalls    int
+}
+
+func (m *mockQuerierForDailyAPIFetch) GetAllDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.DailyForecast, error) {
+	m.getDailyForecastCalls++
+	return nil, sql.ErrNoRows
+}
+
+func (m *mockQuerierForDailyAPIFetch) GetDailyForecastAtLocationAndDateFromAPI(ctx context.Context, arg database.GetDailyForecastAtLocationAndDateFromAPIParams) (database.DailyForecast, error) {
+	// This simulates a miss when checking if a forecast for a specific day/API already exists,
+	// which then triggers a Create call.
+	return database.DailyForecast{}, sql.ErrNoRows
+}
+
+func (m *mockQuerierForDailyAPIFetch) CreateDailyForecast(ctx context.Context, arg database.CreateDailyForecastParams) (database.DailyForecast, error) {
+	m.createDailyForecastCalls++
+	// Return a dummy forecast to satisfy the interface, the return value isn't used in the calling code.
+	return database.DailyForecast{}, nil
+}
+
+type mockQuerierForHourlyAPIFetch struct {
+	mockFailingQuerier
+	createHourlyForecastCalls int
+	getHourlyForecastCalls    int
+}
+
+func (m *mockQuerierForHourlyAPIFetch) GetAllHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.HourlyForecast, error) {
+	m.getHourlyForecastCalls++
+	return nil, sql.ErrNoRows
+}
+
+func (m *mockQuerierForHourlyAPIFetch) GetHourlyForecastAtLocationAndTimeFromAPI(ctx context.Context, arg database.GetHourlyForecastAtLocationAndTimeFromAPIParams) (database.HourlyForecast, error) {
+	// This simulates a miss when checking if a forecast for a specific day/API already exists,
+	// which then triggers a Create call.
+	return database.HourlyForecast{}, sql.ErrNoRows
+}
+
+func (m *mockQuerierForHourlyAPIFetch) CreateHourlyForecast(ctx context.Context, arg database.CreateHourlyForecastParams) (database.HourlyForecast, error) {
+	m.createHourlyForecastCalls++
+	// Return a dummy forecast to satisfy the interface, the return value isn't used in the calling code.
+	return database.HourlyForecast{}, nil
 }
