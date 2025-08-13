@@ -5,7 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
+	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/cor0nius/willitrain/internal/database"
@@ -42,12 +43,57 @@ func (cfg *apiConfig) getOrCreateLocation(ctx context.Context, cityName string) 
 
 	persistedLocation, createErr := cfg.dbQueries.CreateLocation(ctx, locationToCreateLocationParams(geocodedLocation))
 	if createErr != nil {
-		log.Printf("Could not persist new location %s: %v", cityName, createErr)
+		cfg.logger.Error("could not persist new location", "city", cityName, "error", createErr)
 	} else {
 		geocodedLocation.LocationID = persistedLocation.ID
 	}
 
 	return geocodedLocation, nil
+}
+
+func (cfg *apiConfig) getLocationFromRequest(r *http.Request) (Location, error) {
+	ctx := r.Context()
+	cityName := r.URL.Query().Get("city")
+	latStr := r.URL.Query().Get("lat")
+	lonStr := r.URL.Query().Get("lon")
+
+	if cityName != "" {
+		return cfg.getOrCreateLocation(ctx, cityName)
+	}
+
+	if latStr != "" && lonStr != "" {
+		lat, err := strconv.ParseFloat(latStr, 64)
+		if err != nil {
+			return Location{}, fmt.Errorf("invalid latitude: %v", err)
+		}
+
+		lon, err := strconv.ParseFloat(lonStr, 64)
+		if err != nil {
+			return Location{}, fmt.Errorf("invalid longitude: %v", err)
+		}
+
+		location, err := cfg.ReverseGeocode(lat, lon)
+		if err != nil {
+			return Location{}, fmt.Errorf("could not reverse geocode coordinates: %w", err)
+		}
+
+		dbLocation, err := cfg.dbQueries.GetLocationByName(ctx, location.CityName)
+		if err == nil {
+			return databaseLocationToLocation(dbLocation), nil
+		}
+		if err != sql.ErrNoRows {
+			return Location{}, fmt.Errorf("database error when fetching location by name: %w", err)
+		}
+
+		persistedLocation, createErr := cfg.dbQueries.CreateLocation(ctx, locationToCreateLocationParams(location))
+		if createErr != nil {
+			return Location{}, fmt.Errorf("could not persist new location %s: %w", location.CityName, createErr)
+		}
+		location.LocationID = persistedLocation.ID
+		return location, nil
+	}
+
+	return Location{}, fmt.Errorf("either city or lat/lon query parameters are required")
 }
 
 type apiModel interface {
@@ -80,11 +126,12 @@ func getCachedOrFetch[T apiModel, D dbModel](
 		var items []T
 		jsonErr := json.Unmarshal([]byte(cachedData), &items)
 		if jsonErr == nil {
+			cfg.logger.Debug("cache hit", "key", cacheKey)
 			return items, nil
 		}
-		log.Printf("Error unmarshalling %s from Redis: %v", cacheKeyPrefix, jsonErr)
+		cfg.logger.Warn("error unmarshalling from redis", "key", cacheKey, "error", jsonErr)
 	} else if err != redis.Nil {
-		log.Printf("Error getting %s from Redis: %v", cacheKeyPrefix, err)
+		cfg.logger.Warn("error getting from redis", "key", cacheKey, "error", err)
 	}
 
 	// 2. Check Database cache
@@ -102,8 +149,9 @@ func getCachedOrFetch[T apiModel, D dbModel](
 		}
 
 		if len(freshItems) > 0 {
+			cfg.logger.Debug("db cache hit", "key", cacheKey)
 			if cacheErr := cfg.cache.Set(ctx, cacheKey, freshItems, redisCacheTTL); cacheErr != nil {
-				log.Printf("Error setting %s to Redis: %v", cacheKeyPrefix, cacheErr)
+				cfg.logger.Warn("error setting to redis", "key", cacheKey, "error", cacheErr)
 			}
 			return freshItems, nil
 		}
@@ -114,10 +162,13 @@ func getCachedOrFetch[T apiModel, D dbModel](
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch %s: %w", cacheKeyPrefix, err)
 	}
+	cfg.logger.Debug("api fetch successful", "key", cacheKey)
 
 	persister(ctx, apiItems)
 	if cacheErr := cfg.cache.Set(ctx, cacheKey, apiItems, redisCacheTTL); cacheErr != nil {
-		log.Printf("Error setting %s to Redis after API fetch: %v", cacheKeyPrefix, cacheErr)
+		cfg.logger.Warn("error setting to redis after api fetch", "key", cacheKey, "error", cacheErr)
+	} else {
+		cfg.logger.Debug("set to cache", "key", cacheKey)
 	}
 
 	return apiItems, nil
@@ -125,7 +176,7 @@ func getCachedOrFetch[T apiModel, D dbModel](
 
 // getCachedOrFetchCurrentWeather checks for fresh cached data and fetches from APIs if it's stale or missing.
 func (cfg *apiConfig) getCachedOrFetchCurrentWeather(ctx context.Context, location Location) ([]CurrentWeather, error) {
-	return getCachedOrFetch[CurrentWeather, database.CurrentWeather](
+	return getCachedOrFetch(
 		cfg,
 		ctx,
 		location,
@@ -193,17 +244,22 @@ func (cfg *apiConfig) upsertWeatherItem(
 	existing, err := getItemFunc()
 	if err != nil {
 		if err == sql.ErrNoRows {
-			if _, createErr := createItemFunc(); createErr != nil {
-				log.Printf("Error creating cache for %s at %s from %s: %v", logInfo["type"], logInfo["location"], logInfo["api"], createErr)
+			_, createErr := createItemFunc()
+			if createErr != nil {
+				cfg.logger.Error("error creating cache", "type", logInfo["type"], "location", logInfo["location"], "api", logInfo["api"], "error", createErr)
+			} else {
+				cfg.logger.Debug("created cache item", "type", logInfo["type"], "location", logInfo["location"], "api", logInfo["api"])
 			}
 		} else {
-			log.Printf("Error getting cache for %s at %s from %s: %v", logInfo["type"], logInfo["location"], logInfo["api"], err)
+			cfg.logger.Error("error getting cache", "type", logInfo["type"], "location", logInfo["location"], "api", logInfo["api"], "error", err)
 		}
 		return
 	}
 
 	if _, updateErr := updateItemFunc(existing); updateErr != nil {
-		log.Printf("Error updating cache for %s at %s from %s: %v", logInfo["type"], logInfo["location"], logInfo["api"], updateErr)
+		cfg.logger.Error("error updating cache", "type", logInfo["type"], "location", logInfo["location"], "api", logInfo["api"], "error", updateErr)
+	} else {
+		cfg.logger.Debug("updated cache item", "type", logInfo["type"], "location", logInfo["location"], "api", logInfo["api"])
 	}
 }
 

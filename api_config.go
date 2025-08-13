@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -31,95 +31,110 @@ type apiConfig struct {
 	schedulerDailyInterval   time.Duration
 	port                     string
 	devMode                  bool
+	logger                   *slog.Logger
 }
 
 // getRequiredEnv retrieves an environment variable by key, and fatals if it's not set.
-func getRequiredEnv(key string) string {
+func getRequiredEnv(key string, logger *slog.Logger) string {
 	val, ok := os.LookupEnv(key)
 	if !ok {
-		log.Fatalf("Environment variable %s must be set", key)
+		logger.Error("environment variable must be set", "key", key)
+		os.Exit(1)
 	}
 	return val
 }
 
 // getEnv retrieves an environment variable by key, with a fallback value.
-func getEnv(key, fallback string) string {
+func getEnv(key, fallback string, logger *slog.Logger) string {
 	if val, ok := os.LookupEnv(key); ok {
 		return val
 	}
-	log.Printf("%s not set, defaulting to %s", key, fallback)
+	logger.Info("environment variable not set, using fallback", "key", key, "fallback", fallback)
 	return fallback
 }
 
 // getEnvAsInt retrieves an environment variable as an integer, with a fallback value.
-func getEnvAsInt(key string, fallback int) int {
+func getEnvAsInt(key string, fallback int, logger *slog.Logger) int {
 	valStr, ok := os.LookupEnv(key)
 	if !ok {
-		log.Printf("%s not set, defaulting to %d", key, fallback)
+		logger.Info("environment variable not set, using fallback", "key", key, "fallback", fallback)
 		return fallback
 	}
 	val, err := strconv.Atoi(valStr)
 	if err != nil {
-		log.Printf("%s is not a valid integer, defaulting to %d: %v", key, fallback, err)
+		logger.Warn("invalid integer value for environment variable, using fallback", "key", key, "value", valStr, "error", err)
 		return fallback
 	}
 	return val
 }
 
 func config() *apiConfig {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, relying on environment variables")
+	devModeStr := os.Getenv("DEV_MODE")
+	devMode, err := strconv.ParseBool(devModeStr)
+	if err != nil {
+		devMode = false
 	}
 
-	dbURL := getRequiredEnv("DB_URL")
+	var logger *slog.Logger
+	if devMode {
+		logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		}))
+	} else {
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	}
+
+	if err := godotenv.Load(); err != nil {
+		logger.Info("no .env file found, relying on environment variables")
+	}
+
+	dbURL := getRequiredEnv("DB_URL", logger)
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		log.Fatalf("Couldn't prepare connection to database: %v", err)
+		logger.Error("couldn't prepare connection to database", "error", err)
+		os.Exit(1)
 	}
 	if err := db.Ping(); err != nil {
-		log.Fatalf("Couldn't connect to database: %v", err)
+		logger.Error("couldn't connect to database", "error", err)
+		os.Exit(1)
 	}
 	dbQueries := database.New(db)
 
-	redisURL := getRequiredEnv("REDIS_URL")
+	redisURL := getRequiredEnv("REDIS_URL", logger)
 	opt, err := redis.ParseURL(redisURL)
 	if err != nil {
-		log.Fatalf("Could not parse Redis URL: %v", err)
+		logger.Error("could not parse Redis URL", "error", err)
+		os.Exit(1)
 	}
 	redisClient := redis.NewClient(opt)
 	if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
-		log.Fatalf("Could not connect to Redis: %v", err)
+		logger.Error("could not connect to Redis", "error", err)
+		os.Exit(1)
 	}
 	cache := NewRedisCache(redisClient)
 
-	currentIntervalMin := getEnvAsInt("CURRENT_INTERVAL_MIN", 10)
-	hourlyIntervalMin := getEnvAsInt("HOURLY_INTERVAL_MIN", 60)
-	dailyIntervalMin := getEnvAsInt("DAILY_INTERVAL_MIN", 720)
-
-	devModeStr := getEnv("DEV_MODE", "false")
-	devMode, err := strconv.ParseBool(devModeStr)
-	if err != nil {
-		log.Printf("Invalid value for DEV_MODE: %s, defaulting to false", devModeStr)
-		devMode = false
-	}
+	currentIntervalMin := getEnvAsInt("CURRENT_INTERVAL_MIN", 10, logger)
+	hourlyIntervalMin := getEnvAsInt("HOURLY_INTERVAL_MIN", 60, logger)
+	dailyIntervalMin := getEnvAsInt("DAILY_INTERVAL_MIN", 720, logger)
 
 	cfg := apiConfig{
 		dbQueries:        dbQueries,
 		cache:            cache,
-		gmpGeocodeURL:    getRequiredEnv("GMP_GEOCODE_URL"),
-		gmpWeatherURL:    getRequiredEnv("GMP_WEATHER_URL"),
-		owmWeatherURL:    getRequiredEnv("OWM_WEATHER_URL"),
-		ometeoWeatherURL: getRequiredEnv("OMETEO_WEATHER_URL"),
-		gmpKey:           getRequiredEnv("GMP_KEY"),
-		owmKey:           getRequiredEnv("OWM_KEY"),
+		gmpGeocodeURL:    getRequiredEnv("GMP_GEOCODE_URL", logger),
+		gmpWeatherURL:    getRequiredEnv("GMP_WEATHER_URL", logger),
+		owmWeatherURL:    getRequiredEnv("OWM_WEATHER_URL", logger),
+		ometeoWeatherURL: getRequiredEnv("OMETEO_WEATHER_URL", logger),
+		gmpKey:           getRequiredEnv("GMP_KEY", logger),
+		owmKey:           getRequiredEnv("OWM_KEY", logger),
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 		schedulerCurrentInterval: time.Duration(currentIntervalMin) * time.Minute,
 		schedulerHourlyInterval:  time.Duration(hourlyIntervalMin) * time.Minute,
 		schedulerDailyInterval:   time.Duration(dailyIntervalMin) * time.Minute,
-		port:                     getEnv("PORT", "8080"),
+		port:                     getEnv("PORT", "8080", logger),
 		devMode:                  devMode,
+		logger:                   logger,
 	}
 
 	return &cfg

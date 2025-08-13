@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -733,4 +734,298 @@ func (m *mockQuerierForHourlyAPIFetch) CreateHourlyForecast(ctx context.Context,
 	m.createHourlyForecastCalls++
 	// Return a dummy forecast to satisfy the interface, the return value isn't used in the calling code.
 	return database.HourlyForecast{}, nil
+}
+
+type mockDBQuerier struct {
+	mockFailingQuerier
+	getLocationByNameFunc  func(ctx context.Context, cityName string) (database.Location, error)
+	createLocationFunc     func(ctx context.Context, arg database.CreateLocationParams) (database.Location, error)
+	getLocationByNameCalls int
+	createLocationCalls    int
+}
+
+func (m *mockDBQuerier) GetLocationByName(ctx context.Context, cityName string) (database.Location, error) {
+	m.getLocationByNameCalls++
+	if m.getLocationByNameFunc != nil {
+		return m.getLocationByNameFunc(ctx, cityName)
+	}
+	return database.Location{}, sql.ErrNoRows
+}
+
+func (m *mockDBQuerier) CreateLocation(ctx context.Context, arg database.CreateLocationParams) (database.Location, error) {
+	m.createLocationCalls++
+	if m.createLocationFunc != nil {
+		return m.createLocationFunc(ctx, arg)
+	}
+	return database.Location{ID: uuid.New(), CityName: arg.CityName, Latitude: arg.Latitude, Longitude: arg.Longitude, CountryCode: arg.CountryCode}, nil
+}
+
+func TestGetLocationFromRequest(t *testing.T) {
+	sampleDBLocation := database.Location{
+		ID:          uuid.New(),
+		CityName:    "Wroclaw",
+		Latitude:    51.10,
+		Longitude:   17.03,
+		CountryCode: "PL",
+	}
+	sampleLocation := databaseLocationToLocation(sampleDBLocation)
+
+	geocodedUUID := uuid.New()
+	sampleGeocodedDBLocation := database.Location{
+		ID:          geocodedUUID,
+		CityName:    "Wrocław",
+		Latitude:    51.1092948,
+		Longitude:   17.0386019,
+		CountryCode: "PL",
+	}
+	sampleGeocodedLocation := databaseLocationToLocation(sampleGeocodedDBLocation)
+
+	reverseGeocodedUUID := uuid.New()
+	sampleReverseGeocodedDBLocation := database.Location{
+		ID:          reverseGeocodedUUID,
+		CityName:    "Wrocław",
+		Latitude:    51.1100303,
+		Longitude:   17.039911,
+		CountryCode: "PL",
+	}
+	sampleReverseGeocodedLocation := databaseLocationToLocation(sampleReverseGeocodedDBLocation)
+
+	var geoServerHandler http.HandlerFunc
+	var geoServerCalls int
+	mockGeoServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		geoServerCalls++
+		if geoServerHandler != nil {
+			geoServerHandler(w, r)
+		}
+	}))
+	defer mockGeoServer.Close()
+
+	testCases := []struct {
+		name                  string
+		reqURL                string
+		setupMockDB           func(*mockDBQuerier)
+		setupGeoServer        func(http.ResponseWriter, *http.Request)
+		expectedLocation      Location
+		expectError           bool
+		expectedDBGetCalls    int
+		expectedDBCreateCalls int
+		expectedGeoCalls      int
+	}{
+		{
+			name:   "city lookup - db hit",
+			reqURL: "/?city=Wroclaw",
+			setupMockDB: func(db *mockDBQuerier) {
+				db.getLocationByNameFunc = func(ctx context.Context, cityName string) (database.Location, error) {
+					if cityName == "Wroclaw" {
+						return sampleDBLocation, nil
+					}
+					return database.Location{}, sql.ErrNoRows
+				}
+			},
+			setupGeoServer:        nil,
+			expectedLocation:      sampleLocation,
+			expectError:           false,
+			expectedDBGetCalls:    1,
+			expectedDBCreateCalls: 0,
+			expectedGeoCalls:      0,
+		},
+		{
+			name:   "city lookup - db miss",
+			reqURL: "/?city=Wroclaw",
+			setupMockDB: func(db *mockDBQuerier) {
+				db.getLocationByNameFunc = func(ctx context.Context, cityName string) (database.Location, error) {
+					return database.Location{}, sql.ErrNoRows
+				}
+				db.createLocationFunc = func(ctx context.Context, arg database.CreateLocationParams) (database.Location, error) {
+					if arg.CityName != "Wrocław" {
+						t.Errorf("expected city name 'Wrocław' for CreateLocation, got '%s'", arg.CityName)
+					}
+					return sampleGeocodedDBLocation, nil
+				}
+			},
+			setupGeoServer: func(w http.ResponseWriter, r *http.Request) {
+				data, err := testData.ReadFile("testdata/geocode_gmp.json")
+				if err != nil {
+					t.Fatalf("Failed to read test data: %v", err)
+				}
+				w.WriteHeader(http.StatusOK)
+				w.Write(data)
+			},
+			expectedLocation:      sampleGeocodedLocation,
+			expectError:           false,
+			expectedDBGetCalls:    1,
+			expectedDBCreateCalls: 1,
+			expectedGeoCalls:      1,
+		},
+		{
+			name:   "coordinate lookup - db hit",
+			reqURL: "/?lat=51.11&lon=17.04",
+			setupMockDB: func(db *mockDBQuerier) {
+				db.getLocationByNameFunc = func(ctx context.Context, cityName string) (database.Location, error) {
+					if cityName == "Wrocław" {
+						return sampleDBLocation, nil
+					}
+					return database.Location{}, sql.ErrNoRows
+				}
+			},
+			setupGeoServer: func(w http.ResponseWriter, r *http.Request) {
+				data, err := testData.ReadFile("testdata/reverse_geocode_gmp.json")
+				if err != nil {
+					t.Fatalf("Failed to read test data: %v", err)
+				}
+				w.WriteHeader(http.StatusOK)
+				w.Write(data)
+			},
+			expectedLocation:      sampleLocation,
+			expectError:           false,
+			expectedDBGetCalls:    1,
+			expectedDBCreateCalls: 0,
+			expectedGeoCalls:      1,
+		},
+		{
+			name:   "coordinate lookup - db miss",
+			reqURL: "/?lat=51.11&lon=17.04",
+			setupMockDB: func(db *mockDBQuerier) {
+				db.getLocationByNameFunc = func(ctx context.Context, cityName string) (database.Location, error) {
+					return database.Location{}, sql.ErrNoRows
+				}
+				db.createLocationFunc = func(ctx context.Context, arg database.CreateLocationParams) (database.Location, error) {
+					return sampleReverseGeocodedDBLocation, nil
+				}
+			},
+			setupGeoServer: func(w http.ResponseWriter, r *http.Request) {
+				data, err := testData.ReadFile("testdata/reverse_geocode_gmp.json")
+				if err != nil {
+					t.Fatalf("Failed to read test data: %v", err)
+				}
+				w.WriteHeader(http.StatusOK)
+				w.Write(data)
+			},
+			expectedLocation:      sampleReverseGeocodedLocation,
+			expectError:           false,
+			expectedDBGetCalls:    1,
+			expectedDBCreateCalls: 1,
+			expectedGeoCalls:      1,
+		},
+		{
+			name:                  "no parameters",
+			reqURL:                "/",
+			setupMockDB:           nil,
+			setupGeoServer:        nil,
+			expectedLocation:      Location{},
+			expectError:           true,
+			expectedDBGetCalls:    0,
+			expectedDBCreateCalls: 0,
+			expectedGeoCalls:      0,
+		},
+		{
+			name:                  "invalid coordinates",
+			reqURL:                "/?lat=abc&lon=def",
+			setupMockDB:           nil,
+			setupGeoServer:        nil,
+			expectedLocation:      Location{},
+			expectError:           true,
+			expectedDBGetCalls:    0,
+			expectedDBCreateCalls: 0,
+			expectedGeoCalls:      0,
+		},
+		{
+			name:   "geocoding api failure",
+			reqURL: "/?city=Wroclaw",
+			setupMockDB: func(db *mockDBQuerier) {
+				db.getLocationByNameFunc = func(ctx context.Context, cityName string) (database.Location, error) {
+					return database.Location{}, sql.ErrNoRows
+				}
+			},
+			setupGeoServer: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+			},
+			expectedLocation:      Location{},
+			expectError:           true,
+			expectedDBGetCalls:    1,
+			expectedDBCreateCalls: 0,
+			expectedGeoCalls:      1,
+		},
+		{
+			name:   "database get failure",
+			reqURL: "/?city=Wroclaw",
+			setupMockDB: func(db *mockDBQuerier) {
+				db.getLocationByNameFunc = func(ctx context.Context, cityName string) (database.Location, error) {
+					return database.Location{}, errors.New("db is down")
+				}
+			},
+			setupGeoServer:        nil,
+			expectedLocation:      Location{},
+			expectError:           true,
+			expectedDBGetCalls:    1,
+			expectedDBCreateCalls: 0,
+			expectedGeoCalls:      0,
+		},
+		{
+			name:   "database create failure",
+			reqURL: "/?lat=51.11&lon=17.04",
+			setupMockDB: func(db *mockDBQuerier) {
+				db.getLocationByNameFunc = func(ctx context.Context, cityName string) (database.Location, error) {
+					return database.Location{}, sql.ErrNoRows
+				}
+				db.createLocationFunc = func(ctx context.Context, arg database.CreateLocationParams) (database.Location, error) {
+					return database.Location{}, errors.New("db create failed")
+				}
+			},
+			setupGeoServer: func(w http.ResponseWriter, r *http.Request) {
+				data, err := testData.ReadFile("testdata/reverse_geocode_gmp.json")
+				if err != nil {
+					t.Fatalf("Failed to read test data: %v", err)
+				}
+				w.WriteHeader(http.StatusOK)
+				w.Write(data)
+			},
+			expectedLocation:      Location{},
+			expectError:           true,
+			expectedDBGetCalls:    1,
+			expectedDBCreateCalls: 1,
+			expectedGeoCalls:      1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dbMock := &mockDBQuerier{mockFailingQuerier: mockFailingQuerier{t: t}}
+			if tc.setupMockDB != nil {
+				tc.setupMockDB(dbMock)
+			}
+
+			geoServerHandler = tc.setupGeoServer
+			geoServerCalls = 0
+
+			cfg := &apiConfig{
+				dbQueries:     dbMock,
+				gmpGeocodeURL: mockGeoServer.URL + "/",
+				gmpKey:        "dummy-key",
+				httpClient:    mockGeoServer.Client(),
+			}
+
+			req := httptest.NewRequest("GET", tc.reqURL, nil)
+			location, err := cfg.getLocationFromRequest(req)
+
+			if tc.expectError && err == nil {
+				t.Fatal("expected an error, but got nil")
+			}
+			if !tc.expectError && err != nil {
+				t.Fatalf("did not expect an error, but got: %v", err)
+			}
+			if !reflect.DeepEqual(location, tc.expectedLocation) {
+				t.Errorf("unexpected location returned. got: %+v, want: %+v", location, tc.expectedLocation)
+			}
+			if dbMock.getLocationByNameCalls != tc.expectedDBGetCalls {
+				t.Errorf("expected %d calls to GetLocationByName, but got %d", tc.expectedDBGetCalls, dbMock.getLocationByNameCalls)
+			}
+			if dbMock.createLocationCalls != tc.expectedDBCreateCalls {
+				t.Errorf("expected %d calls to CreateLocation, but got %d", tc.expectedDBCreateCalls, dbMock.createLocationCalls)
+			}
+			if geoServerCalls != tc.expectedGeoCalls {
+				t.Errorf("expected %d calls to geo server, but got %d", tc.expectedGeoCalls, geoServerCalls)
+			}
+		})
+	}
 }
