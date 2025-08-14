@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -56,6 +58,7 @@ func TestRunCurrentWeatherJobs(t *testing.T) {
 		owmWeatherURL:    mockServer.URL + "/owm?",
 		ometeoWeatherURL: mockServer.URL + "/ometeo?",
 		httpClient:       mockServer.Client(),
+		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	// We can use short intervals for testing since we call the job directly.
@@ -125,6 +128,7 @@ func TestRunDailyForecastJobs(t *testing.T) {
 		owmWeatherURL:    mockServer.URL + "/owm?",
 		ometeoWeatherURL: mockServer.URL + "/ometeo?",
 		httpClient:       mockServer.Client(),
+		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	s := NewScheduler(cfg, 1*time.Minute, 1*time.Minute, 1*time.Minute)
@@ -190,6 +194,7 @@ func TestRunHourlyForecastJobs(t *testing.T) {
 		owmWeatherURL:    mockServer.URL + "/owm?",
 		ometeoWeatherURL: mockServer.URL + "/ometeo?",
 		httpClient:       mockServer.Client(),
+		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	s := NewScheduler(cfg, 1*time.Minute, 1*time.Minute, 1*time.Minute)
@@ -217,7 +222,9 @@ func TestRunHourlyForecastJobs(t *testing.T) {
 func TestScheduler_Ticks(t *testing.T) {
 	// --- Setup ---
 	// We don't need a real cfg, just a placeholder.
-	cfg := &apiConfig{}
+	cfg := &apiConfig{
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
 
 	currentChan := make(chan time.Time)
 	hourlyChan := make(chan time.Time)
@@ -299,7 +306,8 @@ func TestRunUpdateForLocations_DBError(t *testing.T) {
 
 	cfg := &apiConfig{
 		dbQueries: mockDB,
-		// No need for httpClient or API URLs as they shouldn't be called
+		logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+		// No need for httpClient or API URLs as they shouldn't be called.
 	}
 
 	// We can use a dummy scheduler instance since we're calling the method directly
@@ -312,7 +320,7 @@ func TestRunUpdateForLocations_DBError(t *testing.T) {
 	}
 
 	// --- Action ---
-	s.runUpdateForLocations(mockUpdateFunc)
+	s.runUpdateForLocations("test job", mockUpdateFunc)
 
 	// --- Assertions ---
 	if updateFuncCalled {
@@ -384,6 +392,7 @@ func TestRunUpdateForLocations_PartialAPIFailure(t *testing.T) {
 		httpClient:       mockServer.Client(),
 		gmpKey:           "dummy",
 		owmKey:           "dummy",
+		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	s := NewScheduler(cfg, 1*time.Minute, 1*time.Minute, 1*time.Minute)

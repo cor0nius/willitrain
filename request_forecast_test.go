@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -152,20 +153,41 @@ func TestRequestHourlyForecast(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name:        "All providers succeed",
-			cfg:         apiConfig{gmpWeatherURL: gmpServer.URL + "/", owmWeatherURL: owmServer.URL + "?", ometeoWeatherURL: ometeoServer.URL + "?", gmpKey: "dummy", owmKey: "dummy"},
+			name: "All providers succeed",
+			cfg: apiConfig{
+				gmpWeatherURL:    gmpServer.URL + "/",
+				owmWeatherURL:    owmServer.URL + "?",
+				ometeoWeatherURL: ometeoServer.URL + "?",
+				gmpKey:           "dummy",
+				owmKey:           "dummy",
+				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+			},
 			expectedLen: 72, // 24 from each provider
 			expectError: false,
 		},
 		{
-			name:        "One provider fails",
-			cfg:         apiConfig{gmpWeatherURL: gmpServer.URL + "/", owmWeatherURL: serverFail.URL + "?", ometeoWeatherURL: ometeoServer.URL + "?", gmpKey: "dummy", owmKey: "dummy"},
+			name: "One provider fails",
+			cfg: apiConfig{
+				gmpWeatherURL:    gmpServer.URL + "/",
+				owmWeatherURL:    serverFail.URL + "?",
+				ometeoWeatherURL: ometeoServer.URL + "?",
+				gmpKey:           "dummy",
+				owmKey:           "dummy",
+				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+			},
 			expectedLen: 48, // 24 from GMP, 24 from O-Meteo
 			expectError: false,
 		},
 		{
-			name:        "All providers fail",
-			cfg:         apiConfig{gmpWeatherURL: serverFail.URL + "/", owmWeatherURL: serverFail.URL + "?", ometeoWeatherURL: serverFail.URL + "?", gmpKey: "dummy", owmKey: "dummy"},
+			name: "All providers fail",
+			cfg: apiConfig{
+				gmpWeatherURL:    serverFail.URL + "/",
+				owmWeatherURL:    serverFail.URL + "?",
+				ometeoWeatherURL: serverFail.URL + "?",
+				gmpKey:           "dummy",
+				owmKey:           "dummy",
+				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+			},
 			expectedLen: 0,
 			expectError: false,
 		},
@@ -233,20 +255,41 @@ func TestRequestDailyForecast(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name:        "All providers succeed",
-			cfg:         apiConfig{gmpWeatherURL: gmpServer.URL + "/", owmWeatherURL: owmServer.URL + "?", ometeoWeatherURL: ometeoServer.URL + "?", gmpKey: "dummy", owmKey: "dummy"},
+			name: "All providers succeed",
+			cfg: apiConfig{
+				gmpWeatherURL:    gmpServer.URL + "/",
+				owmWeatherURL:    owmServer.URL + "?",
+				ometeoWeatherURL: ometeoServer.URL + "?",
+				gmpKey:           "dummy",
+				owmKey:           "dummy",
+				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+			},
 			expectedLen: 15, // 5 from GMP, 5 from OWM, 5 from O-Meteo
 			expectError: false,
 		},
 		{
-			name:        "One provider fails",
-			cfg:         apiConfig{gmpWeatherURL: gmpServer.URL + "/", owmWeatherURL: serverFail.URL + "?", ometeoWeatherURL: ometeoServer.URL + "?", gmpKey: "dummy", owmKey: "dummy"},
+			name: "One provider fails",
+			cfg: apiConfig{
+				gmpWeatherURL:    gmpServer.URL + "/",
+				owmWeatherURL:    serverFail.URL + "?",
+				ometeoWeatherURL: ometeoServer.URL + "?",
+				gmpKey:           "dummy",
+				owmKey:           "dummy",
+				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+			},
 			expectedLen: 10, // 5 from GMP, 5 from O-Meteo
 			expectError: false,
 		},
 		{
-			name:        "All providers fail",
-			cfg:         apiConfig{gmpWeatherURL: serverFail.URL + "/", owmWeatherURL: serverFail.URL + "?", ometeoWeatherURL: serverFail.URL + "?", gmpKey: "dummy", owmKey: "dummy"},
+			name: "All providers fail",
+			cfg: apiConfig{
+				gmpWeatherURL:    serverFail.URL + "/",
+				owmWeatherURL:    serverFail.URL + "?",
+				ometeoWeatherURL: serverFail.URL + "?",
+				gmpKey:           "dummy",
+				owmKey:           "dummy",
+				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+			},
 			expectedLen: 0,
 			expectError: false,
 		},
@@ -314,20 +357,41 @@ func TestRequestCurrentWeather(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name:        "All providers succeed",
-			cfg:         apiConfig{gmpWeatherURL: gmpServer.URL + "/", owmWeatherURL: owmServer.URL + "?", ometeoWeatherURL: ometeoServer.URL + "?", gmpKey: "dummy", owmKey: "dummy"},
+			name: "All providers succeed",
+			cfg: apiConfig{
+				gmpWeatherURL:    gmpServer.URL + "/",
+				owmWeatherURL:    owmServer.URL + "?",
+				ometeoWeatherURL: ometeoServer.URL + "?",
+				gmpKey:           "dummy",
+				owmKey:           "dummy",
+				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+			},
 			expectedLen: 3,
 			expectError: false,
 		},
 		{
-			name:        "One provider fails",
-			cfg:         apiConfig{gmpWeatherURL: gmpServer.URL + "/", owmWeatherURL: serverFail.URL + "?", ometeoWeatherURL: ometeoServer.URL + "?", gmpKey: "dummy", owmKey: "dummy"},
+			name: "One provider fails",
+			cfg: apiConfig{
+				gmpWeatherURL:    gmpServer.URL + "/",
+				owmWeatherURL:    serverFail.URL + "?",
+				ometeoWeatherURL: ometeoServer.URL + "?",
+				gmpKey:           "dummy",
+				owmKey:           "dummy",
+				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+			},
 			expectedLen: 2,
 			expectError: false,
 		},
 		{
-			name:        "All providers fail",
-			cfg:         apiConfig{gmpWeatherURL: serverFail.URL + "/", owmWeatherURL: serverFail.URL + "?", ometeoWeatherURL: serverFail.URL + "?", gmpKey: "dummy", owmKey: "dummy"},
+			name: "All providers fail",
+			cfg: apiConfig{
+				gmpWeatherURL:    serverFail.URL + "/",
+				owmWeatherURL:    serverFail.URL + "?",
+				ometeoWeatherURL: serverFail.URL + "?",
+				gmpKey:           "dummy",
+				owmKey:           "dummy",
+				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+			},
 			expectedLen: 0,
 			expectError: false,
 		},
@@ -412,7 +476,12 @@ func TestProcessForecastRequests(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			results, err := processForecastRequests(tc.urls, tc.providers)
+			// Create a minimal apiConfig with a logger that discards output
+			cfg := &apiConfig{
+				logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+			}
+
+			results, err := processForecastRequests(cfg, tc.urls, tc.providers)
 
 			if (err != nil) != tc.expectError {
 				t.Errorf("Expected error: %v, got: %v", tc.expectError, err)

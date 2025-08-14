@@ -16,6 +16,7 @@ func (cfg *apiConfig) handlerCurrentWeather(w http.ResponseWriter, r *http.Reque
 		cfg.respondWithError(w, http.StatusBadRequest, "Error getting location data", err)
 		return
 	}
+	cfg.logger.Debug("current weather request", "city", location.CityName)
 
 	weather, err := cfg.getCachedOrFetchCurrentWeather(ctx, location)
 	if err != nil {
@@ -38,6 +39,7 @@ func (cfg *apiConfig) handlerDailyForecast(w http.ResponseWriter, r *http.Reques
 		cfg.respondWithError(w, http.StatusBadRequest, "Error getting location data", err)
 		return
 	}
+	cfg.logger.Debug("daily forecast request", "city", location.CityName)
 
 	forecast, err := cfg.getCachedOrFetchDailyForecast(ctx, location)
 	if err != nil {
@@ -60,6 +62,7 @@ func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Reque
 		cfg.respondWithError(w, http.StatusBadRequest, "Error getting location data", err)
 		return
 	}
+	cfg.logger.Debug("hourly forecast request", "city", location.CityName)
 
 	forecast, err := cfg.getCachedOrFetchHourlyForecast(ctx, location)
 	if err != nil {
@@ -75,6 +78,7 @@ func (cfg *apiConfig) handlerResetDB(w http.ResponseWriter, r *http.Request) {
 		cfg.respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
 		return
 	}
+	cfg.logger.Debug("database reset request received")
 
 	ctx := r.Context()
 

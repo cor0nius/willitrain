@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"database/sql"
+	"io"
+	"log/slog"
 
 	"encoding/json"
 	"errors"
@@ -37,6 +39,7 @@ func TestGetCachedOrFetchCurrentWeather_RedisHit(t *testing.T) {
 	cfg := &apiConfig{
 		cache:     cache,
 		dbQueries: &mockFailingQuerier{t: t},
+		logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	weather, err := cfg.getCachedOrFetchCurrentWeather(ctx, location)
@@ -87,6 +90,7 @@ func TestGetCachedOrFetchDailyForecast_RedisHit(t *testing.T) {
 	cfg := &apiConfig{
 		cache:     cache,
 		dbQueries: &mockFailingQuerier{t: t},
+		logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	forecast, err := cfg.getCachedOrFetchDailyForecast(ctx, location)
@@ -137,6 +141,7 @@ func TestGetCachedOrFetchDailyForecast_DBHit(t *testing.T) {
 	cfg := &apiConfig{
 		cache:     cache,
 		dbQueries: db,
+		logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	forecast, err := cfg.getCachedOrFetchDailyForecast(ctx, location)
@@ -182,6 +187,7 @@ func TestGetCachedOrFetchHourlyForecast_RedisHit(t *testing.T) {
 	cfg := &apiConfig{
 		cache:     cache,
 		dbQueries: &mockFailingQuerier{t: t},
+		logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	forecast, err := cfg.getCachedOrFetchHourlyForecast(ctx, location)
@@ -235,6 +241,7 @@ func TestGetCachedOrFetchHourlyForecast_DBHit(t *testing.T) {
 	cfg := &apiConfig{
 		cache:     cache,
 		dbQueries: db,
+		logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	forecast, err := cfg.getCachedOrFetchHourlyForecast(ctx, location)
@@ -301,6 +308,7 @@ func TestGetCachedOrFetchHourlyForecast_APIFetch(t *testing.T) {
 		httpClient:       mockServer.Client(),
 		gmpKey:           "dummy",
 		owmKey:           "dummy",
+		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	forecast, err := cfg.getCachedOrFetchHourlyForecast(ctx, location)
@@ -363,6 +371,7 @@ func TestGetCachedOrFetchCurrentWeather_DBHit(t *testing.T) {
 	cfg := &apiConfig{
 		cache:     cache,
 		dbQueries: db,
+		logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	weather, err := cfg.getCachedOrFetchCurrentWeather(ctx, location)
@@ -432,6 +441,7 @@ func TestGetCachedOrFetchDailyForecast_APIFetch(t *testing.T) {
 		httpClient:       mockServer.Client(),
 		gmpKey:           "dummy",
 		owmKey:           "dummy",
+		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	forecast, err := cfg.getCachedOrFetchDailyForecast(ctx, location)
@@ -510,6 +520,7 @@ func TestGetCachedOrFetchCurrentWeather_APIFetch(t *testing.T) {
 		httpClient:       mockServer.Client(),
 		gmpKey:           "dummy",
 		owmKey:           "dummy",
+		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	// --- Action ---
@@ -1003,6 +1014,7 @@ func TestGetLocationFromRequest(t *testing.T) {
 				gmpGeocodeURL: mockGeoServer.URL + "/",
 				gmpKey:        "dummy-key",
 				httpClient:    mockGeoServer.Client(),
+				logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 
 			req := httptest.NewRequest("GET", tc.reqURL, nil)

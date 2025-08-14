@@ -2,7 +2,6 @@ package main
 
 import (
 	"io"
-	"log"
 	"sync"
 )
 
@@ -24,7 +23,7 @@ func (cfg *apiConfig) requestCurrentWeather(location Location) ([]CurrentWeather
 		},
 	}
 
-	results, err := processForecastRequests(urls, providers)
+	results, err := processForecastRequests(cfg, urls, providers)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +54,7 @@ func (cfg *apiConfig) requestDailyForecast(location Location) ([]DailyForecast, 
 		},
 	}
 
-	results, err := processForecastRequests(urls, providers)
+	results, err := processForecastRequests(cfg, urls, providers)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +90,7 @@ func (cfg *apiConfig) requestHourlyForecast(location Location) ([]HourlyForecast
 		},
 	}
 
-	results, err := processForecastRequests(urls, providers)
+	results, err := processForecastRequests(cfg, urls, providers)
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +109,7 @@ func (cfg *apiConfig) requestHourlyForecast(location Location) ([]HourlyForecast
 }
 
 func processForecastRequests[T Forecast](
+	cfg *apiConfig,
 	urls map[string]string,
 	providers map[string]forecastProvider[T],
 ) ([]T, error) {
@@ -124,7 +124,7 @@ func processForecastRequests[T Forecast](
 			wg.Add(1)
 			go fetchForecastFromAPI(url, provider.parser, provider.errorVal, &wg, results)
 		} else {
-			log.Printf("No provider found for key: %s", key)
+			cfg.logger.Error("no provider found for key", "key", key)
 		}
 	}
 
@@ -151,9 +151,9 @@ func processForecastRequests[T Forecast](
 				}
 			}
 			if sourceAPI != "" {
-				log.Printf("Error fetching forecast from %s: %v", sourceAPI, res.err)
+				cfg.logger.Warn("error fetching forecast from provider", "provider", sourceAPI, "error", res.err)
 			} else {
-				log.Printf("Error fetching forecast: %v", res.err)
+				cfg.logger.Warn("error fetching forecast from unknown provider", "error", res.err)
 			}
 		} else {
 			allResults = append(allResults, res.t)

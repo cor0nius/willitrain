@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
@@ -44,16 +43,16 @@ func (s *Scheduler) Start() {
 		for {
 			select {
 			case <-s.currentChan:
-				log.Println("Scheduler: Running current weather jobs...")
+				s.cfg.logger.Info("running scheduler jobs", "type", "current weather")
 				s.currentWeatherJobs()
 			case <-s.hourlyChan:
-				log.Println("Scheduler: Running hourly forecast jobs...")
+				s.cfg.logger.Info("running scheduler jobs", "type", "hourly forecast")
 				s.hourlyForecastJobs()
 			case <-s.dailyChan:
-				log.Println("Scheduler: Running daily forecast jobs...")
+				s.cfg.logger.Info("running scheduler jobs", "type", "daily forecast")
 				s.dailyForecastJobs()
 			case <-s.stop:
-				log.Println("Scheduler: Stopping...")
+				s.cfg.logger.Info("stopping scheduler")
 				for _, ticker := range s.tickers {
 					ticker.Stop()
 				}
@@ -72,11 +71,11 @@ func (s *Scheduler) Stop() {
 	close(s.stop)
 }
 
-func (s *Scheduler) runUpdateForLocations(updateFunc func(context.Context, Location)) {
+func (s *Scheduler) runUpdateForLocations(jobType string, updateFunc func(context.Context, Location)) {
 	ctx := context.Background()
 	locations, err := s.cfg.dbQueries.ListLocations(ctx)
 	if err != nil {
-		log.Printf("Scheduler: failed to get locations: %v", err)
+		s.cfg.logger.Error("scheduler failed to get locations", "error", err)
 		return
 	}
 
@@ -90,44 +89,44 @@ func (s *Scheduler) runUpdateForLocations(updateFunc func(context.Context, Locat
 		}(dbLocation)
 	}
 	wg.Wait()
-	log.Println("Scheduler: All jobs for this cycle completed.")
+	s.cfg.logger.Info("scheduler jobs for this cycle completed", "type", jobType)
 }
 
 func (s *Scheduler) runCurrentWeatherJobs() {
 	updateFunc := func(ctx context.Context, location Location) {
 		weather, err := s.cfg.requestCurrentWeather(location)
 		if err != nil {
-			log.Printf("Scheduler: failed to request current weather for %s: %v", location.CityName, err)
+			s.cfg.logger.Error("failed to request current weather", "location", location.CityName, "error", err)
 			return
 		}
 		s.cfg.persistCurrentWeather(ctx, weather)
-		log.Printf("Scheduler: Updated current weather for %s", location.CityName)
+		s.cfg.logger.Debug("updated current weather", "location", location.CityName)
 	}
-	s.runUpdateForLocations(updateFunc)
+	s.runUpdateForLocations("current weather", updateFunc)
 }
 
 func (s *Scheduler) runHourlyForecastJobs() {
 	updateFunc := func(ctx context.Context, location Location) {
 		forecast, err := s.cfg.requestHourlyForecast(location)
 		if err != nil {
-			log.Printf("Scheduler: failed to request hourly forecast for %s: %v", location.CityName, err)
+			s.cfg.logger.Error("failed to request hourly forecast", "location", location.CityName, "error", err)
 			return
 		}
 		s.cfg.persistHourlyForecast(ctx, forecast)
-		log.Printf("Scheduler: Updated hourly forecast for %s", location.CityName)
+		s.cfg.logger.Debug("updated hourly forecast", "location", location.CityName)
 	}
-	s.runUpdateForLocations(updateFunc)
+	s.runUpdateForLocations("hourly forecast", updateFunc)
 }
 
 func (s *Scheduler) runDailyForecastJobs() {
 	updateFunc := func(ctx context.Context, location Location) {
 		forecast, err := s.cfg.requestDailyForecast(location)
 		if err != nil {
-			log.Printf("Scheduler: failed to request daily forecast for %s: %v", location.CityName, err)
+			s.cfg.logger.Error("failed to request daily forecast", "location", location.CityName, "error", err)
 			return
 		}
 		s.cfg.persistDailyForecast(ctx, forecast)
-		log.Printf("Scheduler: Updated daily forecast for %s", location.CityName)
+		s.cfg.logger.Debug("updated daily forecast", "location", location.CityName)
 	}
-	s.runUpdateForLocations(updateFunc)
+	s.runUpdateForLocations("daily forecast", updateFunc)
 }
