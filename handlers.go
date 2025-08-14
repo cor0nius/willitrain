@@ -2,6 +2,8 @@ package main
 
 import (
 	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func (cfg *apiConfig) handlerCurrentWeather(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +73,10 @@ func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Reque
 	}
 
 	cfg.respondWithJSON(w, http.StatusOK, forecast)
+}
+
+func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
+	promhttp.Handler().ServeHTTP(w, r)
 }
 
 func (cfg *apiConfig) handlerResetDB(w http.ResponseWriter, r *http.Request) {

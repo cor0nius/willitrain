@@ -29,6 +29,7 @@ func main() {
 	mux.HandleFunc("/currentweather", cfg.handlerCurrentWeather)
 	mux.HandleFunc("/dailyforecast", cfg.handlerDailyForecast)
 	mux.HandleFunc("/hourlyforecast", cfg.handlerHourlyForecast)
+	mux.HandleFunc("/metrics", cfg.handlerMetrics)
 
 	if cfg.devMode {
 		cfg.logger.Debug("development mode enabled. Registering /dev/reset-db endpoint.")
@@ -37,7 +38,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.port,
-		Handler: mux,
+		Handler: metricsMiddleware(mux),
 	}
 
 	cfg.logger.Info("starting server", "port", cfg.port)
