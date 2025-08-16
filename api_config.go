@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -18,8 +19,8 @@ import (
 
 type apiConfig struct {
 	dbQueries                dbQuerier
-	gmpGeocodeURL            string
 	cache                    Cache
+	geocoder                 GeocodingService
 	gmpWeatherURL            string
 	owmWeatherURL            string
 	ometeoWeatherURL         string
@@ -69,6 +70,10 @@ func getEnvAsInt(key string, fallback int, logger *slog.Logger) int {
 }
 
 func config() *apiConfig {
+	if err := godotenv.Load(); err != nil {
+		log.Println("no .env file found, relying on environment variables")
+	}
+
 	devModeStr := os.Getenv("DEV_MODE")
 	devMode, err := strconv.ParseBool(devModeStr)
 	if err != nil {
@@ -82,10 +87,6 @@ func config() *apiConfig {
 		}))
 	} else {
 		logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	}
-
-	if err := godotenv.Load(); err != nil {
-		logger.Info("no .env file found, relying on environment variables")
 	}
 
 	dbURL := getRequiredEnv("DB_URL", logger)
@@ -117,18 +118,22 @@ func config() *apiConfig {
 	hourlyIntervalMin := getEnvAsInt("HOURLY_INTERVAL_MIN", 60, logger)
 	dailyIntervalMin := getEnvAsInt("DAILY_INTERVAL_MIN", 720, logger)
 
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	geocoder := NewGmpGeocodingService(getRequiredEnv("GMP_KEY", logger), getRequiredEnv("GMP_GEOCODE_URL", logger), httpClient)
+
 	cfg := apiConfig{
-		dbQueries:        dbQueries,
-		cache:            cache,
-		gmpGeocodeURL:    getRequiredEnv("GMP_GEOCODE_URL", logger),
-		gmpWeatherURL:    getRequiredEnv("GMP_WEATHER_URL", logger),
-		owmWeatherURL:    getRequiredEnv("OWM_WEATHER_URL", logger),
-		ometeoWeatherURL: getRequiredEnv("OMETEO_WEATHER_URL", logger),
-		gmpKey:           getRequiredEnv("GMP_KEY", logger),
-		owmKey:           getRequiredEnv("OWM_KEY", logger),
-		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+		dbQueries:                dbQueries,
+		cache:                    cache,
+		geocoder:                 geocoder,
+		gmpWeatherURL:            getRequiredEnv("GMP_WEATHER_URL", logger),
+		owmWeatherURL:            getRequiredEnv("OWM_WEATHER_URL", logger),
+		ometeoWeatherURL:         getRequiredEnv("OMETEO_WEATHER_URL", logger),
+		gmpKey:                   getRequiredEnv("GMP_KEY", logger),
+		owmKey:                   getRequiredEnv("OWM_KEY", logger),
+		httpClient:               httpClient,
 		schedulerCurrentInterval: time.Duration(currentIntervalMin) * time.Minute,
 		schedulerHourlyInterval:  time.Duration(hourlyIntervalMin) * time.Minute,
 		schedulerDailyInterval:   time.Duration(dailyIntervalMin) * time.Minute,
@@ -145,16 +150,20 @@ type dbQuerier interface {
 	CreateDailyForecast(ctx context.Context, arg database.CreateDailyForecastParams) (database.DailyForecast, error)
 	CreateHourlyForecast(ctx context.Context, arg database.CreateHourlyForecastParams) (database.HourlyForecast, error)
 	CreateLocation(ctx context.Context, arg database.CreateLocationParams) (database.Location, error)
+	CreateLocationAlias(ctx context.Context, arg database.CreateLocationAliasParams) (database.LocationAlias, error)
 	DeleteAllCurrentWeather(ctx context.Context) error
 	DeleteAllDailyForecasts(ctx context.Context) error
 	DeleteAllHourlyForecasts(ctx context.Context) error
 	DeleteAllLocations(ctx context.Context) error
+	DeleteLocation(ctx context.Context, id uuid.UUID) error
 	GetAllDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.DailyForecast, error)
 	GetAllHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.HourlyForecast, error)
 	GetCurrentWeatherAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error)
 	GetCurrentWeatherAtLocationFromAPI(ctx context.Context, arg database.GetCurrentWeatherAtLocationFromAPIParams) (database.CurrentWeather, error)
 	GetDailyForecastAtLocationAndDateFromAPI(ctx context.Context, arg database.GetDailyForecastAtLocationAndDateFromAPIParams) (database.DailyForecast, error)
 	GetHourlyForecastAtLocationAndTimeFromAPI(ctx context.Context, arg database.GetHourlyForecastAtLocationAndTimeFromAPIParams) (database.HourlyForecast, error)
+	GetLocationByAlias(ctx context.Context, alias string) (database.Location, error)
+	GetLocationByCoordinates(ctx context.Context, arg database.GetLocationByCoordinatesParams) (database.Location, error)
 	GetLocationByName(ctx context.Context, cityName string) (database.Location, error)
 	ListLocations(ctx context.Context) ([]database.Location, error)
 	UpdateCurrentWeather(ctx context.Context, arg database.UpdateCurrentWeatherParams) (database.CurrentWeather, error)

@@ -24,13 +24,13 @@ func TestGeocode(t *testing.T) {
 	})
 	defer server.Close()
 
-	cfg := &apiConfig{
-		gmpGeocodeURL: server.URL + "/",
-		gmpKey:        "dummy-key",
-		httpClient:    server.Client(),
-	}
+	geocoder := NewGmpGeocodingService(
+		"dummy-key",
+		server.URL+"/",
+		server.Client(),
+	)
 
-	location, err := cfg.Geocode("Wroclaw")
+	location, err := geocoder.Geocode("Wroclaw")
 	if err != nil {
 		t.Fatalf("Geocode() returned an unexpected error: %v", err)
 	}
@@ -62,13 +62,13 @@ func TestReverseGeocode(t *testing.T) {
 	})
 	defer server.Close()
 
-	cfg := &apiConfig{
-		gmpGeocodeURL: server.URL + "/",
-		gmpKey:        "dummy-key",
-		httpClient:    server.Client(),
-	}
+	geocoder := NewGmpGeocodingService(
+		"dummy-key",
+		server.URL+"/",
+		server.Client(),
+	)
 
-	location, err := cfg.ReverseGeocode(51.11, 17.04)
+	location, err := geocoder.ReverseGeocode(51.11, 17.04)
 	if err != nil {
 		t.Fatalf("ReverseGeocode() returned an unexpected error: %v", err)
 	}
@@ -95,13 +95,13 @@ func TestGeocode_APIError(t *testing.T) {
 	})
 	defer server.Close()
 
-	cfg := &apiConfig{
-		gmpGeocodeURL: server.URL + "/",
-		gmpKey:        "dummy-key",
-		httpClient:    server.Client(),
-	}
+	geocoder := NewGmpGeocodingService(
+		"dummy-key",
+		server.URL+"/",
+		server.Client(),
+	)
 
-	_, err := cfg.Geocode("Wroclaw")
+	_, err := geocoder.Geocode("Wroclaw")
 	if err == nil {
 		t.Fatal("Expected an error, but got nil")
 	}
@@ -114,13 +114,13 @@ func TestGeocode_ZeroResults(t *testing.T) {
 	})
 	defer server.Close()
 
-	cfg := &apiConfig{
-		gmpGeocodeURL: server.URL + "/",
-		gmpKey:        "dummy-key",
-		httpClient:    server.Client(),
-	}
+	geocoder := NewGmpGeocodingService(
+		"dummy-key",
+		server.URL+"/",
+		server.Client(),
+	)
 
-	_, err := cfg.Geocode("nonexistentcity")
+	_, err := geocoder.Geocode("nonexistentcity")
 	if !errors.Is(err, ErrNoResultsFound) {
 		t.Errorf("Expected ErrNoResultsFound, but got %v", err)
 	}
@@ -129,17 +129,17 @@ func TestGeocode_ZeroResults(t *testing.T) {
 func TestGeocode_MalformedJSON(t *testing.T) {
 	server := setupMockServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "OK", "results": [invalid]}`)) // Malformed JSON
+		w.Write([]byte(`{"status": "OK", "results": [invalid]`)) // Malformed JSON
 	})
 	defer server.Close()
 
-	cfg := &apiConfig{
-		gmpGeocodeURL: server.URL + "/",
-		gmpKey:        "dummy-key",
-		httpClient:    server.Client(),
-	}
+	geocoder := NewGmpGeocodingService(
+		"dummy-key",
+		server.URL+"/",
+		server.Client(),
+	)
 
-	_, err := cfg.Geocode("anycity")
+	_, err := geocoder.Geocode("anycity")
 	if err == nil {
 		t.Fatal("Expected an error for malformed JSON, but got nil")
 	}

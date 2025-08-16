@@ -10,38 +10,56 @@ import (
 
 var ErrNoResultsFound = errors.New("no results found for the given query")
 
-func parseLocationFromResult(result Result) Location {
-	var location Location
-	location.Latitude = result.Geometry.Location.Latitude
-	location.Longitude = result.Geometry.Location.Longitude
-
-	for _, component := range result.AddressComponents {
-		for _, componentType := range component.Types {
-			switch componentType {
-			case "locality":
-				location.CityName = component.LongName
-			case "country":
-				location.CountryCode = component.ShortName
-			}
-		}
-	}
-	return location
+// GeocodingService defines the interface for geocoding and reverse geocoding operations.
+type GeocodingService interface {
+	Geocode(cityName string) (Location, error)
+	ReverseGeocode(lat, lng float64) (Location, error)
 }
 
-func (cfg *apiConfig) performGeocodeRequest(queryParams map[string]string) (Location, error) {
-	baseURL, err := url.Parse(cfg.gmpGeocodeURL + "json")
+// GmpGeocodingService is an implementation of GeocodingService that uses the Google Maps Platform API.
+type GmpGeocodingService struct {
+	gmpKey        string
+	gmpGeocodeURL string
+	httpClient    *http.Client
+}
+
+// NewGmpGeocodingService creates a new GmpGeocodingService.
+func NewGmpGeocodingService(gmpKey, gmpGeocodeURL string, httpClient *http.Client) *GmpGeocodingService {
+	return &GmpGeocodingService{
+		gmpKey:        gmpKey,
+		gmpGeocodeURL: gmpGeocodeURL,
+		httpClient:    httpClient,
+	}
+}
+
+func (s *GmpGeocodingService) Geocode(cityName string) (Location, error) {
+	params := map[string]string{
+		"address": cityName,
+	}
+	return s.performGeocodeRequest(params)
+}
+
+func (s *GmpGeocodingService) ReverseGeocode(lat, lng float64) (Location, error) {
+	params := map[string]string{
+		"latlng": fmt.Sprintf("%.2f,%.2f", lat, lng),
+	}
+	return s.performGeocodeRequest(params)
+}
+
+func (s *GmpGeocodingService) performGeocodeRequest(queryParams map[string]string) (Location, error) {
+	baseURL, err := url.Parse(s.gmpGeocodeURL + "json")
 	if err != nil {
 		return Location{}, fmt.Errorf("failed to parse base geocode URL: %w", err)
 	}
 
 	q := baseURL.Query()
-	q.Set("key", cfg.gmpKey)
+	q.Set("key", s.gmpKey)
 	for key, value := range queryParams {
 		q.Set(key, value)
 	}
 	baseURL.RawQuery = q.Encode()
 
-	resp, err := cfg.httpClient.Get(baseURL.String())
+	resp, err := s.httpClient.Get(baseURL.String())
 	if err != nil {
 		return Location{}, fmt.Errorf("geocoding API request failed: %w", err)
 	}
@@ -71,18 +89,22 @@ func (cfg *apiConfig) performGeocodeRequest(queryParams map[string]string) (Loca
 	return location, nil
 }
 
-func (cfg *apiConfig) Geocode(cityName string) (Location, error) {
-	params := map[string]string{
-		"address": cityName,
-	}
-	return cfg.performGeocodeRequest(params)
-}
+func parseLocationFromResult(result Result) Location {
+	var location Location
+	location.Latitude = result.Geometry.Location.Latitude
+	location.Longitude = result.Geometry.Location.Longitude
 
-func (cfg *apiConfig) ReverseGeocode(lat, lng float64) (Location, error) {
-	params := map[string]string{
-		"latlng": fmt.Sprintf("%.2f,%.2f", lat, lng),
+	for _, component := range result.AddressComponents {
+		for _, componentType := range component.Types {
+			switch componentType {
+			case "locality":
+				location.CityName = component.LongName
+			case "country":
+				location.CountryCode = component.ShortName
+			}
+		}
 	}
-	return cfg.performGeocodeRequest(params)
+	return location
 }
 
 type Response struct {

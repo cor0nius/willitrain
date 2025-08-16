@@ -58,3 +58,8 @@ type Location struct {
 	Longitude   float64
 	CountryCode string
 }
+
+type LocationAlias struct {
+	Alias      string
+	LocationID uuid.UUID
+}

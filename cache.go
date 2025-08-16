@@ -11,6 +11,7 @@ import (
 type Cache interface {
 	Set(ctx context.Context, key string, value any, expiration time.Duration) error
 	Get(ctx context.Context, key string) (string, error)
+	Flush(ctx context.Context) error
 }
 
 type RedisCache struct {
@@ -33,4 +34,8 @@ func (c *RedisCache) Set(ctx context.Context, key string, value any, expiration 
 
 func (c *RedisCache) Get(ctx context.Context, key string) (string, error) {
 	return c.client.Get(ctx, key).Result()
+}
+
+func (c *RedisCache) Flush(ctx context.Context) error {
+	return c.client.FlushDB(ctx).Err()
 }

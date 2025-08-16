@@ -22,33 +22,74 @@ const redisCurrentWeatherCacheTTL = 9 * time.Minute
 const redisDailyForecastCacheTTL = 11*time.Hour + 55*time.Minute
 const redisHourlyForecastCacheTTL = 55 * time.Minute
 
-// getOrCreateLocation checks if a location exists in the database by name.
-// If it exists, it returns the location data from the DB.
-// If not, it calls the geocoding API to get the location details,
-// persists the new location to the DB, and then returns the new location data.
+// getOrCreateLocation is an intelligent helper to retrieve a location from the database.
+// It handles city name aliases to avoid duplicate entries and minimize external API calls.
+//
+// The logic is as follows:
+// 1. Normalize the input cityName to create a standardized alias.
+// 2. Attempt to find the location using this alias in the `location_aliases` table.
+// 3. If found, return the location.
+// 4. If not found, call the geocoding service to get the canonical location data.
+// 5. Check if a location with the canonical name already exists in the `locations` table.
+// 6. If it exists, create a new alias for the user's original input and link it to the existing location.
+// 7. If no location exists by either alias or canonical name, create a new location record.
+// 8. Finally, create aliases for both the user's normalized input and the canonical name to ensure future lookups are successful.
 func (cfg *apiConfig) getOrCreateLocation(ctx context.Context, cityName string) (Location, error) {
-	dbLocation, err := cfg.dbQueries.GetLocationByName(ctx, cityName)
+	alias, err := normalizeCityName(cityName)
+	if err != nil {
+		return Location{}, fmt.Errorf("could not normalize city name: %w", err)
+	}
+
+	dbLocation, err := cfg.dbQueries.GetLocationByAlias(ctx, alias)
 	if err == nil {
+		cfg.logger.Debug("location found by alias", "alias", alias, "city", dbLocation.CityName)
 		return databaseLocationToLocation(dbLocation), nil
 	}
-
 	if err != sql.ErrNoRows {
-		return Location{}, fmt.Errorf("database error when fetching location: %w", err)
+		return Location{}, fmt.Errorf("database error when fetching location by alias: %w", err)
 	}
 
-	geocodedLocation, geoErr := cfg.Geocode(cityName)
+	cfg.logger.Debug("alias not found, geocoding", "alias", alias, "original_city", cityName)
+	geocodedLocation, geoErr := cfg.geocoder.Geocode(cityName)
 	if geoErr != nil {
-		return Location{}, fmt.Errorf("could not geocode city: %w", geoErr)
+		return Location{}, fmt.Errorf("could not geocode city '%s': %w", cityName, geoErr)
 	}
 
+	dbLocation, err = cfg.dbQueries.GetLocationByName(ctx, geocodedLocation.CityName)
+	if err == nil {
+		cfg.logger.Debug("canonical location found in db, creating new alias", "city", dbLocation.CityName, "alias", alias)
+		_, aliasErr := cfg.dbQueries.CreateLocationAlias(ctx, database.CreateLocationAliasParams{Alias: alias, LocationID: dbLocation.ID})
+		if aliasErr != nil {
+			cfg.logger.Warn("could not create location alias", "alias", alias, "location_id", dbLocation.ID, "error", aliasErr)
+		}
+		return databaseLocationToLocation(dbLocation), nil
+	}
+	if err != sql.ErrNoRows {
+		return Location{}, fmt.Errorf("database error when fetching location by canonical name: %w", err)
+	}
+
+	cfg.logger.Debug("no location found, creating new location and aliases", "city", geocodedLocation.CityName)
 	persistedLocation, createErr := cfg.dbQueries.CreateLocation(ctx, locationToCreateLocationParams(geocodedLocation))
 	if createErr != nil {
-		cfg.logger.Error("could not persist new location", "city", cityName, "error", createErr)
-	} else {
-		geocodedLocation.LocationID = persistedLocation.ID
+		return Location{}, fmt.Errorf("could not persist new location: %w", createErr)
 	}
 
-	return geocodedLocation, nil
+	_, aliasErr := cfg.dbQueries.CreateLocationAlias(ctx, database.CreateLocationAliasParams{Alias: alias, LocationID: persistedLocation.ID})
+	if aliasErr != nil {
+		cfg.logger.Warn("could not create user input alias", "alias", alias, "location_id", persistedLocation.ID, "error", aliasErr)
+	}
+
+	canonicalAlias, err := normalizeCityName(persistedLocation.CityName)
+	if err != nil {
+		cfg.logger.Error("could not normalize canonical city name", "city", persistedLocation.CityName, "error", err)
+	} else if alias != canonicalAlias {
+		_, aliasErr = cfg.dbQueries.CreateLocationAlias(ctx, database.CreateLocationAliasParams{Alias: canonicalAlias, LocationID: persistedLocation.ID})
+		if aliasErr != nil {
+			cfg.logger.Warn("could not create canonical alias", "alias", canonicalAlias, "location_id", persistedLocation.ID, "error", aliasErr)
+		}
+	}
+
+	return databaseLocationToLocation(persistedLocation), nil
 }
 
 func (cfg *apiConfig) getLocationFromRequest(r *http.Request) (Location, error) {
@@ -72,25 +113,14 @@ func (cfg *apiConfig) getLocationFromRequest(r *http.Request) (Location, error) 
 			return Location{}, fmt.Errorf("invalid longitude: %v", err)
 		}
 
-		location, err := cfg.ReverseGeocode(lat, lon)
+		// Reverse geocode to get a city name
+		location, err := cfg.geocoder.ReverseGeocode(lat, lon)
 		if err != nil {
 			return Location{}, fmt.Errorf("could not reverse geocode coordinates: %w", err)
 		}
 
-		dbLocation, err := cfg.dbQueries.GetLocationByName(ctx, location.CityName)
-		if err == nil {
-			return databaseLocationToLocation(dbLocation), nil
-		}
-		if err != sql.ErrNoRows {
-			return Location{}, fmt.Errorf("database error when fetching location by name: %w", err)
-		}
-
-		persistedLocation, createErr := cfg.dbQueries.CreateLocation(ctx, locationToCreateLocationParams(location))
-		if createErr != nil {
-			return Location{}, fmt.Errorf("could not persist new location %s: %w", location.CityName, createErr)
-		}
-		location.LocationID = persistedLocation.ID
-		return location, nil
+		// Use the same unified logic to get or create the location
+		return cfg.getOrCreateLocation(ctx, location.CityName)
 	}
 
 	return Location{}, fmt.Errorf("either city or lat/lon query parameters are required")

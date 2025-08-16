@@ -94,5 +94,11 @@ func (cfg *apiConfig) handlerResetDB(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg.respondWithJSON(w, http.StatusOK, map[string]string{"status": "database reset"})
+	err = cfg.cache.Flush(ctx)
+	if err != nil {
+		cfg.respondWithError(w, http.StatusInternalServerError, "Failed to flush cache", err)
+		return
+	}
+
+	cfg.respondWithJSON(w, http.StatusOK, map[string]string{"status": "database and cache reset"})
 }

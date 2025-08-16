@@ -516,3 +516,21 @@ func (m *mockQuerier) UpdateHourlyForecast(ctx context.Context, arg database.Upd
 	m.updateHourlyForecastCalls++
 	return database.HourlyForecast{}, nil
 }
+
+// Add stubs for the remaining dbQuerier methods to satisfy the interface.
+// These are not used by the scheduler tests, so they can be empty.
+func (m *mockQuerier) CreateLocationAlias(ctx context.Context, arg database.CreateLocationAliasParams) (database.LocationAlias, error) {
+	return database.LocationAlias{}, nil
+}
+
+func (m *mockQuerier) DeleteLocation(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
+func (m *mockQuerier) GetLocationByAlias(ctx context.Context, alias string) (database.Location, error) {
+	return database.Location{}, nil
+}
+
+func (m *mockQuerier) GetLocationByCoordinates(ctx context.Context, arg database.GetLocationByCoordinatesParams) (database.Location, error) {
+	return database.Location{}, nil
+}
