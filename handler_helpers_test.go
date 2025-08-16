@@ -182,9 +182,9 @@ func TestGetOrCreateLocation(t *testing.T) {
 		},
 		{
 			name:     "New City",
-			cityName: "newville",
+			cityName: "newville town",
 			setupMocks: func(t *testing.T, db *mockLocationQuerier, geo *mockGeocodingService) {
-				newLocation := Location{LocationID: uuid.New(), CityName: "Newville Town", CountryCode: "NV"}
+				newLocation := Location{LocationID: uuid.New(), CityName: "Newville", CountryCode: "NV"}
 				dbNewLocation := database.Location{ID: newLocation.LocationID, CityName: newLocation.CityName, CountryCode: newLocation.CountryCode}
 
 				db.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
@@ -207,8 +207,8 @@ func TestGetOrCreateLocation(t *testing.T) {
 				if err != nil {
 					t.Errorf("expected no error, got %v", err)
 				}
-				if loc.CityName != "Newville Town" {
-					t.Errorf("expected city name 'Newville Town', got '%s'", loc.CityName)
+				if loc.CityName != "Newville" {
+					t.Errorf("expected city name 'Newville', got '%s'", loc.CityName)
 				}
 			},
 			checkMockCalls: func(t *testing.T, db *mockLocationQuerier, geo *mockGeocodingService) {

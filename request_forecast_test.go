@@ -80,6 +80,10 @@ func TestFetchForecastFromAPI(t *testing.T) {
 				url = "http://localhost:12345/nonexistent"
 			}
 
+			cfg := &apiConfig{
+				httpClient: http.DefaultClient,
+			}
+
 			var wg sync.WaitGroup
 			results := make(chan struct {
 				t   CurrentWeather
@@ -88,7 +92,7 @@ func TestFetchForecastFromAPI(t *testing.T) {
 
 			wg.Add(1)
 			errorVal := CurrentWeather{SourceAPI: "TestAPI"}
-			go fetchForecastFromAPI(url, tc.parser, errorVal, &wg, results)
+			go fetchForecastFromAPI(cfg, url, tc.parser, errorVal, &wg, results)
 
 			res := <-results
 			wg.Wait()
@@ -160,6 +164,7 @@ func TestRequestHourlyForecast(t *testing.T) {
 				ometeoWeatherURL: ometeoServer.URL + "?",
 				gmpKey:           "dummy",
 				owmKey:           "dummy",
+				httpClient:       http.DefaultClient,
 				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 			},
 			expectedLen: 72, // 24 from each provider
@@ -173,6 +178,7 @@ func TestRequestHourlyForecast(t *testing.T) {
 				ometeoWeatherURL: ometeoServer.URL + "?",
 				gmpKey:           "dummy",
 				owmKey:           "dummy",
+				httpClient:       http.DefaultClient,
 				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 			},
 			expectedLen: 48, // 24 from GMP, 24 from O-Meteo
@@ -186,6 +192,7 @@ func TestRequestHourlyForecast(t *testing.T) {
 				ometeoWeatherURL: serverFail.URL + "?",
 				gmpKey:           "dummy",
 				owmKey:           "dummy",
+				httpClient:       http.DefaultClient,
 				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 			},
 			expectedLen: 0,
@@ -262,6 +269,7 @@ func TestRequestDailyForecast(t *testing.T) {
 				ometeoWeatherURL: ometeoServer.URL + "?",
 				gmpKey:           "dummy",
 				owmKey:           "dummy",
+				httpClient:       http.DefaultClient,
 				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 			},
 			expectedLen: 15, // 5 from GMP, 5 from OWM, 5 from O-Meteo
@@ -275,6 +283,7 @@ func TestRequestDailyForecast(t *testing.T) {
 				ometeoWeatherURL: ometeoServer.URL + "?",
 				gmpKey:           "dummy",
 				owmKey:           "dummy",
+				httpClient:       http.DefaultClient,
 				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 			},
 			expectedLen: 10, // 5 from GMP, 5 from O-Meteo
@@ -288,6 +297,7 @@ func TestRequestDailyForecast(t *testing.T) {
 				ometeoWeatherURL: serverFail.URL + "?",
 				gmpKey:           "dummy",
 				owmKey:           "dummy",
+				httpClient:       http.DefaultClient,
 				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 			},
 			expectedLen: 0,
@@ -364,6 +374,7 @@ func TestRequestCurrentWeather(t *testing.T) {
 				ometeoWeatherURL: ometeoServer.URL + "?",
 				gmpKey:           "dummy",
 				owmKey:           "dummy",
+				httpClient:       http.DefaultClient,
 				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 			},
 			expectedLen: 3,
@@ -377,6 +388,7 @@ func TestRequestCurrentWeather(t *testing.T) {
 				ometeoWeatherURL: ometeoServer.URL + "?",
 				gmpKey:           "dummy",
 				owmKey:           "dummy",
+				httpClient:       http.DefaultClient,
 				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 			},
 			expectedLen: 2,
@@ -390,6 +402,7 @@ func TestRequestCurrentWeather(t *testing.T) {
 				ometeoWeatherURL: serverFail.URL + "?",
 				gmpKey:           "dummy",
 				owmKey:           "dummy",
+				httpClient:       http.DefaultClient,
 				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
 			},
 			expectedLen: 0,
@@ -478,7 +491,8 @@ func TestProcessForecastRequests(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create a minimal apiConfig with a logger that discards output
 			cfg := &apiConfig{
-				logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+				logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+				httpClient: http.DefaultClient,
 			}
 
 			results, err := processForecastRequests(cfg, tc.urls, tc.providers)

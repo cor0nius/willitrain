@@ -122,7 +122,7 @@ func processForecastRequests[T Forecast](
 	for key, url := range urls {
 		if provider, ok := providers[key]; ok {
 			wg.Add(1)
-			go fetchForecastFromAPI(url, provider.parser, provider.errorVal, &wg, results)
+			go fetchForecastFromAPI(cfg, url, provider.parser, provider.errorVal, &wg, results)
 		} else {
 			cfg.logger.Error("no provider found for key", "key", key)
 		}

@@ -8,6 +8,7 @@ import (
 )
 
 func fetchForecastFromAPI[T Forecast](
+	cfg *apiConfig,
 	url string,
 	parser func(body io.Reader) (T, error),
 	errorVal T,
@@ -19,7 +20,7 @@ func fetchForecastFromAPI[T Forecast](
 ) {
 	defer wg.Done()
 
-	resp, err := http.Get(url)
+	resp, err := cfg.httpClient.Get(url)
 	if err != nil {
 		results <- struct {
 			t   T
