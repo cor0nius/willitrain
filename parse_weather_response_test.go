@@ -565,7 +565,9 @@ func TestParseDailyForecastOMeteo(t *testing.T) {
 	}
 	defer sampleJSON.Close()
 
-	timestamp := time.Unix(1754517600, 0)
+	loc, _ := time.LoadLocation("Europe/Warsaw")
+	timestamp := time.Date(2025, 8, 7, 0, 0, 0, 0, loc)
+
 	expectedForecast := DailyForecast{
 		SourceAPI:           "Open-Meteo API",
 		ForecastDate:        timestamp,
