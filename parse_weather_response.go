@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"math"
 	"time"
 )
 
-func ParseCurrentWeatherGMP(body io.Reader) (CurrentWeather, error) {
+func ParseCurrentWeatherGMP(body io.Reader, logger *slog.Logger) (CurrentWeather, error) {
 	var response ResponseCurrentWeatherGMP
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
@@ -31,7 +32,7 @@ func ParseCurrentWeatherGMP(body io.Reader) (CurrentWeather, error) {
 	return weather, nil
 }
 
-func ParseCurrentWeatherOWM(body io.Reader) (CurrentWeather, error) {
+func ParseCurrentWeatherOWM(body io.Reader, logger *slog.Logger) (CurrentWeather, error) {
 	var response ResponseCurrentWeatherOWM
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
@@ -54,7 +55,7 @@ func ParseCurrentWeatherOWM(body io.Reader) (CurrentWeather, error) {
 	return weather, nil
 }
 
-func ParseCurrentWeatherOMeteo(body io.Reader) (CurrentWeather, error) {
+func ParseCurrentWeatherOMeteo(body io.Reader, logger *slog.Logger) (CurrentWeather, error) {
 	var response ResponseCurrentWeatherOMeteo
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
@@ -77,7 +78,7 @@ func ParseCurrentWeatherOMeteo(body io.Reader) (CurrentWeather, error) {
 	return weather, nil
 }
 
-func ParseDailyForecastGMP(body io.Reader) ([]DailyForecast, error) {
+func ParseDailyForecastGMP(body io.Reader, logger *slog.Logger) ([]DailyForecast, error) {
 	var response ResponseDailyForecastGMP
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
@@ -87,6 +88,12 @@ func ParseDailyForecastGMP(body io.Reader) ([]DailyForecast, error) {
 		return []DailyForecast{{SourceAPI: "Google Weather API"}}, errors.New("empty or invalid response from API")
 	}
 
+	loc, err := time.LoadLocation(response.TimeZone.ID)
+	if err != nil {
+		logger.Warn("Failed to load timezone, using UTC as fallback", "error", err)
+		loc = time.UTC
+	}
+
 	var forecast []DailyForecast
 	for i, day := range response.ForecastDays {
 		if i >= 5 {
@@ -94,7 +101,7 @@ func ParseDailyForecastGMP(body io.Reader) ([]DailyForecast, error) {
 		}
 		forecast = append(forecast, DailyForecast{
 			SourceAPI:           "Google Weather API",
-			ForecastDate:        day.Interval.StartTime,
+			ForecastDate:        time.Date(day.Interval.StartTime.Year(), day.Interval.StartTime.Month(), day.Interval.StartTime.Day(), 0, 0, 0, 0, loc),
 			MinTemp:             day.MinTemperature.Degrees,
 			MaxTemp:             day.MaxTemperature.Degrees,
 			Precipitation:       day.DaytimeForecast.Precipitation.Qpf.Quantity,
@@ -107,7 +114,7 @@ func ParseDailyForecastGMP(body io.Reader) ([]DailyForecast, error) {
 	return forecast, nil
 }
 
-func ParseDailyForecastOWM(body io.Reader) ([]DailyForecast, error) {
+func ParseDailyForecastOWM(body io.Reader, logger *slog.Logger) ([]DailyForecast, error) {
 	var response ResponseDailyForecastOWM
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
@@ -117,6 +124,12 @@ func ParseDailyForecastOWM(body io.Reader) ([]DailyForecast, error) {
 		return []DailyForecast{{SourceAPI: "OpenWeatherMap API"}}, errors.New("empty or invalid response from API")
 	}
 
+	loc, err := time.LoadLocation(response.Timezone)
+	if err != nil {
+		logger.Warn("Failed to load timezone, using UTC as fallback", "error", err)
+		loc = time.UTC
+	}
+
 	var forecast []DailyForecast
 	for i, day := range response.DailyForecast {
 		if i >= 5 {
@@ -124,7 +137,7 @@ func ParseDailyForecastOWM(body io.Reader) ([]DailyForecast, error) {
 		}
 		forecast = append(forecast, DailyForecast{
 			SourceAPI:           "OpenWeatherMap API",
-			ForecastDate:        time.Unix(day.Dt, 0),
+			ForecastDate:        time.Date(time.Unix(day.Dt, 0).Year(), time.Unix(day.Dt, 0).Month(), time.Unix(day.Dt, 0).Day(), 0, 0, 0, 0, loc),
 			MinTemp:             day.Temp.Min,
 			MaxTemp:             day.Temp.Max,
 			Precipitation:       day.Rain + day.Snow,
@@ -137,7 +150,7 @@ func ParseDailyForecastOWM(body io.Reader) ([]DailyForecast, error) {
 	return forecast, nil
 }
 
-func ParseDailyForecastOMeteo(body io.Reader) ([]DailyForecast, error) {
+func ParseDailyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]DailyForecast, error) {
 	var response ResponseDailyForecastOMeteo
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
@@ -145,6 +158,12 @@ func ParseDailyForecastOMeteo(body io.Reader) ([]DailyForecast, error) {
 	}
 	if len(response.DailyForecast.Time) == 0 {
 		return []DailyForecast{{SourceAPI: "Open-Meteo API"}}, errors.New("empty or invalid response from API")
+	}
+
+	loc, err := time.LoadLocation(response.Timezone)
+	if err != nil {
+		logger.Warn("Failed to load timezone, using UTC as fallback", "error", err)
+		loc = time.UTC
 	}
 
 	var forecast []DailyForecast
@@ -156,7 +175,7 @@ func ParseDailyForecastOMeteo(body io.Reader) ([]DailyForecast, error) {
 	for i := 0; i < numDays; i++ {
 		forecast = append(forecast, DailyForecast{
 			SourceAPI:           "Open-Meteo API",
-			ForecastDate:        time.Unix(response.DailyForecast.Time[i], 0),
+			ForecastDate:        time.Date(time.Unix(response.DailyForecast.Time[i], 0).Year(), time.Unix(response.DailyForecast.Time[i], 0).Month(), time.Unix(response.DailyForecast.Time[i], 0).Day(), 0, 0, 0, 0, loc),
 			MinTemp:             response.DailyForecast.Temperature2mMin[i],
 			MaxTemp:             response.DailyForecast.Temperature2mMax[i],
 			Precipitation:       response.DailyForecast.PrecipitationSum[i],
@@ -169,7 +188,7 @@ func ParseDailyForecastOMeteo(body io.Reader) ([]DailyForecast, error) {
 	return forecast, nil
 }
 
-func ParseHourlyForecastGMP(body io.Reader) ([]HourlyForecast, error) {
+func ParseHourlyForecastGMP(body io.Reader, logger *slog.Logger) ([]HourlyForecast, error) {
 	var response ResponseHourlyForecastGMP
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
@@ -179,6 +198,12 @@ func ParseHourlyForecastGMP(body io.Reader) ([]HourlyForecast, error) {
 		return []HourlyForecast{{SourceAPI: "Google Weather API"}}, errors.New("empty or invalid response from API")
 	}
 
+	loc, err := time.LoadLocation(response.TimeZone.ID)
+	if err != nil {
+		logger.Warn("Failed to load timezone, using UTC as fallback", "error", err)
+		loc = time.UTC
+	}
+
 	var forecast []HourlyForecast
 	for i, hour := range response.ForecastHours {
 		if i >= 24 {
@@ -186,7 +211,7 @@ func ParseHourlyForecastGMP(body io.Reader) ([]HourlyForecast, error) {
 		}
 		forecast = append(forecast, HourlyForecast{
 			SourceAPI:           "Google Weather API",
-			ForecastDateTime:    hour.Interval.StartTime,
+			ForecastDateTime:    (hour.Interval.StartTime).In(loc),
 			Temperature:         hour.Temperature.Degrees,
 			Humidity:            hour.Humidity,
 			WindSpeed:           hour.Wind.Speed.Value,
@@ -199,7 +224,7 @@ func ParseHourlyForecastGMP(body io.Reader) ([]HourlyForecast, error) {
 	return forecast, nil
 }
 
-func ParseHourlyForecastOWM(body io.Reader) ([]HourlyForecast, error) {
+func ParseHourlyForecastOWM(body io.Reader, logger *slog.Logger) ([]HourlyForecast, error) {
 	var response ResponseHourlyForecastOWM
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
@@ -229,7 +254,7 @@ func ParseHourlyForecastOWM(body io.Reader) ([]HourlyForecast, error) {
 	return forecast, nil
 }
 
-func ParseHourlyForecastOMeteo(body io.Reader) ([]HourlyForecast, error) {
+func ParseHourlyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]HourlyForecast, error) {
 	var response ResponseHourlyForecastOMeteo
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
@@ -239,13 +264,28 @@ func ParseHourlyForecastOMeteo(body io.Reader) ([]HourlyForecast, error) {
 		return []HourlyForecast{{SourceAPI: "Open-Meteo API"}}, errors.New("empty or invalid response from API")
 	}
 
-	var forecast []HourlyForecast
-	numHours := len(response.HourlyForecast.Time)
-	if numHours > 24 {
-		numHours = 24
+	now := time.Now().UTC()
+	startIndex := -1
+
+	for i := 0; i < len(response.HourlyForecast.Time); i++ {
+		if time.Unix(response.HourlyForecast.Time[i], 0).After(now.Add(-1 * time.Hour)) {
+			startIndex = i
+			break
+		}
 	}
 
-	for i := 0; i < numHours; i++ {
+	if startIndex == -1 {
+		return []HourlyForecast{{SourceAPI: "Open-Meteo API"}}, errors.New("all forecasts are in the past")
+	}
+
+	endIndex := startIndex + 24
+	if endIndex > len(response.HourlyForecast.Time) {
+		endIndex = len(response.HourlyForecast.Time)
+	}
+
+	var forecast []HourlyForecast
+
+	for i := startIndex; i < endIndex; i++ {
 		forecast = append(forecast, HourlyForecast{
 			SourceAPI:           "Open-Meteo API",
 			ForecastDateTime:    time.Unix(response.HourlyForecast.Time[i], 0),
@@ -273,10 +313,12 @@ type ResponseCurrentWeatherGMP struct {
 
 type ResponseDailyForecastGMP struct {
 	ForecastDays []ForecastDay `json:"forecastDays"`
+	TimeZone     TimeZone      `json:"timeZone"`
 }
 
 type ResponseHourlyForecastGMP struct {
 	ForecastHours []ForecastHour `json:"forecastHours"`
+	TimeZone      TimeZone       `json:"timeZone"`
 }
 
 type ForecastDay struct {
@@ -297,6 +339,10 @@ type ForecastHour struct {
 
 type Interval struct {
 	StartTime time.Time `json:"startTime"`
+}
+
+type TimeZone struct {
+	ID string `json:"id"`
 }
 
 type ForecastDayPart struct {
@@ -346,6 +392,7 @@ type ResponseCurrentWeatherOWM struct {
 
 type ResponseDailyForecastOWM struct {
 	DailyForecast []DailyOWM `json:"daily"`
+	Timezone      string     `json:"timezone"`
 }
 
 type ResponseHourlyForecastOWM struct {
@@ -408,6 +455,7 @@ type ResponseCurrentWeatherOMeteo struct {
 
 type ResponseDailyForecastOMeteo struct {
 	DailyForecast DailyOMeteo `json:"daily"`
+	Timezone      string      `json:"timezone"`
 }
 
 type ResponseHourlyForecastOMeteo struct {

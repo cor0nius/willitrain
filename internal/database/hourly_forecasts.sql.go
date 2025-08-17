@@ -18,8 +18,8 @@ INSERT INTO hourly_forecasts (
     id,
     location_id,
     source_api,
-    updated_at,
     forecast_datetime_utc,
+    updated_at,
     temperature_c,
     humidity,
     wind_speed_kmh,
@@ -27,7 +27,7 @@ INSERT INTO hourly_forecasts (
     precipitation_chance_percent,
     condition_text 
 )
-VALUES (gen_random_uuid(), $1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9)
+VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id, location_id, source_api, forecast_datetime_utc, updated_at, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text
 `
 
@@ -35,6 +35,7 @@ type CreateHourlyForecastParams struct {
 	LocationID                 uuid.UUID
 	SourceApi                  string
 	ForecastDatetimeUtc        time.Time
+	UpdatedAt                  time.Time
 	TemperatureC               sql.NullFloat64
 	Humidity                   sql.NullInt32
 	WindSpeedKmh               sql.NullFloat64
@@ -48,6 +49,7 @@ func (q *Queries) CreateHourlyForecast(ctx context.Context, arg CreateHourlyFore
 		arg.LocationID,
 		arg.SourceApi,
 		arg.ForecastDatetimeUtc,
+		arg.UpdatedAt,
 		arg.TemperatureC,
 		arg.Humidity,
 		arg.WindSpeedKmh,
@@ -227,13 +229,14 @@ func (q *Queries) GetHourlyForecastAtLocationAndTimeFromAPI(ctx context.Context,
 
 const updateHourlyForecast = `-- name: UpdateHourlyForecast :one
 UPDATE hourly_forecasts
-SET updated_at=NOW(), forecast_datetime_utc=$2, temperature_c=$3, humidity=$4, wind_speed_kmh=$5, precipitation_mm=$6, precipitation_chance_percent=$7, condition_text=$8
+SET updated_at=$2, forecast_datetime_utc=$3, temperature_c=$4, humidity=$5, wind_speed_kmh=$6, precipitation_mm=$7, precipitation_chance_percent=$8, condition_text=$9
 WHERE id=$1
 RETURNING id, location_id, source_api, forecast_datetime_utc, updated_at, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text
 `
 
 type UpdateHourlyForecastParams struct {
 	ID                         uuid.UUID
+	UpdatedAt                  time.Time
 	ForecastDatetimeUtc        time.Time
 	TemperatureC               sql.NullFloat64
 	Humidity                   sql.NullInt32
@@ -246,6 +249,7 @@ type UpdateHourlyForecastParams struct {
 func (q *Queries) UpdateHourlyForecast(ctx context.Context, arg UpdateHourlyForecastParams) (HourlyForecast, error) {
 	row := q.db.QueryRowContext(ctx, updateHourlyForecast,
 		arg.ID,
+		arg.UpdatedAt,
 		arg.ForecastDatetimeUtc,
 		arg.TemperatureC,
 		arg.Humidity,

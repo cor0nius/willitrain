@@ -1,0 +1,5 @@
+.env
+willitrain
+*.txt
+willitrain.postman_collection.json
+.git/

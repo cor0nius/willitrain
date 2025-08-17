@@ -30,7 +30,7 @@ func TestParseCurrentWeatherGMP(t *testing.T) {
 		Condition:     "Cloudy",
 	}
 
-	parsedWeather, err := ParseCurrentWeatherGMP(sampleJSON)
+	parsedWeather, err := ParseCurrentWeatherGMP(sampleJSON, nil)
 	if err != nil {
 		t.Fatalf("ParseCurrentWeatherGMP failed with error: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestParseCurrentWeatherOWM(t *testing.T) {
 		Condition:     "Rain",
 	}
 
-	parsedWeather, err := ParseCurrentWeatherOWM(sampleJSON)
+	parsedWeather, err := ParseCurrentWeatherOWM(sampleJSON, nil)
 	if err != nil {
 		t.Fatalf("ParseCurrentWeatherOWM failed with error: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestParseCurrentWeatherOMeteo(t *testing.T) {
 		Condition:     "slight rain",
 	}
 
-	parsedWeather, err := ParseCurrentWeatherOMeteo(sampleJSON)
+	parsedWeather, err := ParseCurrentWeatherOMeteo(sampleJSON, nil)
 	if err != nil {
 		t.Fatalf("ParseCurrentWeatherOMeteo failed with error: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestParseCurrentWeatherOMeteo(t *testing.T) {
 func TestParseCurrentWeatherGMP_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedWeather, err := ParseCurrentWeatherGMP(invalidJSON)
+	parsedWeather, err := ParseCurrentWeatherGMP(invalidJSON, nil)
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -165,7 +165,7 @@ func TestParseCurrentWeatherGMP_Error(t *testing.T) {
 func TestParseCurrentWeatherOWM_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedWeather, err := ParseCurrentWeatherOWM(invalidJSON)
+	parsedWeather, err := ParseCurrentWeatherOWM(invalidJSON, nil)
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -179,7 +179,7 @@ func TestParseCurrentWeatherOWM_Error(t *testing.T) {
 func TestParseCurrentWeatherOMeteo_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedWeather, err := ParseCurrentWeatherOMeteo(invalidJSON)
+	parsedWeather, err := ParseCurrentWeatherOMeteo(invalidJSON, nil)
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -197,10 +197,9 @@ func TestParseDailyForecastGMP(t *testing.T) {
 	}
 	defer sampleJSON.Close()
 
-	timestamp, err := time.Parse(time.RFC3339, "2025-08-05T05:00:00Z")
-	if err != nil {
-		t.Fatalf("failed to parse timestamp: %v", err)
-	}
+	loc, _ := time.LoadLocation("Europe/Warsaw")
+	timestamp := time.Date(2025, 8, 5, 0, 0, 0, 0, loc)
+
 	expectedForecast := DailyForecast{
 		SourceAPI:           "Google Weather API",
 		ForecastDate:        timestamp,
@@ -212,7 +211,7 @@ func TestParseDailyForecastGMP(t *testing.T) {
 		Humidity:            68,
 	}
 
-	parsedForecast, err := ParseDailyForecastGMP(sampleJSON)
+	parsedForecast, err := ParseDailyForecastGMP(sampleJSON, nil)
 	if err != nil {
 		t.Fatalf("ParseDailyForecastGMP failed with error: %v", err)
 	}
@@ -251,7 +250,7 @@ func TestParseDailyForecastGMP(t *testing.T) {
 func TestParseDailyForecastGMP_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedForecast, err := ParseDailyForecastGMP(invalidJSON)
+	parsedForecast, err := ParseDailyForecastGMP(invalidJSON, nil)
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -288,7 +287,7 @@ func TestParseHourlyForecastGMP(t *testing.T) {
 		Condition:           "Partly sunny",
 	}
 
-	parsedForecast, err := ParseHourlyForecastGMP(sampleJSON)
+	parsedForecast, err := ParseHourlyForecastGMP(sampleJSON, nil)
 	if err != nil {
 		t.Fatalf("ParseHourlyForecastGMP failed with error: %v", err)
 	}
@@ -331,7 +330,7 @@ func TestParseDailyForecastOWM(t *testing.T) {
 	}
 	defer sampleJSON.Close()
 
-	timestamp := time.Unix(1754388000, 0)
+	timestamp := time.Unix(1754344800, 0)
 	expectedForecast := DailyForecast{
 		SourceAPI:           "OpenWeatherMap API",
 		ForecastDate:        timestamp,
@@ -343,7 +342,7 @@ func TestParseDailyForecastOWM(t *testing.T) {
 		Humidity:            58,
 	}
 
-	parsedForecast, err := ParseDailyForecastOWM(sampleJSON)
+	parsedForecast, err := ParseDailyForecastOWM(sampleJSON, nil)
 	if err != nil {
 		t.Fatalf("ParseDailyForecastOWM failed with error: %v", err)
 	}
@@ -382,7 +381,7 @@ func TestParseDailyForecastOWM(t *testing.T) {
 func TestParseDailyForecastOWM_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedForecast, err := ParseDailyForecastOWM(invalidJSON)
+	parsedForecast, err := ParseDailyForecastOWM(invalidJSON, nil)
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -400,7 +399,7 @@ func TestParseDailyForecastOWM_Error(t *testing.T) {
 func TestParseHourlyForecastGMP_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedForecast, err := ParseHourlyForecastGMP(invalidJSON)
+	parsedForecast, err := ParseHourlyForecastGMP(invalidJSON, nil)
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -418,7 +417,7 @@ func TestParseHourlyForecastGMP_Error(t *testing.T) {
 func TestParseHourlyForecastOWM_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedForecast, err := ParseHourlyForecastOWM(invalidJSON)
+	parsedForecast, err := ParseHourlyForecastOWM(invalidJSON, nil)
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -436,7 +435,7 @@ func TestParseHourlyForecastOWM_Error(t *testing.T) {
 func TestParseHourlyForecastOMeteo_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedForecast, err := ParseHourlyForecastOMeteo(invalidJSON)
+	parsedForecast, err := ParseHourlyForecastOMeteo(invalidJSON, nil)
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -470,7 +469,7 @@ func TestParseHourlyForecastOWM(t *testing.T) {
 		Condition:           "Clear",
 	}
 
-	parsedForecast, err := ParseHourlyForecastOWM(sampleJSON)
+	parsedForecast, err := ParseHourlyForecastOWM(sampleJSON, nil)
 	if err != nil {
 		t.Fatalf("ParseHourlyForecastOWM failed with error: %v", err)
 	}
@@ -512,7 +511,7 @@ func TestParseHourlyForecastOMeteo(t *testing.T) {
 	}
 	defer sampleJSON.Close()
 
-	timestamp := time.Unix(1754344800, 0)
+	timestamp := time.Unix(2785344800, 0)
 	expectedForecast := HourlyForecast{
 		SourceAPI:           "Open-Meteo API",
 		ForecastDateTime:    timestamp,
@@ -524,7 +523,7 @@ func TestParseHourlyForecastOMeteo(t *testing.T) {
 		Condition:           "partly cloudy",
 	}
 
-	parsedForecast, err := ParseHourlyForecastOMeteo(sampleJSON)
+	parsedForecast, err := ParseHourlyForecastOMeteo(sampleJSON, nil)
 	if err != nil {
 		t.Fatalf("ParseHourlyForecastOMeteo failed with error: %v", err)
 	}
@@ -578,7 +577,7 @@ func TestParseDailyForecastOMeteo(t *testing.T) {
 		Humidity:            83,
 	}
 
-	parsedForecast, err := ParseDailyForecastOMeteo(sampleJSON)
+	parsedForecast, err := ParseDailyForecastOMeteo(sampleJSON, nil)
 	if err != nil {
 		t.Fatalf("ParseDailyForecastOMeteo failed with error: %v", err)
 	}
@@ -617,7 +616,7 @@ func TestParseDailyForecastOMeteo(t *testing.T) {
 func TestParseDailyForecastOMeteo_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedForecast, err := ParseDailyForecastOMeteo(invalidJSON)
+	parsedForecast, err := ParseDailyForecastOMeteo(invalidJSON, nil)
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}

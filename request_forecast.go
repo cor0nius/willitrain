@@ -2,7 +2,9 @@ package main
 
 import (
 	"io"
+	"log/slog"
 	"sync"
+	"time"
 )
 
 func (cfg *apiConfig) requestCurrentWeather(location Location) ([]CurrentWeather, error) {
@@ -37,6 +39,7 @@ func (cfg *apiConfig) requestCurrentWeather(location Location) ([]CurrentWeather
 }
 
 func (cfg *apiConfig) requestDailyForecast(location Location) ([]DailyForecast, error) {
+	fetchedAt := time.Now().UTC()
 	urls := cfg.WrapForDailyForecast(location)
 
 	providers := map[string]forecastProvider[[]DailyForecast]{
@@ -67,12 +70,14 @@ func (cfg *apiConfig) requestDailyForecast(location Location) ([]DailyForecast, 
 	// Populate the Location field for each result
 	for i := range allForecasts {
 		allForecasts[i].Location = location
+		allForecasts[i].Timestamp = fetchedAt
 	}
 
 	return allForecasts, nil
 }
 
 func (cfg *apiConfig) requestHourlyForecast(location Location) ([]HourlyForecast, error) {
+	fetchedAt := time.Now().UTC()
 	urls := cfg.WrapForHourlyForecast(location)
 
 	providers := map[string]forecastProvider[[]HourlyForecast]{
@@ -103,6 +108,7 @@ func (cfg *apiConfig) requestHourlyForecast(location Location) ([]HourlyForecast
 	// Populate the Location field for each result
 	for i := range allForecasts {
 		allForecasts[i].Location = location
+		allForecasts[i].Timestamp = fetchedAt
 	}
 
 	return allForecasts, nil
@@ -164,6 +170,6 @@ func processForecastRequests[T Forecast](
 }
 
 type forecastProvider[T Forecast] struct {
-	parser   func(io.Reader) (T, error)
+	parser   func(io.Reader, *slog.Logger) (T, error)
 	errorVal T
 }

@@ -114,6 +114,7 @@ func dailyForecastToCreateDailyForecastParams(forecast DailyForecast) database.C
 		LocationID:   forecast.Location.LocationID,
 		SourceApi:    forecast.SourceAPI,
 		ForecastDate: forecast.ForecastDate,
+		UpdatedAt:    forecast.Timestamp,
 		MinTempC: sql.NullFloat64{
 			Float64: forecast.MinTemp,
 			Valid:   true,
@@ -144,6 +145,7 @@ func dailyForecastToCreateDailyForecastParams(forecast DailyForecast) database.C
 func dailyForecastToUpdateDailyForecastParams(forecast DailyForecast, dbForecastID uuid.UUID) database.UpdateDailyForecastParams {
 	return database.UpdateDailyForecastParams{
 		ID:           dbForecastID,
+		UpdatedAt:    forecast.Timestamp,
 		ForecastDate: forecast.ForecastDate,
 		MinTempC: sql.NullFloat64{
 			Float64: forecast.MinTemp,
@@ -192,6 +194,7 @@ func hourlyForecastToCreateHourlyForecastParams(forecast HourlyForecast) databas
 		LocationID:          forecast.Location.LocationID,
 		SourceApi:           forecast.SourceAPI,
 		ForecastDatetimeUtc: forecast.ForecastDateTime,
+		UpdatedAt:           forecast.Timestamp,
 		TemperatureC: sql.NullFloat64{
 			Float64: forecast.Temperature,
 			Valid:   true,
@@ -222,6 +225,7 @@ func hourlyForecastToCreateHourlyForecastParams(forecast HourlyForecast) databas
 func hourlyForecastToUpdateHourlyForecastParams(forecast HourlyForecast, dbForecastID uuid.UUID) database.UpdateHourlyForecastParams {
 	return database.UpdateHourlyForecastParams{
 		ID:                  dbForecastID,
+		UpdatedAt:           forecast.Timestamp,
 		ForecastDatetimeUtc: forecast.ForecastDateTime,
 		TemperatureC: sql.NullFloat64{
 			Float64: forecast.Temperature,

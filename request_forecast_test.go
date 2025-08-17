@@ -11,7 +11,7 @@ import (
 )
 
 // mockParserSuccess simulates a successful parse of an API response.
-func mockParserSuccess(body io.Reader) (CurrentWeather, error) {
+func mockParserSuccess(body io.Reader, logger *slog.Logger) (CurrentWeather, error) {
 	return CurrentWeather{
 		SourceAPI:   "TestAPI",
 		Temperature: 25.0,
@@ -19,7 +19,7 @@ func mockParserSuccess(body io.Reader) (CurrentWeather, error) {
 }
 
 // mockParserError simulates a failed parse.
-func mockParserError(body io.Reader) (CurrentWeather, error) {
+func mockParserError(body io.Reader, logger *slog.Logger) (CurrentWeather, error) {
 	return CurrentWeather{SourceAPI: "TestAPI"}, errors.New("parsing failed")
 }
 
@@ -27,7 +27,7 @@ func TestFetchForecastFromAPI(t *testing.T) {
 	testCases := []struct {
 		name          string
 		serverHandler http.HandlerFunc
-		parser        func(io.Reader) (CurrentWeather, error)
+		parser        func(io.Reader, *slog.Logger) (CurrentWeather, error)
 		expectError   bool
 		expectedTemp  float64
 	}{

@@ -18,8 +18,8 @@ INSERT INTO daily_forecasts (
     id,
     location_id,
     source_api,
-    updated_at,
     forecast_date,
+    updated_at,
     min_temp_c,
     max_temp_c,
     precipitation_mm,
@@ -27,7 +27,7 @@ INSERT INTO daily_forecasts (
     wind_speed_kmh,
     humidity 
 )
-VALUES (gen_random_uuid(), $1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9)
+VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id, location_id, source_api, forecast_date, updated_at, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity
 `
 
@@ -35,6 +35,7 @@ type CreateDailyForecastParams struct {
 	LocationID                 uuid.UUID
 	SourceApi                  string
 	ForecastDate               time.Time
+	UpdatedAt                  time.Time
 	MinTempC                   sql.NullFloat64
 	MaxTempC                   sql.NullFloat64
 	PrecipitationMm            sql.NullFloat64
@@ -48,6 +49,7 @@ func (q *Queries) CreateDailyForecast(ctx context.Context, arg CreateDailyForeca
 		arg.LocationID,
 		arg.SourceApi,
 		arg.ForecastDate,
+		arg.UpdatedAt,
 		arg.MinTempC,
 		arg.MaxTempC,
 		arg.PrecipitationMm,
@@ -227,13 +229,14 @@ func (q *Queries) GetDailyForecastAtLocationAndDateFromAPI(ctx context.Context, 
 
 const updateDailyForecast = `-- name: UpdateDailyForecast :one
 UPDATE daily_forecasts
-SET updated_at=NOW(), forecast_date=$2, min_temp_c=$3, max_temp_c=$4, precipitation_mm=$5, precipitation_chance_percent=$6, wind_speed_kmh=$7, humidity=$8
+SET updated_at=$2, forecast_date=$3, min_temp_c=$4, max_temp_c=$5, precipitation_mm=$6, precipitation_chance_percent=$7, wind_speed_kmh=$8, humidity=$9
 WHERE id=$1
 RETURNING id, location_id, source_api, forecast_date, updated_at, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity
 `
 
 type UpdateDailyForecastParams struct {
 	ID                         uuid.UUID
+	UpdatedAt                  time.Time
 	ForecastDate               time.Time
 	MinTempC                   sql.NullFloat64
 	MaxTempC                   sql.NullFloat64
@@ -246,6 +249,7 @@ type UpdateDailyForecastParams struct {
 func (q *Queries) UpdateDailyForecast(ctx context.Context, arg UpdateDailyForecastParams) (DailyForecast, error) {
 	row := q.db.QueryRowContext(ctx, updateDailyForecast,
 		arg.ID,
+		arg.UpdatedAt,
 		arg.ForecastDate,
 		arg.MinTempC,
 		arg.MaxTempC,

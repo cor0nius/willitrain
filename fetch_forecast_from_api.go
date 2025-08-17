@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"sync"
 )
@@ -10,7 +11,7 @@ import (
 func fetchForecastFromAPI[T Forecast](
 	cfg *apiConfig,
 	url string,
-	parser func(body io.Reader) (T, error),
+	parser func(body io.Reader, logger *slog.Logger) (T, error),
 	errorVal T,
 	wg *sync.WaitGroup,
 	results chan<- struct {
@@ -39,7 +40,7 @@ func fetchForecastFromAPI[T Forecast](
 		return
 	}
 
-	data, err := parser(resp.Body)
+	data, err := parser(resp.Body, cfg.logger)
 	if err != nil {
 		results <- struct {
 			t   T

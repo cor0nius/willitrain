@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "willitrain"
+    static_configs:
+      - targets: ["willitrain:8080"]
