@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -70,9 +69,7 @@ func getEnvAsInt(key string, fallback int, logger *slog.Logger) int {
 }
 
 func config() *apiConfig {
-	if err := godotenv.Load(); err != nil {
-		log.Println("no .env file found, relying on environment variables")
-	}
+	godotenv.Load()
 
 	devModeStr := os.Getenv("DEV_MODE")
 	devMode, err := strconv.ParseBool(devModeStr)
