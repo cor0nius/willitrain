@@ -19,9 +19,15 @@ func ParseCurrentWeatherGMP(body io.Reader, logger *slog.Logger) (CurrentWeather
 		return CurrentWeather{SourceAPI: "Google Weather API"}, errors.New("empty or invalid response from API")
 	}
 
+	loc, err := time.LoadLocation(response.TimeZone.ID)
+	if err != nil {
+		logger.Warn("Failed to load timezone, using UTC as fallback", "error", err)
+		loc = time.UTC
+	}
+
 	weather := CurrentWeather{
 		SourceAPI:     "Google Weather API",
-		Timestamp:     response.Timestamp,
+		Timestamp:     (response.Timestamp).In(loc),
 		Temperature:   response.Temperature.Degrees,
 		Humidity:      int(response.Humidity),
 		WindSpeed:     response.Wind.Speed.Value,
@@ -42,9 +48,15 @@ func ParseCurrentWeatherOWM(body io.Reader, logger *slog.Logger) (CurrentWeather
 		return CurrentWeather{SourceAPI: "OpenWeatherMap API"}, errors.New("empty or invalid response from API")
 	}
 
+	loc, err := time.LoadLocation(response.Timezone)
+	if err != nil {
+		logger.Warn("Failed to load timezone, using UTC as fallback", "error", err)
+		loc = time.UTC
+	}
+
 	weather := CurrentWeather{
 		SourceAPI:     "OpenWeatherMap API",
-		Timestamp:     time.Unix(response.CurrentWeather.Dt, 0),
+		Timestamp:     time.Unix(response.CurrentWeather.Dt, 0).UTC().In(loc),
 		Temperature:   response.CurrentWeather.Temp,
 		Humidity:      int(response.CurrentWeather.Humidity),
 		WindSpeed:     Round(response.CurrentWeather.WindSpeed*3.6, 4),
@@ -65,9 +77,15 @@ func ParseCurrentWeatherOMeteo(body io.Reader, logger *slog.Logger) (CurrentWeat
 		return CurrentWeather{SourceAPI: "Open-Meteo API"}, errors.New("empty or invalid response from API")
 	}
 
+	loc, err := time.LoadLocation(response.Timezone)
+	if err != nil {
+		logger.Warn("Failed to load timezone, using UTC as fallback", "error", err)
+		loc = time.UTC
+	}
+
 	weather := CurrentWeather{
 		SourceAPI:     "Open-Meteo API",
-		Timestamp:     time.Unix(response.CurrentWeather.Time, 0),
+		Timestamp:     time.Unix(response.CurrentWeather.Time, 0).UTC().In(loc),
 		Temperature:   response.CurrentWeather.Temperature2m,
 		Humidity:      int(response.CurrentWeather.RelativeHumidity2m),
 		WindSpeed:     response.CurrentWeather.WindSpeed10m,
@@ -101,7 +119,7 @@ func ParseDailyForecastGMP(body io.Reader, logger *slog.Logger) ([]DailyForecast
 		}
 		forecast = append(forecast, DailyForecast{
 			SourceAPI:           "Google Weather API",
-			ForecastDate:        time.Date(day.Interval.StartTime.Year(), day.Interval.StartTime.Month(), day.Interval.StartTime.Day(), 0, 0, 0, 0, loc),
+			ForecastDate:        time.Date((day.Interval.StartTime).Year(), (day.Interval.StartTime).Month(), (day.Interval.StartTime).Day(), 0, 0, 0, 0, loc),
 			MinTemp:             day.MinTemperature.Degrees,
 			MaxTemp:             day.MaxTemperature.Degrees,
 			Precipitation:       day.DaytimeForecast.Precipitation.Qpf.Quantity,
@@ -137,7 +155,7 @@ func ParseDailyForecastOWM(body io.Reader, logger *slog.Logger) ([]DailyForecast
 		}
 		forecast = append(forecast, DailyForecast{
 			SourceAPI:           "OpenWeatherMap API",
-			ForecastDate:        time.Date(time.Unix(day.Dt, 0).Year(), time.Unix(day.Dt, 0).Month(), time.Unix(day.Dt, 0).Day(), 0, 0, 0, 0, loc),
+			ForecastDate:        time.Date(time.Unix(day.Dt, 0).UTC().Year(), time.Unix(day.Dt, 0).UTC().Month(), time.Unix(day.Dt, 0).UTC().Day(), 0, 0, 0, 0, loc),
 			MinTemp:             day.Temp.Min,
 			MaxTemp:             day.Temp.Max,
 			Precipitation:       day.Rain + day.Snow,
@@ -175,7 +193,7 @@ func ParseDailyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]DailyForec
 	for i := 0; i < numDays; i++ {
 		forecast = append(forecast, DailyForecast{
 			SourceAPI:           "Open-Meteo API",
-			ForecastDate:        time.Date(time.Unix(response.DailyForecast.Time[i], 0).Year(), time.Unix(response.DailyForecast.Time[i], 0).Month(), time.Unix(response.DailyForecast.Time[i], 0).Day(), 0, 0, 0, 0, loc),
+			ForecastDate:        time.Date(time.Unix(response.DailyForecast.Time[i], 0).UTC().Year(), time.Unix(response.DailyForecast.Time[i], 0).UTC().Month(), time.Unix(response.DailyForecast.Time[i], 0).UTC().Day(), 0, 0, 0, 0, loc),
 			MinTemp:             response.DailyForecast.Temperature2mMin[i],
 			MaxTemp:             response.DailyForecast.Temperature2mMax[i],
 			Precipitation:       response.DailyForecast.PrecipitationSum[i],
@@ -234,6 +252,12 @@ func ParseHourlyForecastOWM(body io.Reader, logger *slog.Logger) ([]HourlyForeca
 		return []HourlyForecast{{SourceAPI: "OpenWeatherMap API"}}, errors.New("empty or invalid response from API")
 	}
 
+	loc, err := time.LoadLocation(response.Timezone)
+	if err != nil {
+		logger.Warn("Failed to load timezone, using UTC as fallback", "error", err)
+		loc = time.UTC
+	}
+
 	var forecast []HourlyForecast
 	for i, hour := range response.HourlyForecast {
 		if i >= 24 {
@@ -241,7 +265,7 @@ func ParseHourlyForecastOWM(body io.Reader, logger *slog.Logger) ([]HourlyForeca
 		}
 		forecast = append(forecast, HourlyForecast{
 			SourceAPI:           "OpenWeatherMap API",
-			ForecastDateTime:    time.Unix(hour.Dt, 0),
+			ForecastDateTime:    time.Unix(hour.Dt, 0).UTC().In(loc),
 			Temperature:         hour.Temp,
 			Humidity:            hour.Humidity,
 			WindSpeed:           Round(hour.WindSpeed*3.6, 4),
@@ -283,12 +307,18 @@ func ParseHourlyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]HourlyFor
 		endIndex = len(response.HourlyForecast.Time)
 	}
 
+	loc, err := time.LoadLocation(response.Timezone)
+	if err != nil {
+		logger.Warn("Failed to load timezone, using UTC as fallback", "error", err)
+		loc = time.UTC
+	}
+
 	var forecast []HourlyForecast
 
 	for i := startIndex; i < endIndex; i++ {
 		forecast = append(forecast, HourlyForecast{
 			SourceAPI:           "Open-Meteo API",
-			ForecastDateTime:    time.Unix(response.HourlyForecast.Time[i], 0),
+			ForecastDateTime:    time.Unix(response.HourlyForecast.Time[i], 0).UTC().In(loc),
 			Temperature:         response.HourlyForecast.Temperature2m[i],
 			Humidity:            response.HourlyForecast.RelativeHumidity2m[i],
 			WindSpeed:           response.HourlyForecast.WindSpeed10m[i],
@@ -304,6 +334,7 @@ func ParseHourlyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]HourlyFor
 // GMP Structs
 type ResponseCurrentWeatherGMP struct {
 	Timestamp     time.Time        `json:"currentTime"`
+	TimeZone      TimeZone         `json:"timeZone"`
 	Temperature   Temperature      `json:"temperature"`
 	Humidity      float64          `json:"relativeHumidity"`
 	Wind          Wind             `json:"wind"`
@@ -388,6 +419,7 @@ type Description struct {
 // OWM Structs
 type ResponseCurrentWeatherOWM struct {
 	CurrentWeather CurrentOWM `json:"current"`
+	Timezone       string     `json:"timezone"`
 }
 
 type ResponseDailyForecastOWM struct {
@@ -397,6 +429,7 @@ type ResponseDailyForecastOWM struct {
 
 type ResponseHourlyForecastOWM struct {
 	HourlyForecast []HourlyOWM `json:"hourly"`
+	Timezone       string      `json:"timezone"`
 }
 
 type CurrentOWM struct {
@@ -451,6 +484,7 @@ type Weather struct {
 // OMeteo Structs
 type ResponseCurrentWeatherOMeteo struct {
 	CurrentWeather CurrentOMeteo `json:"current"`
+	Timezone       string        `json:"timezone"`
 }
 
 type ResponseDailyForecastOMeteo struct {
@@ -460,6 +494,7 @@ type ResponseDailyForecastOMeteo struct {
 
 type ResponseHourlyForecastOMeteo struct {
 	HourlyForecast HourlyOMeteo `json:"hourly"`
+	Timezone       string       `json:"timezone"`
 }
 
 type CurrentOMeteo struct {
