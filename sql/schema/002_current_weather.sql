@@ -3,7 +3,7 @@ CREATE TABLE current_weather (
     id UUID PRIMARY KEY,
     location_id UUID REFERENCES locations(id) ON DELETE CASCADE NOT NULL,
     source_api TEXT NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
     temperature_c FLOAT,
     humidity INT,
     wind_speed_kmh FLOAT,

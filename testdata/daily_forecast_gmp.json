@@ -2,8 +2,8 @@
     "forecastDays": [
         {
             "interval": {
-                "startTime": "2025-08-05T05:00:00Z",
-                "endTime": "2025-08-06T05:00:00Z"
+                "startTime": "2025-08-05T23:00:00Z",
+                "endTime": "2025-08-06T23:00:00Z"
             },
             "displayDate": {
                 "year": 2025,
@@ -12,8 +12,8 @@
             },
             "daytimeForecast": {
                 "interval": {
-                    "startTime": "2025-08-05T05:00:00Z",
-                    "endTime": "2025-08-05T17:00:00Z"
+                    "startTime": "2025-08-05T23:00:00Z",
+                    "endTime": "2025-08-06T17:00:00Z"
                 },
                 "weatherCondition": {
                     "iconBaseUri": "https://maps.gstatic.com/weather/v1/drizzle",

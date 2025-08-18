@@ -117,9 +117,11 @@ func ParseDailyForecastGMP(body io.Reader, logger *slog.Logger) ([]DailyForecast
 		if i >= 5 {
 			break
 		}
+		localTime := day.Interval.StartTime.In(loc)
+		forecastDate := time.Date(localTime.Year(), localTime.Month(), localTime.Day(), 0, 0, 0, 0, loc)
 		forecast = append(forecast, DailyForecast{
 			SourceAPI:           "Google Weather API",
-			ForecastDate:        time.Date((day.Interval.StartTime).Year(), (day.Interval.StartTime).Month(), (day.Interval.StartTime).Day(), 0, 0, 0, 0, loc),
+			ForecastDate:        forecastDate,
 			MinTemp:             day.MinTemperature.Degrees,
 			MaxTemp:             day.MaxTemperature.Degrees,
 			Precipitation:       day.DaytimeForecast.Precipitation.Qpf.Quantity,
@@ -153,9 +155,11 @@ func ParseDailyForecastOWM(body io.Reader, logger *slog.Logger) ([]DailyForecast
 		if i >= 5 {
 			break
 		}
+		localTime := time.Unix(day.Dt, 0).In(loc)
+		forecastDate := time.Date(localTime.Year(), localTime.Month(), localTime.Day(), 0, 0, 0, 0, loc)
 		forecast = append(forecast, DailyForecast{
 			SourceAPI:           "OpenWeatherMap API",
-			ForecastDate:        time.Date(time.Unix(day.Dt, 0).UTC().Year(), time.Unix(day.Dt, 0).UTC().Month(), time.Unix(day.Dt, 0).UTC().Day(), 0, 0, 0, 0, loc),
+			ForecastDate:        forecastDate,
 			MinTemp:             day.Temp.Min,
 			MaxTemp:             day.Temp.Max,
 			Precipitation:       day.Rain + day.Snow,
@@ -191,9 +195,12 @@ func ParseDailyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]DailyForec
 	}
 
 	for i := 0; i < numDays; i++ {
+		unixTime := response.DailyForecast.Time[i]
+		localTime := time.Unix(unixTime, 0).In(loc)
+		forecastDate := time.Date(localTime.Year(), localTime.Month(), localTime.Day(), 0, 0, 0, 0, loc)
 		forecast = append(forecast, DailyForecast{
 			SourceAPI:           "Open-Meteo API",
-			ForecastDate:        time.Date(time.Unix(response.DailyForecast.Time[i], 0).UTC().Year(), time.Unix(response.DailyForecast.Time[i], 0).UTC().Month(), time.Unix(response.DailyForecast.Time[i], 0).UTC().Day(), 0, 0, 0, 0, loc),
+			ForecastDate:        forecastDate,
 			MinTemp:             response.DailyForecast.Temperature2mMin[i],
 			MaxTemp:             response.DailyForecast.Temperature2mMax[i],
 			Precipitation:       response.DailyForecast.PrecipitationSum[i],

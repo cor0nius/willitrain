@@ -198,7 +198,7 @@ func TestParseDailyForecastGMP(t *testing.T) {
 	defer sampleJSON.Close()
 
 	loc, _ := time.LoadLocation("Europe/Warsaw")
-	timestamp := time.Date(2025, 8, 5, 0, 0, 0, 0, loc)
+	timestamp := time.Date(2025, 8, 6, 0, 0, 0, 0, loc)
 
 	expectedForecast := DailyForecast{
 		SourceAPI:           "Google Weather API",
@@ -272,10 +272,8 @@ func TestParseHourlyForecastGMP(t *testing.T) {
 	}
 	defer sampleJSON.Close()
 
-	timestamp, err := time.Parse(time.RFC3339, "2025-08-05T11:00:00Z")
-	if err != nil {
-		t.Fatalf("failed to parse timestamp: %v", err)
-	}
+	loc, _ := time.LoadLocation("Europe/Warsaw")
+	timestamp := time.Date(2025, 8, 5, 13, 0, 0, 0, loc)
 	expectedForecast := HourlyForecast{
 		SourceAPI:           "Google Weather API",
 		ForecastDateTime:    timestamp,
@@ -330,7 +328,8 @@ func TestParseDailyForecastOWM(t *testing.T) {
 	}
 	defer sampleJSON.Close()
 
-	timestamp := time.Unix(1754344800, 0)
+	loc, _ := time.LoadLocation("Europe/Warsaw")
+	timestamp := time.Date(2025, 8, 6, 0, 0, 0, 0, loc)
 	expectedForecast := DailyForecast{
 		SourceAPI:           "OpenWeatherMap API",
 		ForecastDate:        timestamp,
@@ -566,7 +565,7 @@ func TestParseDailyForecastOMeteo(t *testing.T) {
 	defer sampleJSON.Close()
 
 	loc, _ := time.LoadLocation("Europe/Warsaw")
-	timestamp := time.Date(2025, 8, 6, 0, 0, 0, 0, loc)
+	timestamp := time.Date(2025, 8, 7, 0, 0, 0, 0, loc)
 
 	expectedForecast := DailyForecast{
 		SourceAPI:           "Open-Meteo API",
