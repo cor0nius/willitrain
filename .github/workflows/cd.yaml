@@ -48,6 +48,12 @@ jobs:
         with:
           go-version: '1.24.x'
 
+      - name: Start Cloud SQL Proxy
+        run: |
+          wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy
+          chmod +x cloud_sql_proxy
+          ./cloud_sql_proxy -instances=willitrain-467605:europe-west1:willitrain-db=tcp:5432 & 
+
       - name: Run Database Migrations
         run: |
           go install github.com/pressly/goose/v3/cmd/goose@latest
