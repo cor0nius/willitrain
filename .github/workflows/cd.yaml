@@ -20,6 +20,7 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v2
         with:
+          token_format: 'access_token'
           workload_identity_provider: 'projects/908739103426/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'willitrain-cd@willitrain-467605.iam.gserviceaccount.com'
 
@@ -31,7 +32,7 @@ jobs:
         with:
           registry: europe-west1-docker.pkg.dev
           username: oauth2accesstoken
-          password: ${{ steps.auth.outputs.token }}
+          password: ${{ steps.auth.outputs.access_token }}
 
       - name: Build and Push Docker Image
         id: build-and-push
