@@ -616,11 +616,11 @@ func TestGetCachedOrFetchHourlyForecast_APIFetch(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if strings.Contains(r.URL.Path, "/gmp") {
-			w.Write(gmpData)
+			_, _ = w.Write(gmpData)
 		} else if strings.Contains(r.URL.Path, "/owm") {
-			w.Write(owmData)
+			_, _ = w.Write(owmData)
 		} else if strings.Contains(r.URL.Path, "/ometeo") {
-			w.Write(ometeoData)
+			_, _ = w.Write(ometeoData)
 		}
 	}))
 	defer mockServer.Close()

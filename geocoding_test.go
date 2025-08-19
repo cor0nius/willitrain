@@ -138,7 +138,10 @@ func TestGeocode_ZeroResults(t *testing.T) {
 func TestGeocode_MalformedJSON(t *testing.T) {
 	server := setupMockServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "OK", "results": [invalid]`)) // Malformed JSON
+		_, err := w.Write([]byte(`{"status": "OK", "results": [invalid]`)) // Malformed JSON
+		if err != nil {
+			t.Fatalf("Failed to write response: %v", err)
+		}
 	})
 	defer server.Close()
 
