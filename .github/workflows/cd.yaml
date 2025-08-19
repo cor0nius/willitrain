@@ -73,6 +73,7 @@ jobs:
           flags: |-
             --vpc-connector=willitrain-connector
             --add-cloudsql-instances=willitrain-467605:europe-west1:willitrain-db
+            --verbosity=debug
 
           # Mount secrets as environment variables
           secrets: |-
