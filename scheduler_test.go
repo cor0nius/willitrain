@@ -427,18 +427,6 @@ type mockQuerier struct {
 	getHourlyForecastFromAPICalls int
 }
 
-func (m *mockQuerier) resetCounters() {
-	m.createCurrentWeatherCalls = 0
-	m.updateCurrentWeatherCalls = 0
-	m.createDailyForecastCalls = 0
-	m.updateDailyForecastCalls = 0
-	m.createHourlyForecastCalls = 0
-	m.updateHourlyForecastCalls = 0
-	m.getCurrentWeatherFromAPICalls = 0
-	m.getDailyForecastFromAPICalls = 0
-	m.getHourlyForecastFromAPICalls = 0
-}
-
 func (m *mockQuerier) CreateCurrentWeather(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error) {
 	m.createCurrentWeatherCalls++
 	return database.CurrentWeather{}, nil

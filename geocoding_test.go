@@ -20,7 +20,10 @@ func TestGeocode(t *testing.T) {
 			t.Fatalf("Failed to read test data: %v", err)
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+		_, err = w.Write(data)
+		if err != nil {
+			t.Fatalf("Failed to write response: %v", err)
+		}
 	})
 	defer server.Close()
 
@@ -58,7 +61,10 @@ func TestReverseGeocode(t *testing.T) {
 			t.Fatalf("Failed to read test data: %v", err)
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+		_, err = w.Write(data)
+		if err != nil {
+			t.Fatalf("Failed to write response: %v", err)
+		}
 	})
 	defer server.Close()
 
@@ -110,7 +116,10 @@ func TestGeocode_APIError(t *testing.T) {
 func TestGeocode_ZeroResults(t *testing.T) {
 	server := setupMockServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "ZERO_RESULTS", "results": []}`))
+		_, err := w.Write([]byte(`{"status": "ZERO_RESULTS", "results": []}`))
+		if err != nil {
+			t.Fatalf("Failed to write response: %v", err)
+		}
 	})
 	defer server.Close()
 
