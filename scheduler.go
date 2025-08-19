@@ -18,6 +18,7 @@ type Scheduler struct {
 	currentWeatherJobs func()
 	hourlyForecastJobs func()
 	dailyForecastJobs  func()
+	jobWG              sync.WaitGroup
 }
 
 func NewScheduler(cfg *apiConfig, currentInterval, hourlyInterval, dailyInterval time.Duration) *Scheduler {
@@ -44,13 +45,19 @@ func (s *Scheduler) Start() {
 			select {
 			case <-s.currentChan:
 				s.cfg.logger.Info("running scheduler jobs", "type", "current weather")
+				s.jobWG.Add(1)
 				s.currentWeatherJobs()
+				s.jobWG.Done()
 			case <-s.hourlyChan:
 				s.cfg.logger.Info("running scheduler jobs", "type", "hourly forecast")
+				s.jobWG.Add(1)
 				s.hourlyForecastJobs()
+				s.jobWG.Done()
 			case <-s.dailyChan:
 				s.cfg.logger.Info("running scheduler jobs", "type", "daily forecast")
+				s.jobWG.Add(1)
 				s.dailyForecastJobs()
+				s.jobWG.Done()
 			case <-s.stop:
 				s.cfg.logger.Info("stopping scheduler")
 				for _, ticker := range s.tickers {
@@ -63,12 +70,9 @@ func (s *Scheduler) Start() {
 }
 
 func (s *Scheduler) Stop() {
-	// TODO: Implement a more graceful shutdown.
-	// The current implementation signals the scheduler to stop, but doesn't wait
-	// for the currently running jobs to complete. A sync.WaitGroup could be
-	// added to the Scheduler struct and used in runUpdateForLocations to
-	// ensure that the Stop() method blocks until all active jobs are finished.
 	close(s.stop)
+	s.jobWG.Wait()
+	s.cfg.logger.Info("scheduler stopped")
 }
 
 func (s *Scheduler) runUpdateForLocations(jobType string, updateFunc func(context.Context, Location)) {

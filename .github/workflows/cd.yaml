@@ -1,0 +1,73 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/908739103426/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'willitrain-cd@willitrain-467605.iam.gserviceaccount.com'
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: europe-west1-docker.pkg.dev
+          username: _json_key
+          password: ${{ steps.auth.outputs.token }}
+
+      - name: Build and Push Docker Image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: europe-west1-docker.pkg.dev/willitrain-467605/willitrain/willitrain:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: 'willitrain'
+          region: 'europe-west1'
+          image: europe-west1-docker.pkg.dev/willitrain-467605/willitrain/willitrain:${{ github.sha }}
+          
+          # Connect to the VPC to reach Redis
+          vpc-connector: 'willitrain-connector'
+          
+          # Connect to the Cloud SQL database
+          cloud-sql-instances: 'willitrain-467605:europe-west1:willitrain-db'
+
+          # Mount secrets as environment variables
+          secrets: |-
+            GMP_KEY=GMP_KEY:latest
+            OWM_KEY=OWM_KEY:latest
+            DB_URL=DB_URL:latest
+
+          # Set environment variables
+          env_vars: |-
+            REDIS_URL=redis://10.19.20.155:6379
+            GMP_GEOCODE_URL=https://maps.googleapis.com/maps/api/geocode/
+            GMP_WEATHER_URL=https://weather.googleapis.com/v1/
+            OWM_WEATHER_URL=https://api.openweathermap.org/data/3.0/onecall?
+            OMETEO_WEATHER_URL=https://api.open-meteo.com/v1/forecast?
+            CURRENT_INTERVAL_MIN=10
+            HOURLY_INTERVAL_MIN=60
+            DAILY_INTERVAL_MIN=720
