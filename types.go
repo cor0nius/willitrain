@@ -19,7 +19,7 @@ type CurrentWeather struct {
 	SourceAPI     string    `json:"source_api"`
 	Timestamp     time.Time `json:"timestamp"`
 	Temperature   float64   `json:"temperature_c"`
-	Humidity      int       `json:"humidity"`
+	Humidity      int32     `json:"humidity"`
 	WindSpeed     float64   `json:"wind_speed_kmh"`
 	Precipitation float64   `json:"precipitation_mm"`
 	Condition     string    `json:"condition_text"`
@@ -33,9 +33,9 @@ type DailyForecast struct {
 	MinTemp             float64   `json:"min_temp_c"`
 	MaxTemp             float64   `json:"max_temp_c"`
 	Precipitation       float64   `json:"precipitation_mm"`
-	PrecipitationChance int       `json:"precipitation_chance"`
+	PrecipitationChance int32     `json:"precipitation_chance"`
 	WindSpeed           float64   `json:"wind_speed_kmh"`
-	Humidity            int       `json:"humidity"`
+	Humidity            int32     `json:"humidity"`
 }
 
 type HourlyForecast struct {
@@ -44,10 +44,10 @@ type HourlyForecast struct {
 	Timestamp           time.Time `json:"timestamp"`
 	ForecastDateTime    time.Time `json:"forecast_datetime"`
 	Temperature         float64   `json:"temperature_c"`
-	Humidity            int       `json:"humidity"`
+	Humidity            int32     `json:"humidity"`
 	WindSpeed           float64   `json:"wind_speed_kmh"`
 	Precipitation       float64   `json:"precipitation_mm"`
-	PrecipitationChance int       `json:"precipitation_chance"`
+	PrecipitationChance int32     `json:"precipitation_chance"`
 	Condition           string    `json:"condition_text"`
 }
 

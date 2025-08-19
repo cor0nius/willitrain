@@ -29,7 +29,7 @@ func ParseCurrentWeatherGMP(body io.Reader, logger *slog.Logger) (CurrentWeather
 		SourceAPI:     "Google Weather API",
 		Timestamp:     (response.Timestamp).In(loc),
 		Temperature:   response.Temperature.Degrees,
-		Humidity:      int(response.Humidity),
+		Humidity:      int32(response.Humidity),
 		WindSpeed:     response.Wind.Speed.Value,
 		Precipitation: response.Precipitation.Qpf.Quantity,
 		Condition:     response.Condition.Description.Text,
@@ -58,7 +58,7 @@ func ParseCurrentWeatherOWM(body io.Reader, logger *slog.Logger) (CurrentWeather
 		SourceAPI:     "OpenWeatherMap API",
 		Timestamp:     time.Unix(response.CurrentWeather.Dt, 0).UTC().In(loc),
 		Temperature:   response.CurrentWeather.Temp,
-		Humidity:      int(response.CurrentWeather.Humidity),
+		Humidity:      int32(response.CurrentWeather.Humidity),
 		WindSpeed:     Round(response.CurrentWeather.WindSpeed*3.6, 4),
 		Precipitation: response.CurrentWeather.Rain.Quantity + response.CurrentWeather.Snow.Quantity,
 		Condition:     response.CurrentWeather.Weather[0].Main,
@@ -87,7 +87,7 @@ func ParseCurrentWeatherOMeteo(body io.Reader, logger *slog.Logger) (CurrentWeat
 		SourceAPI:     "Open-Meteo API",
 		Timestamp:     time.Unix(response.CurrentWeather.Time, 0).UTC().In(loc),
 		Temperature:   response.CurrentWeather.Temperature2m,
-		Humidity:      int(response.CurrentWeather.RelativeHumidity2m),
+		Humidity:      int32(response.CurrentWeather.RelativeHumidity2m),
 		WindSpeed:     response.CurrentWeather.WindSpeed10m,
 		Precipitation: response.CurrentWeather.Precipitation,
 		Condition:     interpretWeatherCode(response.CurrentWeather.WeatherCode),
@@ -163,7 +163,7 @@ func ParseDailyForecastOWM(body io.Reader, logger *slog.Logger) ([]DailyForecast
 			MinTemp:             day.Temp.Min,
 			MaxTemp:             day.Temp.Max,
 			Precipitation:       day.Rain + day.Snow,
-			PrecipitationChance: int(day.Pop * 100),
+			PrecipitationChance: int32(day.Pop * 100),
 			WindSpeed:           Round(day.WindSpeed*3.6, 4),
 			Humidity:            day.Humidity,
 		})
@@ -277,7 +277,7 @@ func ParseHourlyForecastOWM(body io.Reader, logger *slog.Logger) ([]HourlyForeca
 			Humidity:            hour.Humidity,
 			WindSpeed:           Round(hour.WindSpeed*3.6, 4),
 			Precipitation:       hour.Rain.Quantity + hour.Snow.Quantity,
-			PrecipitationChance: int(hour.Pop * 100),
+			PrecipitationChance: int32(hour.Pop * 100),
 			Condition:           hour.Weather[0].Main,
 		})
 	}
@@ -372,7 +372,7 @@ type ForecastHour struct {
 	Temperature   Temperature      `json:"temperature"`
 	Precipitation Precipitation    `json:"precipitation"`
 	Wind          Wind             `json:"wind"`
-	Humidity      int              `json:"relativeHumidity"`
+	Humidity      int32            `json:"relativeHumidity"`
 }
 
 type Interval struct {
@@ -387,7 +387,7 @@ type ForecastDayPart struct {
 	Condition        WeatherCondition `json:"weatherCondition"`
 	Precipitation    Precipitation    `json:"precipitation"`
 	Wind             Wind             `json:"wind"`
-	RelativeHumidity int              `json:"relativeHumidity"`
+	RelativeHumidity int32            `json:"relativeHumidity"`
 }
 
 type Temperature struct {
@@ -412,7 +412,7 @@ type Qpf struct {
 }
 
 type PrecipitationProbability struct {
-	Percent int `json:"percent"`
+	Percent int32 `json:"percent"`
 }
 
 type WeatherCondition struct {
@@ -457,13 +457,13 @@ type DailyOWM struct {
 	Weather   []Weather `json:"weather"`
 	Pop       float64   `json:"pop"`
 	WindSpeed float64   `json:"wind_speed"`
-	Humidity  int       `json:"humidity"`
+	Humidity  int32     `json:"humidity"`
 }
 
 type HourlyOWM struct {
 	Dt        int64     `json:"dt"`
 	Temp      float64   `json:"temp"`
-	Humidity  int       `json:"humidity"`
+	Humidity  int32     `json:"humidity"`
 	WindSpeed float64   `json:"wind_speed"`
 	Rain      Rain      `json:"rain"`
 	Snow      Snow      `json:"snow"`
@@ -518,19 +518,19 @@ type DailyOMeteo struct {
 	Temperature2mMax            []float64 `json:"temperature_2m_max"`
 	Temperature2mMin            []float64 `json:"temperature_2m_min"`
 	PrecipitationSum            []float64 `json:"precipitation_sum"`
-	PrecipitationProbabilityMax []int     `json:"precipitation_probability_max"`
+	PrecipitationProbabilityMax []int32   `json:"precipitation_probability_max"`
 	WeatherCode                 []int     `json:"weather_code"`
 	WindSpeed10mMax             []float64 `json:"wind_speed_10m_max"`
-	RelativeHumidity2mMax       []int     `json:"relative_humidity_2m_max"`
+	RelativeHumidity2mMax       []int32   `json:"relative_humidity_2m_max"`
 }
 
 type HourlyOMeteo struct {
 	Time                     []int64   `json:"time"`
 	Temperature2m            []float64 `json:"temperature_2m"`
-	RelativeHumidity2m       []int     `json:"relative_humidity_2m"`
+	RelativeHumidity2m       []int32   `json:"relative_humidity_2m"`
 	WindSpeed10m             []float64 `json:"wind_speed_10m"`
 	Precipitation            []float64 `json:"precipitation"`
-	PrecipitationProbability []int     `json:"precipitation_probability"`
+	PrecipitationProbability []int32   `json:"precipitation_probability"`
 	WeatherCode              []int     `json:"weather_code"`
 }
 

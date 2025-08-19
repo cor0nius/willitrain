@@ -26,5 +26,8 @@ func (cfg *apiConfig) respondWithJSON(w http.ResponseWriter, code int, payload a
 		return
 	}
 	w.WriteHeader(code)
-	w.Write(data)
+	_, err = w.Write(data)
+	if err != nil {
+		cfg.logger.Error("error writing response", "error", err)
+	}
 }

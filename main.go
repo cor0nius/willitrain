@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -37,8 +38,9 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:    ":" + cfg.port,
-		Handler: metricsMiddleware(mux),
+		Addr:              ":" + cfg.port,
+		Handler:           metricsMiddleware(mux),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	cfg.logger.Info("starting server", "port", cfg.port)

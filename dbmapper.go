@@ -32,7 +32,7 @@ func databaseCurrentWeatherToCurrentWeather(dbWeather database.CurrentWeather, l
 		SourceAPI:     dbWeather.SourceApi,
 		Timestamp:     dbWeather.UpdatedAt,
 		Temperature:   dbWeather.TemperatureC.Float64,
-		Humidity:      int(dbWeather.Humidity.Int32),
+		Humidity:      dbWeather.Humidity.Int32,
 		WindSpeed:     dbWeather.WindSpeedKmh.Float64,
 		Precipitation: dbWeather.PrecipitationMm.Float64,
 		Condition:     dbWeather.ConditionText.String,
@@ -103,9 +103,9 @@ func databaseDailyForecastToDailyForecast(dbForecast database.DailyForecast, loc
 		MinTemp:             dbForecast.MinTempC.Float64,
 		MaxTemp:             dbForecast.MaxTempC.Float64,
 		Precipitation:       dbForecast.PrecipitationMm.Float64,
-		PrecipitationChance: int(dbForecast.PrecipitationChancePercent.Int32),
+		PrecipitationChance: dbForecast.PrecipitationChancePercent.Int32,
 		WindSpeed:           dbForecast.WindSpeedKmh.Float64,
-		Humidity:            int(dbForecast.Humidity.Int32),
+		Humidity:            dbForecast.Humidity.Int32,
 	}
 }
 
@@ -181,10 +181,10 @@ func databaseHourlyForecastToHourlyForecast(dbForecast database.HourlyForecast, 
 		Timestamp:           dbForecast.UpdatedAt,
 		ForecastDateTime:    dbForecast.ForecastDatetimeUtc,
 		Temperature:         dbForecast.TemperatureC.Float64,
-		Humidity:            int(dbForecast.Humidity.Int32),
+		Humidity:            dbForecast.Humidity.Int32,
 		WindSpeed:           dbForecast.WindSpeedKmh.Float64,
 		Precipitation:       dbForecast.PrecipitationMm.Float64,
-		PrecipitationChance: int(dbForecast.PrecipitationChancePercent.Int32),
+		PrecipitationChance: dbForecast.PrecipitationChancePercent.Int32,
 		Condition:           dbForecast.ConditionText.String,
 	}
 }
