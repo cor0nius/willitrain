@@ -20,10 +20,7 @@ func TestGeocode(t *testing.T) {
 			t.Fatalf("Failed to read test data: %v", err)
 		}
 		w.WriteHeader(http.StatusOK)
-		_, err = w.Write(data)
-		if err != nil {
-			t.Fatalf("Failed to write response: %v", err)
-		}
+		_, _ = w.Write(data)
 	})
 	defer server.Close()
 
@@ -61,10 +58,7 @@ func TestReverseGeocode(t *testing.T) {
 			t.Fatalf("Failed to read test data: %v", err)
 		}
 		w.WriteHeader(http.StatusOK)
-		_, err = w.Write(data)
-		if err != nil {
-			t.Fatalf("Failed to write response: %v", err)
-		}
+		_, _ = w.Write(data)
 	})
 	defer server.Close()
 
@@ -116,10 +110,7 @@ func TestGeocode_APIError(t *testing.T) {
 func TestGeocode_ZeroResults(t *testing.T) {
 	server := setupMockServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte(`{"status": "ZERO_RESULTS", "results": []}`))
-		if err != nil {
-			t.Fatalf("Failed to write response: %v", err)
-		}
+		_, _ = w.Write([]byte(`{"status": "ZERO_RESULTS", "results": []}`))
 	})
 	defer server.Close()
 
@@ -138,10 +129,7 @@ func TestGeocode_ZeroResults(t *testing.T) {
 func TestGeocode_MalformedJSON(t *testing.T) {
 	server := setupMockServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte(`{"status": "OK", "results": [invalid]`)) // Malformed JSON
-		if err != nil {
-			t.Fatalf("Failed to write response: %v", err)
-		}
+		_, _ = w.Write([]byte(`{"status": "OK", "results": [invalid]`)) // Malformed JSON
 	})
 	defer server.Close()
 

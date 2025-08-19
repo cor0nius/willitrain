@@ -36,11 +36,11 @@ func TestRunCurrentWeatherJobs(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if strings.Contains(r.URL.Path, "/gmp") {
-			w.Write(gmpData)
+			_, _ = w.Write(gmpData)
 		} else if r.URL.Path == "/owm" {
-			w.Write(owmData)
+			_, _ = w.Write(owmData)
 		} else if r.URL.Path == "/ometeo" {
-			w.Write(ometeoData)
+			_, _ = w.Write(ometeoData)
 		}
 	}))
 	defer mockServer.Close()
@@ -106,11 +106,11 @@ func TestRunDailyForecastJobs(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if strings.Contains(r.URL.Path, "/gmp") {
-			w.Write(gmpData)
+			_, _ = w.Write(gmpData)
 		} else if r.URL.Path == "/owm" {
-			w.Write(owmData)
+			_, _ = w.Write(owmData)
 		} else if r.URL.Path == "/ometeo" {
-			w.Write(ometeoData)
+			_, _ = w.Write(ometeoData)
 		}
 	}))
 	defer mockServer.Close()
@@ -172,11 +172,11 @@ func TestRunHourlyForecastJobs(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if strings.Contains(r.URL.Path, "/gmp") {
-			w.Write(gmpData)
+			_, _ = w.Write(gmpData)
 		} else if r.URL.Path == "/owm" {
-			w.Write(owmData)
+			_, _ = w.Write(owmData)
 		} else if r.URL.Path == "/ometeo" {
-			w.Write(ometeoData)
+			_, _ = w.Write(ometeoData)
 		}
 	}))
 	defer mockServer.Close()
@@ -368,7 +368,7 @@ func TestRunUpdateForLocations_PartialAPIFailure(t *testing.T) {
 
 		if lat == goodCityLat {
 			w.WriteHeader(http.StatusOK)
-			w.Write(data)
+			_, _ = w.Write(data)
 		} else if lat == badCityLat {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {

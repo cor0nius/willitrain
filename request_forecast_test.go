@@ -35,7 +35,7 @@ func TestFetchForecastFromAPI(t *testing.T) {
 			name: "Successful fetch and parse",
 			serverHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"temp": 25.0}`)) // Dummy JSON, our mock parser handles it
+				_, _ = w.Write([]byte(`{"temp": 25.0}`)) // Dummy JSON, our mock parser handles it
 			},
 			parser:       mockParserSuccess,
 			expectError:  false,
@@ -53,7 +53,7 @@ func TestFetchForecastFromAPI(t *testing.T) {
 			name: "Parser returns error",
 			serverHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`invalid json`)) // This will cause our mock parser to fail
+				_, _ = w.Write([]byte(`invalid json`)) // This will cause our mock parser to fail
 			},
 			parser:      mockParserError,
 			expectError: true,
@@ -116,7 +116,7 @@ func TestRequestHourlyForecast(t *testing.T) {
 	}
 	gmpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(gmpData)
+		_, _ = w.Write(gmpData)
 	}))
 	defer gmpServer.Close()
 
@@ -127,7 +127,7 @@ func TestRequestHourlyForecast(t *testing.T) {
 	}
 	owmServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(owmData)
+		_, _ = w.Write(owmData)
 	}))
 	defer owmServer.Close()
 
@@ -138,7 +138,7 @@ func TestRequestHourlyForecast(t *testing.T) {
 	}
 	ometeoServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(ometeoData)
+		_, _ = w.Write(ometeoData)
 	}))
 	defer ometeoServer.Close()
 
@@ -221,7 +221,7 @@ func TestRequestDailyForecast(t *testing.T) {
 	}
 	gmpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(gmpData)
+		_, _ = w.Write(gmpData)
 	}))
 	defer gmpServer.Close()
 
@@ -232,7 +232,7 @@ func TestRequestDailyForecast(t *testing.T) {
 	}
 	owmServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(owmData)
+		_, _ = w.Write(owmData)
 	}))
 	defer owmServer.Close()
 
@@ -243,7 +243,7 @@ func TestRequestDailyForecast(t *testing.T) {
 	}
 	ometeoServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(ometeoData)
+		_, _ = w.Write(ometeoData)
 	}))
 	defer ometeoServer.Close()
 
@@ -326,7 +326,7 @@ func TestRequestCurrentWeather(t *testing.T) {
 	}
 	gmpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(gmpData)
+		_, _ = w.Write(gmpData)
 	}))
 	defer gmpServer.Close()
 
@@ -337,7 +337,7 @@ func TestRequestCurrentWeather(t *testing.T) {
 	}
 	owmServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(owmData)
+		_, _ = w.Write(owmData)
 	}))
 	defer owmServer.Close()
 
@@ -348,7 +348,7 @@ func TestRequestCurrentWeather(t *testing.T) {
 	}
 	ometeoServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(ometeoData)
+		_, _ = w.Write(ometeoData)
 	}))
 	defer ometeoServer.Close()
 
@@ -427,7 +427,7 @@ func TestProcessForecastRequests(t *testing.T) {
 	// Mock server that always succeeds
 	serverSuccess := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"temp": 25.0}`))
+		_, _ = w.Write([]byte(`{"temp": 25.0}`))
 	}))
 	defer serverSuccess.Close()
 
