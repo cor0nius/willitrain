@@ -415,6 +415,7 @@ type mockQuerier struct {
 	locationsToReturn []database.Location
 	listLocationsErr  error
 
+	mu                            sync.Mutex
 	createCurrentWeatherCalls     int
 	updateCurrentWeatherCalls     int
 	createDailyForecastCalls      int
@@ -428,21 +429,29 @@ type mockQuerier struct {
 }
 
 func (m *mockQuerier) CreateCurrentWeather(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.createCurrentWeatherCalls++
 	return database.CurrentWeather{}, nil
 }
 
 func (m *mockQuerier) CreateDailyForecast(ctx context.Context, arg database.CreateDailyForecastParams) (database.DailyForecast, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.createDailyForecastCalls++
 	return database.DailyForecast{}, nil
 }
 
 func (m *mockQuerier) CreateHourlyForecast(ctx context.Context, arg database.CreateHourlyForecastParams) (database.HourlyForecast, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.createHourlyForecastCalls++
 	return database.HourlyForecast{}, nil
 }
 
 func (m *mockQuerier) CreateLocation(ctx context.Context, arg database.CreateLocationParams) (database.Location, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.createLocationCalls++
 	return database.Location{}, nil
 }
@@ -468,16 +477,22 @@ func (m *mockQuerier) GetCurrentWeatherAtLocation(ctx context.Context, locationI
 }
 
 func (m *mockQuerier) GetCurrentWeatherAtLocationFromAPI(ctx context.Context, arg database.GetCurrentWeatherAtLocationFromAPIParams) (database.CurrentWeather, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.getCurrentWeatherFromAPICalls++
 	return database.CurrentWeather{}, sql.ErrNoRows
 }
 
 func (m *mockQuerier) GetDailyForecastAtLocationAndDateFromAPI(ctx context.Context, arg database.GetDailyForecastAtLocationAndDateFromAPIParams) (database.DailyForecast, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.getDailyForecastFromAPICalls++
 	return database.DailyForecast{}, sql.ErrNoRows
 }
 
 func (m *mockQuerier) GetHourlyForecastAtLocationAndTimeFromAPI(ctx context.Context, arg database.GetHourlyForecastAtLocationAndTimeFromAPIParams) (database.HourlyForecast, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.getHourlyForecastFromAPICalls++
 	return database.HourlyForecast{}, sql.ErrNoRows
 }
@@ -491,16 +506,22 @@ func (m *mockQuerier) ListLocations(ctx context.Context) ([]database.Location, e
 }
 
 func (m *mockQuerier) UpdateCurrentWeather(ctx context.Context, arg database.UpdateCurrentWeatherParams) (database.CurrentWeather, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.updateCurrentWeatherCalls++
 	return database.CurrentWeather{}, nil
 }
 
 func (m *mockQuerier) UpdateDailyForecast(ctx context.Context, arg database.UpdateDailyForecastParams) (database.DailyForecast, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.updateDailyForecastCalls++
 	return database.DailyForecast{}, nil
 }
 
 func (m *mockQuerier) UpdateHourlyForecast(ctx context.Context, arg database.UpdateHourlyForecastParams) (database.HourlyForecast, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.updateHourlyForecastCalls++
 	return database.HourlyForecast{}, nil
 }
