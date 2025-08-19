@@ -43,6 +43,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Set up Go for Migrations
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+
+      - name: Run Database Migrations
+        run: |
+          go install github.com/pressly/goose/v3/cmd/goose@latest
+          goose -dir ./sql/schema postgres "${{ secrets.DB_URL }}" up
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -50,11 +62,10 @@ jobs:
           region: 'europe-west1'
           image: europe-west1-docker.pkg.dev/willitrain-467605/willitrain/willitrain:${{ github.sha }}
           
-          # Connect to the VPC to reach Redis
-          vpc-connector: 'willitrain-connector'
-          
-          # Connect to the Cloud SQL database
-          cloud-sql-instances: 'willitrain-467605:europe-west1:willitrain-db'
+          # Pass VPC connector and Cloud SQL instances as flags
+          flags: |-
+            --vpc-connector=willitrain-connector
+            --add-cloudsql-instances=willitrain-467605:europe-west1:willitrain-db
 
           # Mount secrets as environment variables
           secrets: |-
