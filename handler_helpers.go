@@ -157,6 +157,20 @@ func getCachedOrFetch[T apiModel, D dbModel](
 		jsonErr := json.Unmarshal([]byte(cachedData), &items)
 		if jsonErr == nil {
 			cfg.logger.Debug("cache hit", "key", cacheKey)
+			switch v := any(&items).(type) {
+			case *[]CurrentWeather:
+				for i := range *v {
+					(*v)[i].Location = location
+				}
+			case *[]DailyForecast:
+				for i := range *v {
+					(*v)[i].Location = location
+				}
+			case *[]HourlyForecast:
+				for i := range *v {
+					(*v)[i].Location = location
+				}
+			}
 			return items, nil
 		}
 		cfg.logger.Warn("error unmarshalling from redis", "key", cacheKey, "error", jsonErr)
