@@ -87,7 +87,7 @@ func ParseCurrentWeatherOMeteo(body io.Reader, logger *slog.Logger) (CurrentWeat
 		SourceAPI:     "Open-Meteo API",
 		Timestamp:     time.Unix(response.CurrentWeather.Time, 0).UTC().In(loc),
 		Temperature:   response.CurrentWeather.Temperature2m,
-		Humidity:      int32(response.CurrentWeather.RelativeHumidity2m),
+		Humidity:      response.CurrentWeather.RelativeHumidity2m,
 		WindSpeed:     response.CurrentWeather.WindSpeed10m,
 		Precipitation: response.CurrentWeather.Precipitation,
 		Condition:     interpretWeatherCode(response.CurrentWeather.WeatherCode),
@@ -507,7 +507,7 @@ type ResponseHourlyForecastOMeteo struct {
 type CurrentOMeteo struct {
 	Time               int64   `json:"time"`
 	Temperature2m      float64 `json:"temperature_2m"`
-	RelativeHumidity2m float64 `json:"relative_humidity_2m"`
+	RelativeHumidity2m int32   `json:"relative_humidity_2m"`
 	WindSpeed10m       float64 `json:"wind_speed_10m"`
 	Precipitation      float64 `json:"precipitation"`
 	WeatherCode        int     `json:"weather_code"`
