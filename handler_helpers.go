@@ -149,31 +149,24 @@ func getCachedOrFetch[T apiModel, D dbModel](
 	modelConverter func(D, Location) T,
 	getTimestamp func(D) time.Time,
 ) ([]T, error) {
+	const expectedProviderCount = 3
+
 	// 1. Check Redis cache
 	cacheKey := fmt.Sprintf("%s:%s", cacheKeyPrefix, location.LocationID.String())
 	cachedData, err := cfg.cache.Get(ctx, cacheKey)
 	if err == nil {
 		var items []T
 		jsonErr := json.Unmarshal([]byte(cachedData), &items)
-		if jsonErr == nil {
+		if jsonErr == nil && len(items) == expectedProviderCount {
 			cfg.logger.Debug("cache hit", "key", cacheKey)
-			switch v := any(&items).(type) {
-			case *[]CurrentWeather:
-				for i := range *v {
-					(*v)[i].Location = location
-				}
-			case *[]DailyForecast:
-				for i := range *v {
-					(*v)[i].Location = location
-				}
-			case *[]HourlyForecast:
-				for i := range *v {
-					(*v)[i].Location = location
-				}
-			}
 			return items, nil
 		}
-		cfg.logger.Warn("error unmarshalling from redis", "key", cacheKey, "error", jsonErr)
+		// If we're here, the cache is invalid. Log the reason and fall through.
+		if jsonErr != nil {
+			cfg.logger.Warn("invalid cache entry: unmarshal error", "key", cacheKey, "error", jsonErr)
+		} else {
+			cfg.logger.Warn("invalid cache entry: incomplete data", "key", cacheKey, "expected_count", expectedProviderCount, "actual_count", len(items))
+		}
 	} else if err != redis.Nil {
 		cfg.logger.Warn("error getting from redis", "key", cacheKey, "error", err)
 	}
@@ -184,7 +177,7 @@ func getCachedOrFetch[T apiModel, D dbModel](
 		return nil, fmt.Errorf("database error when fetching %s: %w", cacheKeyPrefix, err)
 	}
 
-	if err == nil && len(dbItems) > 0 {
+	if err == nil && len(dbItems) == expectedProviderCount {
 		var freshItems []T
 		for _, dbi := range dbItems {
 			if getTimestamp(dbi).After(time.Now().UTC().Add(-dbCacheTTL)) {
@@ -192,7 +185,7 @@ func getCachedOrFetch[T apiModel, D dbModel](
 			}
 		}
 
-		if len(freshItems) > 0 {
+		if len(freshItems) == expectedProviderCount {
 			cfg.logger.Debug("db cache hit", "key", cacheKey)
 			if cacheErr := cfg.cache.Set(ctx, cacheKey, freshItems, redisCacheTTL); cacheErr != nil {
 				cfg.logger.Warn("error setting to redis", "key", cacheKey, "error", cacheErr)
