@@ -26,7 +26,12 @@ func (cfg *apiConfig) handlerCurrentWeather(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	cfg.respondWithJSON(w, http.StatusOK, weather)
+	response := CurrentWeatherResponse{
+		Location: location,
+		Weather:  weather,
+	}
+
+	cfg.respondWithJSON(w, http.StatusOK, response)
 }
 
 func (cfg *apiConfig) handlerDailyForecast(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +54,12 @@ func (cfg *apiConfig) handlerDailyForecast(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	cfg.respondWithJSON(w, http.StatusOK, forecast)
+	response := DailyForecastsResponse{
+		Location:  location,
+		Forecasts: forecast,
+	}
+
+	cfg.respondWithJSON(w, http.StatusOK, response)
 }
 
 func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +82,12 @@ func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	cfg.respondWithJSON(w, http.StatusOK, forecast)
+	response := HourlyForecastsResponse{
+		Location:  location,
+		Forecasts: forecast,
+	}
+
+	cfg.respondWithJSON(w, http.StatusOK, response)
 }
 
 func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
