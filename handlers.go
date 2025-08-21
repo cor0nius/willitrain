@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"sort"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -138,4 +139,37 @@ func (cfg *apiConfig) handlerResetDB(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg.respondWithJSON(w, http.StatusOK, map[string]string{"status": "database and cache reset"})
+}
+
+func (s *Scheduler) handlerRunSchedulerJobs(w http.ResponseWriter, r *http.Request) {
+	s.cfg.logger.Info("manual scheduler run triggered")
+
+	// Reset tickers
+	s.tickers[0].Reset(s.cfg.schedulerCurrentInterval)
+	s.tickers[1].Reset(s.cfg.schedulerHourlyInterval)
+	s.tickers[2].Reset(s.cfg.schedulerDailyInterval)
+
+	go func() {
+		s.cfg.logger.Info("starting manual scheduler jobs")
+		var wg sync.WaitGroup
+		wg.Add(3)
+
+		go func() {
+			defer wg.Done()
+			s.currentWeatherJobs()
+		}()
+		go func() {
+			defer wg.Done()
+			s.hourlyForecastJobs()
+		}()
+		go func() {
+			defer wg.Done()
+			s.dailyForecastJobs()
+		}()
+
+		wg.Wait()
+		s.cfg.logger.Info("manual scheduler run finished")
+	}()
+
+	s.cfg.respondWithJSON(w, http.StatusAccepted, map[string]string{"status": "scheduler jobs triggered"})
 }

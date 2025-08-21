@@ -33,8 +33,9 @@ func main() {
 	mux.HandleFunc("/metrics", cfg.handlerMetrics)
 
 	if cfg.devMode {
-		cfg.logger.Debug("development mode enabled. Registering /dev/reset-db endpoint.")
+		cfg.logger.Debug("development mode enabled. Registering /dev/reset-db, /dev/runschedulerjobs endpoints.")
 		mux.HandleFunc("/dev/reset-db", cfg.handlerResetDB)
+		mux.HandleFunc("/dev/runschedulerjobs", scheduler.handlerRunSchedulerJobs)
 	}
 
 	server := &http.Server{
