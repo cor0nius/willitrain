@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"sort"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -25,6 +26,13 @@ func (cfg *apiConfig) handlerCurrentWeather(w http.ResponseWriter, r *http.Reque
 		cfg.respondWithError(w, http.StatusInternalServerError, "Error getting current weather data", err)
 		return
 	}
+
+	sort.Slice(weather, func(i, j int) bool {
+		if weather[i].Timestamp.Equal(weather[j].Timestamp) {
+			return weather[i].SourceAPI < weather[j].SourceAPI
+		}
+		return weather[i].Timestamp.Before(weather[j].Timestamp)
+	})
 
 	response := CurrentWeatherResponse{
 		Location: location,
@@ -54,6 +62,13 @@ func (cfg *apiConfig) handlerDailyForecast(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	sort.Slice(forecast, func(i, j int) bool {
+		if forecast[i].ForecastDate.Equal(forecast[j].ForecastDate) {
+			return forecast[i].SourceAPI < forecast[j].SourceAPI
+		}
+		return forecast[i].ForecastDate.Before(forecast[j].ForecastDate)
+	})
+
 	response := DailyForecastsResponse{
 		Location:  location,
 		Forecasts: forecast,
@@ -81,6 +96,13 @@ func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Reque
 		cfg.respondWithError(w, http.StatusInternalServerError, "Error getting hourly forecast data", err)
 		return
 	}
+
+	sort.Slice(forecast, func(i, j int) bool {
+		if forecast[i].ForecastDateTime.Equal(forecast[j].ForecastDateTime) {
+			return forecast[i].SourceAPI < forecast[j].SourceAPI
+		}
+		return forecast[i].ForecastDateTime.Before(forecast[j].ForecastDateTime)
+	})
 
 	response := HourlyForecastsResponse{
 		Location:  location,

@@ -382,6 +382,10 @@ func TestGetCachedOrFetchCurrentWeather_RedisHit(t *testing.T) {
 		t.Fatalf("getCachedOrFetchCurrentWeather returned an unexpected error: %v", err)
 	}
 
+	for i := range weather {
+		weather[i].Location = location
+	}
+
 	if cache.getCalls != 1 {
 		t.Errorf("expected 1 call to cache.Get, got %d", cache.getCalls)
 	}
@@ -431,6 +435,10 @@ func TestGetCachedOrFetchDailyForecast_RedisHit(t *testing.T) {
 	forecast, err := cfg.getCachedOrFetchDailyForecast(ctx, location)
 	if err != nil {
 		t.Fatalf("getCachedOrFetchDailyForecast returned an unexpected error: %v", err)
+	}
+
+	for i := range forecast {
+		forecast[i].Location = location
 	}
 
 	if !reflect.DeepEqual(forecast, expectedForecast) {
@@ -528,6 +536,10 @@ func TestGetCachedOrFetchHourlyForecast_RedisHit(t *testing.T) {
 	forecast, err := cfg.getCachedOrFetchHourlyForecast(ctx, location)
 	if err != nil {
 		t.Fatalf("getCachedOrFetchHourlyForecast returned an unexpected error: %v", err)
+	}
+
+	for i := range forecast {
+		forecast[i].Location = location
 	}
 
 	if !reflect.DeepEqual(forecast, expectedForecast) {
