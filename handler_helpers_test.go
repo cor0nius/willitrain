@@ -359,7 +359,22 @@ func TestGetCachedOrFetchCurrentWeather_RedisHit(t *testing.T) {
 	ctx := context.Background()
 	location := Location{LocationID: uuid.New(), CityName: "Testville"}
 	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
-	expectedWeather := []CurrentWeather{{Location: location, SourceAPI: "TestCacheAPI", Temperature: 22.0, Timestamp: fixedTime}}
+	expectedWeather := []CurrentWeather{
+		{
+			Location:    location,
+			SourceAPI:   "gmp",
+			Temperature: 22.0,
+			Timestamp:   fixedTime,
+		},
+		{
+			Location:    location,
+			SourceAPI:   "owm",
+			Temperature: 23.0,
+			Timestamp:   fixedTime,
+		},
+		{
+			Location: location, SourceAPI: "ometeo", Temperature: 21.0, Timestamp: fixedTime},
+	}
 	expectedData, err := json.Marshal(expectedWeather)
 	if err != nil {
 		t.Fatalf("failed to marshal expected weather: %v", err)
@@ -401,10 +416,36 @@ func TestGetCachedOrFetchDailyForecast_RedisHit(t *testing.T) {
 	ctx := context.Background()
 	location := Location{LocationID: uuid.New(), CityName: "Testville"}
 	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
-	expectedForecast := []DailyForecast{
+	expectedForecast := []DailyForecast{ // GMP
 		{
 			Location:            location,
-			SourceAPI:           "TestCacheAPI",
+			SourceAPI:           "gmp",
+			Timestamp:           fixedTime,
+			ForecastDate:        time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+			MinTemp:             5.0,
+			MaxTemp:             15.0,
+			Precipitation:       1.2,
+			PrecipitationChance: 30,
+			WindSpeed:           10.0,
+			Humidity:            80,
+		},
+		// OWM
+		{
+			Location:            location,
+			SourceAPI:           "owm",
+			Timestamp:           fixedTime,
+			ForecastDate:        time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+			MinTemp:             6.0,
+			MaxTemp:             16.0,
+			Precipitation:       1.5,
+			PrecipitationChance: 35,
+			WindSpeed:           11.0,
+			Humidity:            82,
+		},
+		// OMETEO
+		{
+			Location:            location,
+			SourceAPI:           "ometeo",
 			Timestamp:           fixedTime,
 			ForecastDate:        time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
 			MinTemp:             5.0,
@@ -455,7 +496,7 @@ func TestGetCachedOrFetchDailyForecast_DBHit(t *testing.T) {
 		{
 			ID:                         uuid.New(),
 			LocationID:                 location.LocationID,
-			SourceApi:                  "TestDB_API",
+			SourceApi:                  "gmp",
 			UpdatedAt:                  fixedTime,
 			ForecastDate:               time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
 			MinTempC:                   sql.NullFloat64{Float64: 5.0, Valid: true},
@@ -465,9 +506,37 @@ func TestGetCachedOrFetchDailyForecast_DBHit(t *testing.T) {
 			WindSpeedKmh:               sql.NullFloat64{Float64: 10.0, Valid: true},
 			Humidity:                   sql.NullInt32{Int32: 80, Valid: true},
 		},
+		{
+			ID:                         uuid.New(),
+			LocationID:                 location.LocationID,
+			SourceApi:                  "owm",
+			UpdatedAt:                  fixedTime,
+			ForecastDate:               time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+			MinTempC:                   sql.NullFloat64{Float64: 6.0, Valid: true},
+			MaxTempC:                   sql.NullFloat64{Float64: 16.0, Valid: true},
+			PrecipitationMm:            sql.NullFloat64{Float64: 1.5, Valid: true},
+			PrecipitationChancePercent: sql.NullInt32{Int32: 35, Valid: true},
+			WindSpeedKmh:               sql.NullFloat64{Float64: 11.0, Valid: true},
+			Humidity:                   sql.NullInt32{Int32: 82, Valid: true},
+		},
+		{
+			ID:                         uuid.New(),
+			LocationID:                 location.LocationID,
+			SourceApi:                  "ometeo",
+			UpdatedAt:                  fixedTime,
+			ForecastDate:               time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+			MinTempC:                   sql.NullFloat64{Float64: 7.0, Valid: true},
+			MaxTempC:                   sql.NullFloat64{Float64: 17.0, Valid: true},
+			PrecipitationMm:            sql.NullFloat64{Float64: 1.8, Valid: true},
+			PrecipitationChancePercent: sql.NullInt32{Int32: 40, Valid: true},
+			WindSpeedKmh:               sql.NullFloat64{Float64: 12.0, Valid: true},
+			Humidity:                   sql.NullInt32{Int32: 84, Valid: true},
+		},
 	}
 	expectedForecast := []DailyForecast{
 		databaseDailyForecastToDailyForecast(dbForecasts[0], location),
+		databaseDailyForecastToDailyForecast(dbForecasts[1], location),
+		databaseDailyForecastToDailyForecast(dbForecasts[2], location),
 	}
 
 	cache := &mockCache{
@@ -492,7 +561,11 @@ func TestGetCachedOrFetchDailyForecast_DBHit(t *testing.T) {
 		t.Fatalf("getCachedOrFetchDailyForecast returned an unexpected error: %v", err)
 	}
 
-	forecast[0].Timestamp = expectedForecast[0].Timestamp
+	// We need to ignore the timestamp for comparison as it's set inside the function
+	for i := range forecast {
+		forecast[i].Timestamp = expectedForecast[i].Timestamp
+	}
+
 	if !reflect.DeepEqual(forecast, expectedForecast) {
 		t.Errorf("returned forecast does not match expected forecast.\nGot: %v\nWant: %v", forecast, expectedForecast)
 	}
@@ -502,10 +575,36 @@ func TestGetCachedOrFetchHourlyForecast_RedisHit(t *testing.T) {
 	ctx := context.Background()
 	location := Location{LocationID: uuid.New(), CityName: "Testville"}
 	fixedTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
-	expectedForecast := []HourlyForecast{
+	expectedForecast := []HourlyForecast{ // GMP
 		{
 			Location:            location,
-			SourceAPI:           "TestCacheAPI",
+			SourceAPI:           "gmp",
+			Timestamp:           fixedTime,
+			ForecastDateTime:    time.Date(2024, 1, 1, 13, 0, 0, 0, time.UTC),
+			Temperature:         10.0,
+			Humidity:            75,
+			WindSpeed:           15.0,
+			Precipitation:       0.5,
+			PrecipitationChance: 40,
+			Condition:           "Cloudy",
+		},
+		// OWM
+		{
+			Location:            location,
+			SourceAPI:           "owm",
+			Timestamp:           fixedTime,
+			ForecastDateTime:    time.Date(2024, 1, 1, 13, 0, 0, 0, time.UTC),
+			Temperature:         11.0,
+			Humidity:            76,
+			WindSpeed:           16.0,
+			Precipitation:       0.6,
+			PrecipitationChance: 41,
+			Condition:           "Partly Cloudy",
+		},
+		// OMETEO
+		{
+			Location:            location,
+			SourceAPI:           "ometeo",
 			Timestamp:           fixedTime,
 			ForecastDateTime:    time.Date(2024, 1, 1, 13, 0, 0, 0, time.UTC),
 			Temperature:         10.0,
@@ -556,7 +655,7 @@ func TestGetCachedOrFetchHourlyForecast_DBHit(t *testing.T) {
 		{
 			ID:                         uuid.New(),
 			LocationID:                 location.LocationID,
-			SourceApi:                  "TestDB_API",
+			SourceApi:                  "gmp",
 			UpdatedAt:                  fixedTime,
 			ForecastDatetimeUtc:        time.Date(2024, 1, 1, 13, 0, 0, 0, time.UTC),
 			TemperatureC:               sql.NullFloat64{Float64: 10.0, Valid: true},
@@ -566,9 +665,37 @@ func TestGetCachedOrFetchHourlyForecast_DBHit(t *testing.T) {
 			PrecipitationChancePercent: sql.NullInt32{Int32: 40, Valid: true},
 			ConditionText:              sql.NullString{String: "Cloudy", Valid: true},
 		},
+		{
+			ID:                         uuid.New(),
+			LocationID:                 location.LocationID,
+			SourceApi:                  "owm",
+			UpdatedAt:                  fixedTime,
+			ForecastDatetimeUtc:        time.Date(2024, 1, 1, 13, 0, 0, 0, time.UTC),
+			TemperatureC:               sql.NullFloat64{Float64: 11.0, Valid: true},
+			Humidity:                   sql.NullInt32{Int32: 76, Valid: true},
+			WindSpeedKmh:               sql.NullFloat64{Float64: 16.0, Valid: true},
+			PrecipitationMm:            sql.NullFloat64{Float64: 0.6, Valid: true},
+			PrecipitationChancePercent: sql.NullInt32{Int32: 41, Valid: true},
+			ConditionText:              sql.NullString{String: "Partly Cloudy", Valid: true},
+		},
+		{
+			ID:                         uuid.New(),
+			LocationID:                 location.LocationID,
+			SourceApi:                  "ometeo",
+			UpdatedAt:                  fixedTime,
+			ForecastDatetimeUtc:        time.Date(2024, 1, 1, 13, 0, 0, 0, time.UTC),
+			TemperatureC:               sql.NullFloat64{Float64: 12.0, Valid: true},
+			Humidity:                   sql.NullInt32{Int32: 77, Valid: true},
+			WindSpeedKmh:               sql.NullFloat64{Float64: 17.0, Valid: true},
+			PrecipitationMm:            sql.NullFloat64{Float64: 0.7, Valid: true},
+			PrecipitationChancePercent: sql.NullInt32{Int32: 42, Valid: true},
+			ConditionText:              sql.NullString{String: "Sunny", Valid: true},
+		},
 	}
 	expectedForecast := []HourlyForecast{
 		databaseHourlyForecastToHourlyForecast(dbForecasts[0], location),
+		databaseHourlyForecastToHourlyForecast(dbForecasts[1], location),
+		databaseHourlyForecastToHourlyForecast(dbForecasts[2], location),
 	}
 
 	// 1. Mock Cache should miss
@@ -688,17 +815,38 @@ func TestGetCachedOrFetchCurrentWeather_DBHit(t *testing.T) {
 	fixedTime := time.Now().UTC() // Use current time for freshness check
 
 	dbWeather := []database.CurrentWeather{
+		// GMP
 		{
 			ID:           uuid.New(),
 			LocationID:   location.LocationID,
-			SourceApi:    "TestDB_API",
+			SourceApi:    "gmp",
+			UpdatedAt:    fixedTime,
+			TemperatureC: sql.NullFloat64{Float64: 20.0, Valid: true},
+			Humidity:     sql.NullInt32{Int32: 60, Valid: true},
+		},
+		// OWM
+		{
+			ID:           uuid.New(),
+			LocationID:   location.LocationID,
+			SourceApi:    "owm",
+			UpdatedAt:    fixedTime,
+			TemperatureC: sql.NullFloat64{Float64: 21.0, Valid: true},
+			Humidity:     sql.NullInt32{Int32: 61, Valid: true},
+		},
+		// OMETEO
+		{
+			ID:           uuid.New(),
+			LocationID:   location.LocationID,
+			SourceApi:    "ometeo",
 			UpdatedAt:    fixedTime,
 			TemperatureC: sql.NullFloat64{Float64: 20.0, Valid: true},
 			Humidity:     sql.NullInt32{Int32: 60, Valid: true},
 		},
 	}
 	expectedWeather := []CurrentWeather{
-		databaseCurrentWeatherToCurrentWeather(dbWeather[0], location),
+		databaseCurrentWeatherToCurrentWeather(dbWeather[0], location), // GMP
+		databaseCurrentWeatherToCurrentWeather(dbWeather[1], location), // OWM
+		databaseCurrentWeatherToCurrentWeather(dbWeather[2], location), // OMETEO
 	}
 
 	// 1. Mock Cache should miss
@@ -734,7 +882,10 @@ func TestGetCachedOrFetchCurrentWeather_DBHit(t *testing.T) {
 	}
 
 	// We need to ignore the timestamp for comparison as it's set inside the function
-	weather[0].Timestamp = expectedWeather[0].Timestamp
+	for i := range weather {
+		weather[i].Timestamp = expectedWeather[i].Timestamp
+	}
+
 	if !reflect.DeepEqual(weather, expectedWeather) {
 		t.Errorf("returned weather does not match expected weather.\nGot: %v\nWant: %v", weather, expectedWeather)
 	}
