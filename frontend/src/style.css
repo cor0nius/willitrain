@@ -26,6 +26,22 @@ body {
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  position: relative; /* Needed for positioning dev buttons */
+}
+
+.dev-buttons {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.5em;
+}
+
+.dev-btn {
+  font-size: 0.8em;
+  padding: 0.4em 0.8em;
+  background-color: #444;
+  border-color: #555;
 }
 
 .card {
@@ -47,7 +63,11 @@ body {
   border-radius: 8px;
   padding: 1em;
   text-align: left;
-  min-width: 200px; /* Ensure cards have a minimum width */
+  width: 220px;
+  min-height: 180px; /* Use min-height to prevent squishing */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 /* --- Tabs --- */
@@ -61,15 +81,27 @@ body {
   border: none;
   border-bottom: 2px solid transparent;
   padding: 0.8em 1.2em;
-  font-size: 1em;
+  font-size: 1.1em; /* Slightly larger font for main text */
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   color: rgba(255, 255, 255, 0.6);
+  line-height: 1.2; /* Adjust line height for two lines */
+}
+
+.tab-btn .sub-heading {
+  display: block;
+  font-size: 0.7em; /* Smaller font for sub-heading */
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .tab-btn.active {
-  border-bottom-color: #646cff;
+  border-bottom-color: #0F52BA;
   color: #fff;
+}
+
+.tab-btn.active .sub-heading {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .tab-btn:hover {
@@ -80,6 +112,7 @@ body {
 .panel {
   display: none;
   padding-top: 1em;
+  min-height: 450px; /* Establish a stable container height */
 }
 
 .panel.active {
@@ -91,14 +124,15 @@ body {
   display: flex;
   gap: 1em;
   text-align: left;
+  align-items: flex-end; /* Aligns items to the bottom */
 }
 
 .forecast-list {
   width: 200px;
   border-right: 1px solid #444;
   padding-right: 1em;
-  max-height: 400px; /* Example height */
-  overflow-y: auto;
+  max-height: 380px; /* Give it a max-height */
+  overflow-y: auto;   /* Ensure it's scrollable */
 }
 
 .forecast-list-item {
@@ -106,6 +140,22 @@ body {
   cursor: pointer;
   border-radius: 6px;
   transition: background-color 0.2s;
+  margin-bottom: 0.5em; /* Space between items */
+}
+
+.forecast-list-item:last-child {
+  margin-bottom: 0;
+}
+
+.forecast-list-item .time {
+  display: block;
+  font-weight: bold;
+}
+
+.forecast-list-item .date {
+  display: block;
+  font-size: 0.8em;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .forecast-list-item:hover {
@@ -113,7 +163,7 @@ body {
 }
 
 .forecast-list-item.active {
-  background-color: #646cff;
+  background-color: #0F52BA;
   color: #fff;
 }
 
@@ -149,7 +199,7 @@ button {
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  border-color: #0F52BA;
 }
 button:focus,
 button:focus-visible {

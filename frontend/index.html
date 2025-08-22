@@ -7,18 +7,32 @@
     <title>Will It Rain?</title>
   </head>
   <body>
+    <div class="dev-buttons">
+      <button id="reset-db-btn" class="dev-btn">Reset DB</button>
+      <button id="run-scheduler-btn" class="dev-btn">Run Scheduler</button>
+    </div>
+
     <div id="app">
       <h1>Will It Rain?</h1>
       
       <div class="card">
         <input type="text" id="location-input" placeholder="Enter city" />
-        <button id="get-weather-btn" type="button">Get Weather</button>
+        <button id="get-weather-btn" type="button">Check Forecast</button>
       </div>
 
       <div class="tabs">
-        <button id="current-tab" class="tab-btn active">Current</button>
-        <button id="daily-tab" class="tab-btn">Daily</button>
-        <button id="hourly-tab" class="tab-btn">Hourly</button>
+        <button id="current-tab" class="tab-btn active">
+          Does It Rain?
+          <span class="sub-heading">right now</span>
+        </button>
+        <button id="daily-tab" class="tab-btn">
+          Will It Rain?
+          <span class="sub-heading">in a few days</span>
+        </button>
+        <button id="hourly-tab" class="tab-btn">
+          Will It Rain?
+          <span class="sub-heading">in a few hours</span>
+        </button>
       </div>
 
       <div id="content-panels">

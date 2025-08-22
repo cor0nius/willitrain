@@ -1,12 +1,17 @@
 package main
 
 import (
+	"embed"
+	"io/fs"
 	"net/http"
 	"os"
 	"time"
 
 	_ "github.com/lib/pq"
 )
+
+//go:embed all:frontend/dist
+var frontendFS embed.FS
 
 func main() {
 	cfg := config()
@@ -27,6 +32,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	// API routes
 	mux.HandleFunc("/api/currentweather", cfg.handlerCurrentWeather)
 	mux.HandleFunc("/api/dailyforecast", cfg.handlerDailyForecast)
 	mux.HandleFunc("/api/hourlyforecast", cfg.handlerHourlyForecast)
@@ -38,6 +44,14 @@ func main() {
 		mux.HandleFunc("/dev/runschedulerjobs", scheduler.handlerRunSchedulerJobs)
 	}
 
+	// Frontend file server
+	distFS, err := fs.Sub(frontendFS, "frontend/dist")
+	if err != nil {
+		cfg.logger.Error("failed to create frontend file system", "error", err)
+		os.Exit(1)
+	}
+	mux.Handle("/", http.FileServer(http.FS(distFS)))
+
 	server := &http.Server{
 		Addr:              ":" + cfg.port,
 		Handler:           metricsMiddleware(corsMiddleware(mux)),
@@ -45,7 +59,7 @@ func main() {
 	}
 
 	cfg.logger.Info("starting server", "port", cfg.port)
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil {
 		cfg.logger.Error("server startup failed", "error", err)
 		os.Exit(1)
