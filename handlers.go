@@ -142,6 +142,10 @@ func (cfg *apiConfig) handlerResetDB(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Scheduler) handlerRunSchedulerJobs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		s.cfg.respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
+		return
+	}
 	s.cfg.logger.Info("manual scheduler run triggered")
 
 	// Reset tickers
