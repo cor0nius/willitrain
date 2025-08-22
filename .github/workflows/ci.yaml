@@ -13,7 +13,7 @@ jobs:
       REDIS_URL: "redis://localhost:6379/"
       GMP_GEOCODE_URL: "https://maps.googleapis.com/maps/api/geocode/"
       GMP_WEATHER_URL: "https://weather.googleapis.com/v1/"
-      OWM_WEATHER_URL: "https://api.openweathermap.com/data/3.0/onecall?"
+      OWM_WEATHER_URL: "https://api.openweathermap.org/data/3.0/onecall?"
       OMETEO_WEATHER_URL: "https://api.open-meteo.com/v1/forecast?"
       CURRENT_INTERVAL_MIN: 10
       HOURLY_INTERVAL_MIN: 60
