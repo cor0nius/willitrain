@@ -12,12 +12,33 @@
       
       <div class="card">
         <input type="text" id="location-input" placeholder="Enter city" />
-        <button id="get-current-weather-btn" type="button">Does it rain?</button>
+        <button id="get-weather-btn" type="button">Get Weather</button>
       </div>
 
-      <div id="current-weather-div">
-        <!-- Weather data will be displayed here -->
+      <div class="tabs">
+        <button id="current-tab" class="tab-btn active">Current</button>
+        <button id="daily-tab" class="tab-btn">Daily</button>
+        <button id="hourly-tab" class="tab-btn">Hourly</button>
       </div>
+
+      <div id="content-panels">
+        <div id="current-panel" class="panel active">
+          <!-- Current weather will be displayed here -->
+        </div>
+        <div id="daily-panel" class="panel">
+          <div class="forecast-container">
+            <div id="daily-list" class="forecast-list"></div>
+            <div id="daily-details" class="forecast-details"></div>
+          </div>
+        </div>
+        <div id="hourly-panel" class="panel">
+          <div class="forecast-container">
+            <div id="hourly-list" class="forecast-list"></div>
+            <div id="hourly-details" class="forecast-details"></div>
+          </div>
+        </div>
+      </div>
+
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
