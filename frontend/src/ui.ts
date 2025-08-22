@@ -1,9 +1,18 @@
 import type { CurrentWeatherResponse, DailyForecastsResponse, HourlyForecastsResponse, DailyForecast, HourlyForecast } from './types';
 
+// --- Helper Functions ---
+function formatDate(date: Date): string {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+  return `${day}.${month}`;
+}
+
 // --- DOM Element References ---
 export const dom = {
   locationInput: document.querySelector<HTMLInputElement>('#location-input')!,
   getWeatherBtn: document.querySelector<HTMLButtonElement>('#get-weather-btn')!,
+  resetDbBtn: document.querySelector<HTMLButtonElement>('#reset-db-btn')!,
+  runSchedulerBtn: document.querySelector<HTMLButtonElement>('#run-scheduler-btn')!,
   tabs: {
     current: document.querySelector<HTMLButtonElement>('#current-tab')!,
     daily: document.querySelector<HTMLButtonElement>('#daily-tab')!,
@@ -34,11 +43,28 @@ export function setActiveTab(tabName: keyof typeof dom.tabs) {
 
 // --- Rendering Functions ---
 export function showLoading(panel: keyof typeof dom.panels) {
-  dom.panels[panel].innerHTML = 'Loading...';
+  if (panel === 'daily') {
+    dom.dailyElements.list.innerHTML = 'Loading...';
+    dom.dailyElements.details.innerHTML = '';
+  } else if (panel === 'hourly') {
+    dom.hourlyElements.list.innerHTML = 'Loading...';
+    dom.hourlyElements.details.innerHTML = '';
+  } else {
+    dom.panels[panel].innerHTML = 'Loading...';
+  }
 }
 
 export function showError(panel: keyof typeof dom.panels, error: Error) {
-  dom.panels[panel].innerHTML = `<h3>Error</h3><p>${error.message}</p>`;
+  const errorHtml = `<h3>Error</h3><p>${error.message}</p>`;
+  if (panel === 'daily') {
+    dom.dailyElements.list.innerHTML = errorHtml;
+    dom.dailyElements.details.innerHTML = '';
+  } else if (panel === 'hourly') {
+    dom.hourlyElements.list.innerHTML = errorHtml;
+    dom.hourlyElements.details.innerHTML = '';
+  } else {
+    dom.panels[panel].innerHTML = errorHtml;
+  }
 }
 
 export function renderCurrentWeather(data: CurrentWeatherResponse) {
@@ -68,20 +94,24 @@ export function renderDailyForecast(data: DailyForecastsResponse) {
     throw new Error('No daily forecast data available for this location.');
   }
   const forecastsByDate = data.forecasts.reduce((acc: Record<string, DailyForecast[]>, forecast) => {
-    const date = new Date(forecast.forecast_date).toLocaleDateString();
+    const date = new Date(forecast.forecast_date).toISOString().split('T')[0]; // Use YYYY-MM-DD for reliable key
     if (!acc[date]) acc[date] = [];
     acc[date].push(forecast);
     return acc;
   }, {});
 
-  dom.dailyElements.list.innerHTML = Object.keys(forecastsByDate).map((date, index) => `
-    <div class="forecast-list-item ${index === 0 ? 'active' : ''}" data-date="${date}">${date}</div>
-  `).join('');
+  const sortedDates = Object.keys(forecastsByDate).sort();
 
-  const renderDetails = (date: string) => {
-    const forecasts = forecastsByDate[date];
+  dom.dailyElements.list.innerHTML = sortedDates.map((dateKey, index) => {
+    const displayDate = formatDate(new Date(dateKey));
+    return `<div class="forecast-list-item ${index === 0 ? 'active' : ''}" data-date-key="${dateKey}">${displayDate}</div>`;
+  }).join('');
+
+  const renderDetails = (dateKey: string) => {
+    const forecasts = forecastsByDate[dateKey];
+    const displayDate = formatDate(new Date(dateKey));
     dom.dailyElements.details.innerHTML = `
-      <h3>Forecast for ${date}</h3>
+      <h3>Forecast for ${displayDate} in ${data.location.city_name}</h3>
       <div class="weather-cards-container">
         ${forecasts.map(f => `
           <div class="weather-card">
@@ -100,11 +130,11 @@ export function renderDailyForecast(data: DailyForecastsResponse) {
     item.addEventListener('click', () => {
       dom.dailyElements.list.querySelectorAll('.forecast-list-item').forEach(i => i.classList.remove('active'));
       item.classList.add('active');
-      renderDetails(item.getAttribute('data-date')!);
+      renderDetails(item.getAttribute('data-date-key')!);
     });
   });
 
-  renderDetails(Object.keys(forecastsByDate)[0]);
+  renderDetails(sortedDates[0]);
 }
 
 export function renderHourlyForecast(data: HourlyForecastsResponse) {
@@ -112,20 +142,33 @@ export function renderHourlyForecast(data: HourlyForecastsResponse) {
     throw new Error('No hourly forecast data available for this location.');
   }
   const forecastsByHour = data.forecasts.reduce((acc: Record<string, HourlyForecast[]>, forecast) => {
-    const hour = new Date(forecast.forecast_datetime).toLocaleString();
-    if (!acc[hour]) acc[hour] = [];
-    acc[hour].push(forecast);
+    const key = new Date(forecast.forecast_datetime).toISOString();
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(forecast);
     return acc;
   }, {});
 
-  dom.hourlyElements.list.innerHTML = Object.keys(forecastsByHour).map((hour, index) => `
-    <div class="forecast-list-item ${index === 0 ? 'active' : ''}" data-hour="${hour}">${hour}</div>
-  `).join('');
+  const sortedHours = Object.keys(forecastsByHour).sort();
 
-  const renderDetails = (hour: string) => {
-    const forecasts = forecastsByHour[hour];
+  dom.hourlyElements.list.innerHTML = sortedHours.map((hourKey, index) => {
+    const date = new Date(hourKey);
+    const displayTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const displayDate = formatDate(date);
+    return `
+      <div class="forecast-list-item ${index === 0 ? 'active' : ''}" data-hour-key="${hourKey}">
+        <span class="time">${displayTime}</span>
+        <span class="date">${displayDate}</span>
+      </div>
+    `;
+  }).join('');
+
+  const renderDetails = (hourKey: string) => {
+    const forecasts = forecastsByHour[hourKey];
+    const date = new Date(hourKey);
+    const displayHour = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const displayDate = formatDate(date);
     dom.hourlyElements.details.innerHTML = `
-      <h3>Forecast for ${hour}</h3>
+      <h3>Forecast for ${displayDate} at ${displayHour} in ${data.location.city_name}</h3>
       <div class="weather-cards-container">
         ${forecasts.map(f => `
           <div class="weather-card">
@@ -145,9 +188,9 @@ export function renderHourlyForecast(data: HourlyForecastsResponse) {
     item.addEventListener('click', () => {
       dom.hourlyElements.list.querySelectorAll('.forecast-list-item').forEach(i => i.classList.remove('active'));
       item.classList.add('active');
-      renderDetails(item.getAttribute('data-hour')!);
+      renderDetails(item.getAttribute('data-hour-key')!);
     });
   });
 
-  renderDetails(Object.keys(forecastsByHour)[0]);
+  renderDetails(sortedHours[0]);
 }

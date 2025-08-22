@@ -1,6 +1,6 @@
 import type { CurrentWeatherResponse, DailyForecastsResponse, HourlyForecastsResponse } from './types';
 
-const API_BASE_URL = 'https://willitrain-908739103426.europe-west1.run.app/api';
+export const API_BASE_URL = 'https://willitrain-908739103426.europe-west1.run.app/api';
 
 async function fetchFromApi<T>(endpoint: string, location: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}/${endpoint}?city=${encodeURIComponent(location)}`);
