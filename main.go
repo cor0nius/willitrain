@@ -27,9 +27,9 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/currentweather", cfg.handlerCurrentWeather)
-	mux.HandleFunc("/dailyforecast", cfg.handlerDailyForecast)
-	mux.HandleFunc("/hourlyforecast", cfg.handlerHourlyForecast)
+	mux.HandleFunc("/api/currentweather", cfg.handlerCurrentWeather)
+	mux.HandleFunc("/api/dailyforecast", cfg.handlerDailyForecast)
+	mux.HandleFunc("/api/hourlyforecast", cfg.handlerHourlyForecast)
 	mux.HandleFunc("/metrics", cfg.handlerMetrics)
 
 	if cfg.devMode {
@@ -40,7 +40,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:              ":" + cfg.port,
-		Handler:           metricsMiddleware(mux),
+		Handler:           metricsMiddleware(corsMiddleware(mux)),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
