@@ -148,16 +148,15 @@ func getCachedOrFetch[T apiModel, D dbModel](
 	persister func(context.Context, []T),
 	modelConverter func(D, Location) T,
 	getTimestamp func(D) time.Time,
+	isValidCache func([]T) bool, // Custom validation function for cache entries
 ) ([]T, error) {
-	const expectedProviderCount = 3
-
 	// 1. Check Redis cache
 	cacheKey := fmt.Sprintf("%s:%s", cacheKeyPrefix, location.LocationID.String())
 	cachedData, err := cfg.cache.Get(ctx, cacheKey)
 	if err == nil {
 		var items []T
 		jsonErr := json.Unmarshal([]byte(cachedData), &items)
-		if jsonErr == nil && len(items) == expectedProviderCount {
+		if jsonErr == nil && isValidCache(items) {
 			cfg.logger.Debug("cache hit", "key", cacheKey)
 			return items, nil
 		}
@@ -165,7 +164,7 @@ func getCachedOrFetch[T apiModel, D dbModel](
 		if jsonErr != nil {
 			cfg.logger.Warn("invalid cache entry: unmarshal error", "key", cacheKey, "error", jsonErr)
 		} else {
-			cfg.logger.Warn("invalid cache entry: incomplete data", "key", cacheKey, "expected_count", expectedProviderCount, "actual_count", len(items))
+			cfg.logger.Warn("invalid cache entry: validation failed", "key", cacheKey, "actual_count", len(items))
 		}
 	} else if err != redis.Nil {
 		cfg.logger.Warn("error getting from redis", "key", cacheKey, "error", err)
@@ -177,7 +176,7 @@ func getCachedOrFetch[T apiModel, D dbModel](
 		return nil, fmt.Errorf("database error when fetching %s: %w", cacheKeyPrefix, err)
 	}
 
-	if err == nil && len(dbItems) == expectedProviderCount {
+	if err == nil {
 		var freshItems []T
 		for _, dbi := range dbItems {
 			if getTimestamp(dbi).After(time.Now().UTC().Add(-dbCacheTTL)) {
@@ -185,7 +184,7 @@ func getCachedOrFetch[T apiModel, D dbModel](
 			}
 		}
 
-		if len(freshItems) == expectedProviderCount {
+		if isValidCache(freshItems) {
 			cfg.logger.Debug("db cache hit", "key", cacheKey)
 			if cacheErr := cfg.cache.Set(ctx, cacheKey, freshItems, redisCacheTTL); cacheErr != nil {
 				cfg.logger.Warn("error setting to redis", "key", cacheKey, "error", cacheErr)
@@ -227,6 +226,9 @@ func (cfg *apiConfig) getCachedOrFetchCurrentWeather(ctx context.Context, locati
 		func(d database.CurrentWeather) time.Time {
 			return d.UpdatedAt
 		},
+		func(items []CurrentWeather) bool {
+			return len(items) == 3
+		},
 	)
 }
 
@@ -246,6 +248,9 @@ func (cfg *apiConfig) getCachedOrFetchDailyForecast(ctx context.Context, locatio
 		func(d database.DailyForecast) time.Time {
 			return d.UpdatedAt
 		},
+		func(items []DailyForecast) bool {
+			return len(items) > 0
+		},
 	)
 }
 
@@ -264,6 +269,9 @@ func (cfg *apiConfig) getCachedOrFetchHourlyForecast(ctx context.Context, locati
 		databaseHourlyForecastToHourlyForecast,
 		func(d database.HourlyForecast) time.Time {
 			return d.UpdatedAt
+		},
+		func(items []HourlyForecast) bool {
+			return len(items) > 0
 		},
 	)
 }
