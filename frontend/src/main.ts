@@ -1,5 +1,5 @@
 import './style.css';
-import { fetchCurrentWeather, fetchDailyForecast, fetchHourlyForecast, API_BASE_URL } from './api';
+import { fetchCurrentWeather, fetchDailyForecast, fetchHourlyForecast} from './api';
 import { dom, setActiveTab, renderCurrentWeather, renderDailyForecast, renderHourlyForecast, showError, showLoading } from './ui';
 
 // --- Tab Event Listeners ---
@@ -8,7 +8,7 @@ dom.tabs.daily.addEventListener('click', () => setActiveTab('daily'));
 dom.tabs.hourly.addEventListener('click', () => setActiveTab('hourly'));
 
 // --- Dev Button Event Listeners ---
-const DEV_API_URL = API_BASE_URL.replace('api', 'dev');
+const DEV_API_URL = '/dev';
 
 dom.resetDbBtn.addEventListener('click', async () => {
   if (confirm('Are you sure you want to purge the database and cache?'))
