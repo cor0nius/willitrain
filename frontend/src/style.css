@@ -35,6 +35,11 @@ body {
   right: 1rem;
   display: flex;
   gap: 0.5em;
+  display: none; /* Hide by default */
+}
+
+body.dev-mode .dev-buttons {
+  display: flex; /* Show when dev-mode class is present */
 }
 
 .dev-btn {

@@ -1,6 +1,18 @@
 import './style.css';
-import { fetchCurrentWeather, fetchDailyForecast, fetchHourlyForecast} from './api';
+import { fetchCurrentWeather, fetchDailyForecast, fetchHourlyForecast, fetchConfig } from './api';
 import { dom, setActiveTab, renderCurrentWeather, renderDailyForecast, renderHourlyForecast, showError, showLoading } from './ui';
+
+// --- Initial Setup ---
+async function initializeApp() {
+  try {
+    const config = await fetchConfig();
+    if (config.dev_mode) {
+      document.body.classList.add('dev-mode');
+    }
+  } catch (error) {
+    console.error('Failed to load app config:', error);
+  }
+}
 
 // --- Tab Event Listeners ---
 dom.tabs.current.addEventListener('click', () => setActiveTab('current'));
@@ -77,3 +89,6 @@ dom.getWeatherBtn.addEventListener('click', async () => {
     showError('hourly', error as Error);
   }
 });
+
+// --- App Initialization ---
+initializeApp();

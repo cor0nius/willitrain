@@ -48,3 +48,7 @@ export interface HourlyForecastsResponse {
   location: Location;
   forecasts: HourlyForecast[];
 }
+
+export interface ConfigResponse {
+  dev_mode: boolean;
+}

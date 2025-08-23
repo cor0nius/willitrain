@@ -1,9 +1,10 @@
-import type { CurrentWeatherResponse, DailyForecastsResponse, HourlyForecastsResponse } from './types';
+import type { CurrentWeatherResponse, DailyForecastsResponse, HourlyForecastsResponse, ConfigResponse } from './types';
 
 export const API_BASE_URL = '/api';
 
-async function fetchFromApi<T>(endpoint: string, location: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}/${endpoint}?city=${encodeURIComponent(location)}`);
+async function fetchFromApi<T>(endpoint: string, location?: string): Promise<T> {
+  const url = location ? `${API_BASE_URL}/${endpoint}?city=${encodeURIComponent(location)}` : `${API_BASE_URL}/${endpoint}`;
+  const response = await fetch(url);
   if (!response.ok) {
     const errorData = await response.json();
     throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
@@ -21,4 +22,8 @@ export function fetchDailyForecast(location: string): Promise<DailyForecastsResp
 
 export function fetchHourlyForecast(location: string): Promise<HourlyForecastsResponse> {
   return fetchFromApi<HourlyForecastsResponse>('hourlyforecast', location);
+}
+
+export function fetchConfig(): Promise<ConfigResponse> {
+  return fetchFromApi<ConfigResponse>('config');
 }
