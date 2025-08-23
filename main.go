@@ -33,6 +33,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	// API routes
+	mux.HandleFunc("/api/config", cfg.handlerConfig)
 	mux.HandleFunc("/api/currentweather", cfg.handlerCurrentWeather)
 	mux.HandleFunc("/api/dailyforecast", cfg.handlerDailyForecast)
 	mux.HandleFunc("/api/hourlyforecast", cfg.handlerHourlyForecast)

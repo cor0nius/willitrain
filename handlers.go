@@ -177,3 +177,20 @@ func (s *Scheduler) handlerRunSchedulerJobs(w http.ResponseWriter, r *http.Reque
 
 	s.cfg.respondWithJSON(w, http.StatusAccepted, map[string]string{"status": "scheduler jobs triggered"})
 }
+
+func (cfg *apiConfig) handlerConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		cfg.respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
+		return
+	}
+
+	type configResponse struct {
+		DevMode bool `json:"dev_mode"`
+	}
+
+	response := configResponse{
+		DevMode: cfg.devMode,
+	}
+
+	cfg.respondWithJSON(w, http.StatusOK, response)
+}

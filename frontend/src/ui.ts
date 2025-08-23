@@ -103,13 +103,13 @@ export function renderDailyForecast(data: DailyForecastsResponse) {
   const sortedDates = Object.keys(forecastsByDate).sort();
 
   dom.dailyElements.list.innerHTML = sortedDates.map((dateKey, index) => {
-    const displayDate = formatDate(new Date(dateKey));
+    const displayDate = formatDate(new Date(dateKey + 'T12:00:00Z'));
     return `<div class="forecast-list-item ${index === 0 ? 'active' : ''}" data-date-key="${dateKey}">${displayDate}</div>`;
   }).join('');
 
   const renderDetails = (dateKey: string) => {
     const forecasts = forecastsByDate[dateKey];
-    const displayDate = formatDate(new Date(dateKey));
+    const displayDate = formatDate(new Date(dateKey + 'T12:00:00Z'));
     dom.dailyElements.details.innerHTML = `
       <h3>Forecast for ${displayDate} in ${data.location.city_name}</h3>
       <div class="weather-cards-container">
