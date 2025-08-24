@@ -9,14 +9,14 @@ import (
 	"time"
 )
 
-func ParseCurrentWeatherGMP(body io.Reader, logger *slog.Logger) (CurrentWeather, error) {
+func ParseCurrentWeatherGMP(body io.Reader, logger *slog.Logger) (CurrentWeather, string, error) {
 	var response ResponseCurrentWeatherGMP
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
-		return CurrentWeather{SourceAPI: "Google Weather API"}, err
+		return CurrentWeather{SourceAPI: "Google Weather API"}, "", err
 	}
 	if response.Timestamp.IsZero() {
-		return CurrentWeather{SourceAPI: "Google Weather API"}, errors.New("empty or invalid response from API")
+		return CurrentWeather{SourceAPI: "Google Weather API"}, "", errors.New("empty or invalid response from API")
 	}
 
 	loc, err := time.LoadLocation(response.TimeZone.ID)
@@ -35,17 +35,17 @@ func ParseCurrentWeatherGMP(body io.Reader, logger *slog.Logger) (CurrentWeather
 		Condition:     response.Condition.Description.Text,
 	}
 
-	return weather, nil
+	return weather, response.TimeZone.ID, nil
 }
 
-func ParseCurrentWeatherOWM(body io.Reader, logger *slog.Logger) (CurrentWeather, error) {
+func ParseCurrentWeatherOWM(body io.Reader, logger *slog.Logger) (CurrentWeather, string, error) {
 	var response ResponseCurrentWeatherOWM
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
-		return CurrentWeather{SourceAPI: "OpenWeatherMap API"}, err
+		return CurrentWeather{SourceAPI: "OpenWeatherMap API"}, "", err
 	}
 	if response.CurrentWeather.Dt == 0 {
-		return CurrentWeather{SourceAPI: "OpenWeatherMap API"}, errors.New("empty or invalid response from API")
+		return CurrentWeather{SourceAPI: "OpenWeatherMap API"}, "", errors.New("empty or invalid response from API")
 	}
 
 	loc, err := time.LoadLocation(response.Timezone)
@@ -64,17 +64,17 @@ func ParseCurrentWeatherOWM(body io.Reader, logger *slog.Logger) (CurrentWeather
 		Condition:     response.CurrentWeather.Weather[0].Main,
 	}
 
-	return weather, nil
+	return weather, response.Timezone, nil
 }
 
-func ParseCurrentWeatherOMeteo(body io.Reader, logger *slog.Logger) (CurrentWeather, error) {
+func ParseCurrentWeatherOMeteo(body io.Reader, logger *slog.Logger) (CurrentWeather, string, error) {
 	var response ResponseCurrentWeatherOMeteo
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
-		return CurrentWeather{SourceAPI: "Open-Meteo API"}, err
+		return CurrentWeather{SourceAPI: "Open-Meteo API"}, "", err
 	}
 	if response.CurrentWeather.Time == 0 {
-		return CurrentWeather{SourceAPI: "Open-Meteo API"}, errors.New("empty or invalid response from API")
+		return CurrentWeather{SourceAPI: "Open-Meteo API"}, "", errors.New("empty or invalid response from API")
 	}
 
 	loc, err := time.LoadLocation(response.Timezone)
@@ -93,17 +93,17 @@ func ParseCurrentWeatherOMeteo(body io.Reader, logger *slog.Logger) (CurrentWeat
 		Condition:     interpretWeatherCode(response.CurrentWeather.WeatherCode),
 	}
 
-	return weather, nil
+	return weather, response.Timezone, nil
 }
 
-func ParseDailyForecastGMP(body io.Reader, logger *slog.Logger) ([]DailyForecast, error) {
+func ParseDailyForecastGMP(body io.Reader, logger *slog.Logger) ([]DailyForecast, string, error) {
 	var response ResponseDailyForecastGMP
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
-		return []DailyForecast{{SourceAPI: "Google Weather API"}}, err
+		return []DailyForecast{{SourceAPI: "Google Weather API"}}, "", err
 	}
 	if len(response.ForecastDays) == 0 {
-		return []DailyForecast{{SourceAPI: "Google Weather API"}}, errors.New("empty or invalid response from API")
+		return []DailyForecast{{SourceAPI: "Google Weather API"}}, "", errors.New("empty or invalid response from API")
 	}
 
 	loc, err := time.LoadLocation(response.TimeZone.ID)
@@ -131,17 +131,17 @@ func ParseDailyForecastGMP(body io.Reader, logger *slog.Logger) ([]DailyForecast
 		})
 	}
 
-	return forecast, nil
+	return forecast, response.TimeZone.ID, nil
 }
 
-func ParseDailyForecastOWM(body io.Reader, logger *slog.Logger) ([]DailyForecast, error) {
+func ParseDailyForecastOWM(body io.Reader, logger *slog.Logger) ([]DailyForecast, string, error) {
 	var response ResponseDailyForecastOWM
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
-		return []DailyForecast{{SourceAPI: "OpenWeatherMap API"}}, err
+		return []DailyForecast{{SourceAPI: "OpenWeatherMap API"}}, "", err
 	}
 	if len(response.DailyForecast) == 0 {
-		return []DailyForecast{{SourceAPI: "OpenWeatherMap API"}}, errors.New("empty or invalid response from API")
+		return []DailyForecast{{SourceAPI: "OpenWeatherMap API"}}, "", errors.New("empty or invalid response from API")
 	}
 
 	loc, err := time.LoadLocation(response.Timezone)
@@ -169,17 +169,17 @@ func ParseDailyForecastOWM(body io.Reader, logger *slog.Logger) ([]DailyForecast
 		})
 	}
 
-	return forecast, nil
+	return forecast, response.Timezone, nil
 }
 
-func ParseDailyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]DailyForecast, error) {
+func ParseDailyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]DailyForecast, string, error) {
 	var response ResponseDailyForecastOMeteo
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
-		return []DailyForecast{{SourceAPI: "Open-Meteo API"}}, err
+		return []DailyForecast{{SourceAPI: "Open-Meteo API"}}, "", err
 	}
 	if len(response.DailyForecast.Time) == 0 {
-		return []DailyForecast{{SourceAPI: "Open-Meteo API"}}, errors.New("empty or invalid response from API")
+		return []DailyForecast{{SourceAPI: "Open-Meteo API"}}, "", errors.New("empty or invalid response from API")
 	}
 
 	loc, err := time.LoadLocation(response.Timezone)
@@ -210,17 +210,17 @@ func ParseDailyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]DailyForec
 		})
 	}
 
-	return forecast, nil
+	return forecast, response.Timezone, nil
 }
 
-func ParseHourlyForecastGMP(body io.Reader, logger *slog.Logger) ([]HourlyForecast, error) {
+func ParseHourlyForecastGMP(body io.Reader, logger *slog.Logger) ([]HourlyForecast, string, error) {
 	var response ResponseHourlyForecastGMP
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
-		return []HourlyForecast{{SourceAPI: "Google Weather API"}}, err
+		return []HourlyForecast{{SourceAPI: "Google Weather API"}}, "", err
 	}
 	if len(response.ForecastHours) == 0 {
-		return []HourlyForecast{{SourceAPI: "Google Weather API"}}, errors.New("empty or invalid response from API")
+		return []HourlyForecast{{SourceAPI: "Google Weather API"}}, "", errors.New("empty or invalid response from API")
 	}
 
 	loc, err := time.LoadLocation(response.TimeZone.ID)
@@ -246,17 +246,17 @@ func ParseHourlyForecastGMP(body io.Reader, logger *slog.Logger) ([]HourlyForeca
 		})
 	}
 
-	return forecast, nil
+	return forecast, response.TimeZone.ID, nil
 }
 
-func ParseHourlyForecastOWM(body io.Reader, logger *slog.Logger) ([]HourlyForecast, error) {
+func ParseHourlyForecastOWM(body io.Reader, logger *slog.Logger) ([]HourlyForecast, string, error) {
 	var response ResponseHourlyForecastOWM
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
-		return []HourlyForecast{{SourceAPI: "OpenWeatherMap API"}}, err
+		return []HourlyForecast{{SourceAPI: "OpenWeatherMap API"}}, "", err
 	}
 	if len(response.HourlyForecast) == 0 {
-		return []HourlyForecast{{SourceAPI: "OpenWeatherMap API"}}, errors.New("empty or invalid response from API")
+		return []HourlyForecast{{SourceAPI: "OpenWeatherMap API"}}, "", errors.New("empty or invalid response from API")
 	}
 
 	loc, err := time.LoadLocation(response.Timezone)
@@ -282,17 +282,17 @@ func ParseHourlyForecastOWM(body io.Reader, logger *slog.Logger) ([]HourlyForeca
 		})
 	}
 
-	return forecast, nil
+	return forecast, response.Timezone, nil
 }
 
-func ParseHourlyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]HourlyForecast, error) {
+func ParseHourlyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]HourlyForecast, string, error) {
 	var response ResponseHourlyForecastOMeteo
 
 	if err := json.NewDecoder(body).Decode(&response); err != nil {
-		return []HourlyForecast{{SourceAPI: "Open-Meteo API"}}, err
+		return []HourlyForecast{{SourceAPI: "Open-Meteo API"}}, "", err
 	}
 	if len(response.HourlyForecast.Time) == 0 {
-		return []HourlyForecast{{SourceAPI: "Open-Meteo API"}}, errors.New("empty or invalid response from API")
+		return []HourlyForecast{{SourceAPI: "Open-Meteo API"}}, "", errors.New("empty or invalid response from API")
 	}
 
 	now := time.Now().UTC()
@@ -306,7 +306,7 @@ func ParseHourlyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]HourlyFor
 	}
 
 	if startIndex == -1 {
-		return []HourlyForecast{{SourceAPI: "Open-Meteo API"}}, errors.New("all forecasts are in the past")
+		return []HourlyForecast{{SourceAPI: "Open-Meteo API"}}, "", errors.New("all forecasts are in the past")
 	}
 
 	endIndex := startIndex + 24
@@ -335,7 +335,7 @@ func ParseHourlyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]HourlyFor
 		})
 	}
 
-	return forecast, nil
+	return forecast, response.Timezone, nil
 }
 
 // GMP Structs

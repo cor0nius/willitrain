@@ -155,6 +155,9 @@ type dbQuerier interface {
 	DeleteAllDailyForecasts(ctx context.Context) error
 	DeleteAllHourlyForecasts(ctx context.Context) error
 	DeleteAllLocations(ctx context.Context) error
+	DeleteCurrentWeatherAtLocation(ctx context.Context, locationID uuid.UUID) error
+	DeleteDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) error
+	DeleteHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) error
 	DeleteLocation(ctx context.Context, id uuid.UUID) error
 	GetAllDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.DailyForecast, error)
 	GetAllHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.HourlyForecast, error)
@@ -165,8 +168,11 @@ type dbQuerier interface {
 	GetLocationByAlias(ctx context.Context, alias string) (database.Location, error)
 	GetLocationByCoordinates(ctx context.Context, arg database.GetLocationByCoordinatesParams) (database.Location, error)
 	GetLocationByName(ctx context.Context, cityName string) (database.Location, error)
+	GetUpcomingDailyForecastsAtLocation(ctx context.Context, arg database.GetUpcomingDailyForecastsAtLocationParams) ([]database.DailyForecast, error)
+	GetUpcomingHourlyForecastsAtLocation(ctx context.Context, arg database.GetUpcomingHourlyForecastsAtLocationParams) ([]database.HourlyForecast, error)
 	ListLocations(ctx context.Context) ([]database.Location, error)
 	UpdateCurrentWeather(ctx context.Context, arg database.UpdateCurrentWeatherParams) (database.CurrentWeather, error)
 	UpdateDailyForecast(ctx context.Context, arg database.UpdateDailyForecastParams) (database.DailyForecast, error)
 	UpdateHourlyForecast(ctx context.Context, arg database.UpdateHourlyForecastParams) (database.HourlyForecast, error)
+	UpdateTimezone(ctx context.Context, arg database.UpdateTimezoneParams) error
 }

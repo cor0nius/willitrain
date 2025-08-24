@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -16,25 +17,30 @@ func TestParseCurrentWeatherGMP(t *testing.T) {
 		t.Fatalf("failed to open test data: %v", err)
 	}
 	defer sampleJSON.Close()
+	loc, _ := time.LoadLocation("Europe/Warsaw")
 	timestamp, err := time.Parse(time.RFC3339Nano, "2025-08-04T09:44:48.736691285Z")
 	if err != nil {
 		t.Fatalf("failed to parse timestamp: %v", err)
 	}
 	expectedWeather := CurrentWeather{
 		SourceAPI:     "Google Weather API",
-		Timestamp:     timestamp,
+		Timestamp:     timestamp.In(loc),
 		Temperature:   18.2,
 		Humidity:      74,
 		WindSpeed:     6.0,
 		Precipitation: 0.1321,
 		Condition:     "Cloudy",
 	}
+	expectedTimezone := "Europe/Warsaw"
 
-	parsedWeather, err := ParseCurrentWeatherGMP(sampleJSON, nil)
+	parsedWeather, tz, err := ParseCurrentWeatherGMP(sampleJSON, slog.Default())
 	if err != nil {
 		t.Fatalf("ParseCurrentWeatherGMP failed with error: %v", err)
 	}
 
+	if tz != expectedTimezone {
+		t.Errorf("Timezone: got %q, want %q", tz, expectedTimezone)
+	}
 	if parsedWeather.SourceAPI != expectedWeather.SourceAPI {
 		t.Errorf("SourceAPI: got %q, want %q", parsedWeather.SourceAPI, expectedWeather.SourceAPI)
 	}
@@ -64,7 +70,8 @@ func TestParseCurrentWeatherOWM(t *testing.T) {
 		t.Fatalf("failed to open test data: %v", err)
 	}
 	defer sampleJSON.Close()
-	timestamp := time.Unix(1754300711, 0)
+	loc, _ := time.LoadLocation("Europe/Warsaw")
+	timestamp := time.Unix(1754300711, 0).In(loc)
 	expectedWeather := CurrentWeather{
 		SourceAPI:     "OpenWeatherMap API",
 		Timestamp:     timestamp,
@@ -74,12 +81,16 @@ func TestParseCurrentWeatherOWM(t *testing.T) {
 		Precipitation: 0.32,
 		Condition:     "Rain",
 	}
+	expectedTimezone := "Europe/Warsaw"
 
-	parsedWeather, err := ParseCurrentWeatherOWM(sampleJSON, nil)
+	parsedWeather, tz, err := ParseCurrentWeatherOWM(sampleJSON, slog.Default())
 	if err != nil {
 		t.Fatalf("ParseCurrentWeatherOWM failed with error: %v", err)
 	}
 
+	if tz != expectedTimezone {
+		t.Errorf("Timezone: got %q, want %q", tz, expectedTimezone)
+	}
 	if parsedWeather.SourceAPI != expectedWeather.SourceAPI {
 		t.Errorf("SourceAPI: got %q, want %q", parsedWeather.SourceAPI, expectedWeather.SourceAPI)
 	}
@@ -109,7 +120,8 @@ func TestParseCurrentWeatherOMeteo(t *testing.T) {
 		t.Fatalf("failed to open test data: %v", err)
 	}
 	defer sampleJSON.Close()
-	timestamp := time.Unix(1754300700, 0)
+	loc, _ := time.LoadLocation("Europe/Warsaw")
+	timestamp := time.Unix(1754300700, 0).In(loc)
 	expectedWeather := CurrentWeather{
 		SourceAPI:     "Open-Meteo API",
 		Timestamp:     timestamp,
@@ -119,12 +131,16 @@ func TestParseCurrentWeatherOMeteo(t *testing.T) {
 		Precipitation: 0.1,
 		Condition:     "slight rain",
 	}
+	expectedTimezone := "Europe/Warsaw"
 
-	parsedWeather, err := ParseCurrentWeatherOMeteo(sampleJSON, nil)
+	parsedWeather, tz, err := ParseCurrentWeatherOMeteo(sampleJSON, slog.Default())
 	if err != nil {
 		t.Fatalf("ParseCurrentWeatherOMeteo failed with error: %v", err)
 	}
 
+	if tz != expectedTimezone {
+		t.Errorf("Timezone: got %q, want %q", tz, expectedTimezone)
+	}
 	if parsedWeather.SourceAPI != expectedWeather.SourceAPI {
 		t.Errorf("SourceAPI: got %q, want %q", parsedWeather.SourceAPI, expectedWeather.SourceAPI)
 	}
@@ -151,7 +167,7 @@ func TestParseCurrentWeatherOMeteo(t *testing.T) {
 func TestParseCurrentWeatherGMP_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedWeather, err := ParseCurrentWeatherGMP(invalidJSON, nil)
+	parsedWeather, _, err := ParseCurrentWeatherGMP(invalidJSON, slog.Default())
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -165,7 +181,7 @@ func TestParseCurrentWeatherGMP_Error(t *testing.T) {
 func TestParseCurrentWeatherOWM_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedWeather, err := ParseCurrentWeatherOWM(invalidJSON, nil)
+	parsedWeather, _, err := ParseCurrentWeatherOWM(invalidJSON, slog.Default())
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -179,7 +195,7 @@ func TestParseCurrentWeatherOWM_Error(t *testing.T) {
 func TestParseCurrentWeatherOMeteo_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedWeather, err := ParseCurrentWeatherOMeteo(invalidJSON, nil)
+	parsedWeather, _, err := ParseCurrentWeatherOMeteo(invalidJSON, slog.Default())
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -210,12 +226,16 @@ func TestParseDailyForecastGMP(t *testing.T) {
 		WindSpeed:           16.0,
 		Humidity:            68,
 	}
+	expectedTimezone := "Europe/Warsaw"
 
-	parsedForecast, err := ParseDailyForecastGMP(sampleJSON, nil)
+	parsedForecast, tz, err := ParseDailyForecastGMP(sampleJSON, slog.Default())
 	if err != nil {
 		t.Fatalf("ParseDailyForecastGMP failed with error: %v", err)
 	}
 
+	if tz != expectedTimezone {
+		t.Errorf("Timezone: got %q, want %q", tz, expectedTimezone)
+	}
 	if len(parsedForecast) == 0 {
 		t.Fatal("parsedForecast is empty, expected at least one forecast")
 	}
@@ -250,7 +270,7 @@ func TestParseDailyForecastGMP(t *testing.T) {
 func TestParseDailyForecastGMP_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedForecast, err := ParseDailyForecastGMP(invalidJSON, nil)
+	parsedForecast, _, err := ParseDailyForecastGMP(invalidJSON, slog.Default())
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -284,12 +304,16 @@ func TestParseHourlyForecastGMP(t *testing.T) {
 		PrecipitationChance: 5,
 		Condition:           "Partly sunny",
 	}
+	expectedTimezone := "Europe/Warsaw"
 
-	parsedForecast, err := ParseHourlyForecastGMP(sampleJSON, nil)
+	parsedForecast, tz, err := ParseHourlyForecastGMP(sampleJSON, slog.Default())
 	if err != nil {
 		t.Fatalf("ParseHourlyForecastGMP failed with error: %v", err)
 	}
 
+	if tz != expectedTimezone {
+		t.Errorf("Timezone: got %q, want %q", tz, expectedTimezone)
+	}
 	if len(parsedForecast) == 0 {
 		t.Fatal("parsedForecast is empty, expected at least one forecast")
 	}
@@ -340,12 +364,16 @@ func TestParseDailyForecastOWM(t *testing.T) {
 		WindSpeed:           Round(7.27*3.6, 4),
 		Humidity:            58,
 	}
+	expectedTimezone := "Europe/Warsaw"
 
-	parsedForecast, err := ParseDailyForecastOWM(sampleJSON, nil)
+	parsedForecast, tz, err := ParseDailyForecastOWM(sampleJSON, slog.Default())
 	if err != nil {
 		t.Fatalf("ParseDailyForecastOWM failed with error: %v", err)
 	}
 
+	if tz != expectedTimezone {
+		t.Errorf("Timezone: got %q, want %q", tz, expectedTimezone)
+	}
 	if len(parsedForecast) == 0 {
 		t.Fatal("parsedForecast is empty, expected at least one forecast")
 	}
@@ -380,7 +408,7 @@ func TestParseDailyForecastOWM(t *testing.T) {
 func TestParseDailyForecastOWM_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedForecast, err := ParseDailyForecastOWM(invalidJSON, nil)
+	parsedForecast, _, err := ParseDailyForecastOWM(invalidJSON, slog.Default())
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -398,7 +426,7 @@ func TestParseDailyForecastOWM_Error(t *testing.T) {
 func TestParseHourlyForecastGMP_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedForecast, err := ParseHourlyForecastGMP(invalidJSON, nil)
+	parsedForecast, _, err := ParseHourlyForecastGMP(invalidJSON, slog.Default())
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -416,7 +444,7 @@ func TestParseHourlyForecastGMP_Error(t *testing.T) {
 func TestParseHourlyForecastOWM_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedForecast, err := ParseHourlyForecastOWM(invalidJSON, nil)
+	parsedForecast, _, err := ParseHourlyForecastOWM(invalidJSON, slog.Default())
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -434,7 +462,7 @@ func TestParseHourlyForecastOWM_Error(t *testing.T) {
 func TestParseHourlyForecastOMeteo_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedForecast, err := ParseHourlyForecastOMeteo(invalidJSON, nil)
+	parsedForecast, _, err := ParseHourlyForecastOMeteo(invalidJSON, slog.Default())
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}
@@ -456,7 +484,8 @@ func TestParseHourlyForecastOWM(t *testing.T) {
 	}
 	defer sampleJSON.Close()
 
-	timestamp := time.Unix(1754391600, 0)
+	loc, _ := time.LoadLocation("Europe/Warsaw")
+	timestamp := time.Unix(1754391600, 0).In(loc)
 	expectedForecast := HourlyForecast{
 		SourceAPI:           "OpenWeatherMap API",
 		ForecastDateTime:    timestamp,
@@ -467,10 +496,15 @@ func TestParseHourlyForecastOWM(t *testing.T) {
 		PrecipitationChance: 0,
 		Condition:           "Clear",
 	}
+	expectedTimezone := "Europe/Warsaw"
 
-	parsedForecast, err := ParseHourlyForecastOWM(sampleJSON, nil)
+	parsedForecast, tz, err := ParseHourlyForecastOWM(sampleJSON, slog.Default())
 	if err != nil {
 		t.Fatalf("ParseHourlyForecastOWM failed with error: %v", err)
+	}
+
+	if tz != expectedTimezone {
+		t.Errorf("Timezone: got %q, want %q", tz, expectedTimezone)
 	}
 	if len(parsedForecast) == 0 {
 		t.Fatal("parsedForecast is empty, expected at least one forecast")
@@ -510,7 +544,8 @@ func TestParseHourlyForecastOMeteo(t *testing.T) {
 	}
 	defer sampleJSON.Close()
 
-	timestamp := time.Unix(2785344800, 0)
+	loc, _ := time.LoadLocation("Europe/Warsaw")
+	timestamp := time.Unix(2785344800, 0).In(loc)
 	expectedForecast := HourlyForecast{
 		SourceAPI:           "Open-Meteo API",
 		ForecastDateTime:    timestamp,
@@ -521,10 +556,15 @@ func TestParseHourlyForecastOMeteo(t *testing.T) {
 		PrecipitationChance: 0,
 		Condition:           "partly cloudy",
 	}
+	expectedTimezone := "Europe/Warsaw"
 
-	parsedForecast, err := ParseHourlyForecastOMeteo(sampleJSON, nil)
+	parsedForecast, tz, err := ParseHourlyForecastOMeteo(sampleJSON, slog.Default())
 	if err != nil {
 		t.Fatalf("ParseHourlyForecastOMeteo failed with error: %v", err)
+	}
+
+	if tz != expectedTimezone {
+		t.Errorf("Timezone: got %q, want %q", tz, expectedTimezone)
 	}
 	if len(parsedForecast) == 0 {
 		t.Fatal("parsedForecast is empty, expected at least one forecast")
@@ -577,12 +617,16 @@ func TestParseDailyForecastOMeteo(t *testing.T) {
 		WindSpeed:           10.0,
 		Humidity:            83,
 	}
+	expectedTimezone := "Europe/Warsaw"
 
-	parsedForecast, err := ParseDailyForecastOMeteo(sampleJSON, nil)
+	parsedForecast, tz, err := ParseDailyForecastOMeteo(sampleJSON, slog.Default())
 	if err != nil {
 		t.Fatalf("ParseDailyForecastOMeteo failed with error: %v", err)
 	}
 
+	if tz != expectedTimezone {
+		t.Errorf("Timezone: got %q, want %q", tz, expectedTimezone)
+	}
 	if len(parsedForecast) == 0 {
 		t.Fatal("parsedForecast is empty, expected at least one forecast")
 	}
@@ -617,7 +661,7 @@ func TestParseDailyForecastOMeteo(t *testing.T) {
 func TestParseDailyForecastOMeteo_Error(t *testing.T) {
 	invalidJSON := strings.NewReader(`{ "invalid": "json" }`)
 
-	parsedForecast, err := ParseDailyForecastOMeteo(invalidJSON, nil)
+	parsedForecast, _, err := ParseDailyForecastOMeteo(invalidJSON, slog.Default())
 	if err == nil {
 		t.Fatal("expected an error for invalid JSON, but got nil")
 	}

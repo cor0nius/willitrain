@@ -17,3 +17,8 @@ DELETE FROM locations WHERE id=$1;
 
 -- name: DeleteAllLocations :exec
 DELETE FROM locations;
+
+-- name: UpdateTimezone :exec
+UPDATE locations
+SET timezone = $2
+WHERE id = $1;

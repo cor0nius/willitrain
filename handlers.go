@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -35,9 +36,28 @@ func (cfg *apiConfig) handlerCurrentWeather(w http.ResponseWriter, r *http.Reque
 		return weather[i].Timestamp.Before(weather[j].Timestamp)
 	})
 
+	loc, err := time.LoadLocation(location.Timezone)
+	if err != nil {
+		cfg.logger.Warn("could not load location timezone, falling back to UTC", "timezone", location.Timezone, "error", err)
+		loc = time.UTC
+	}
+
+	weatherJSON := make([]CurrentWeatherJSON, len(weather))
+	for i, w := range weather {
+		weatherJSON[i] = CurrentWeatherJSON{
+			SourceAPI:     w.SourceAPI,
+			Timestamp:     w.Timestamp.In(loc).Format("2006-01-02 15:04"),
+			Temperature:   w.Temperature,
+			Humidity:      w.Humidity,
+			WindSpeed:     w.WindSpeed,
+			Precipitation: w.Precipitation,
+			Condition:     w.Condition,
+		}
+	}
+
 	response := CurrentWeatherResponse{
 		Location: location,
-		Weather:  weather,
+		Weather:  weatherJSON,
 	}
 
 	cfg.respondWithJSON(w, http.StatusOK, response)
@@ -70,9 +90,29 @@ func (cfg *apiConfig) handlerDailyForecast(w http.ResponseWriter, r *http.Reques
 		return forecast[i].ForecastDate.Before(forecast[j].ForecastDate)
 	})
 
+	loc, err := time.LoadLocation(location.Timezone)
+	if err != nil {
+		cfg.logger.Warn("could not load location timezone, falling back to UTC", "timezone", location.Timezone, "error", err)
+		loc = time.UTC
+	}
+
+	forecastsJSON := make([]DailyForecastJSON, len(forecast))
+	for i, f := range forecast {
+		forecastsJSON[i] = DailyForecastJSON{
+			SourceAPI:           f.SourceAPI,
+			ForecastDate:        f.ForecastDate.In(loc).Format("2006-01-02"),
+			MinTemp:             f.MinTemp,
+			MaxTemp:             f.MaxTemp,
+			Precipitation:       f.Precipitation,
+			PrecipitationChance: f.PrecipitationChance,
+			WindSpeed:           f.WindSpeed,
+			Humidity:            f.Humidity,
+		}
+	}
+
 	response := DailyForecastsResponse{
 		Location:  location,
-		Forecasts: forecast,
+		Forecasts: forecastsJSON,
 	}
 
 	cfg.respondWithJSON(w, http.StatusOK, response)
@@ -105,9 +145,29 @@ func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Reque
 		return forecast[i].ForecastDateTime.Before(forecast[j].ForecastDateTime)
 	})
 
+	loc, err := time.LoadLocation(location.Timezone)
+	if err != nil {
+		cfg.logger.Warn("could not load location timezone, falling back to UTC", "timezone", location.Timezone, "error", err)
+		loc = time.UTC
+	}
+
+	forecastsJSON := make([]HourlyForecastJSON, len(forecast))
+	for i, f := range forecast {
+		forecastsJSON[i] = HourlyForecastJSON{
+			SourceAPI:           f.SourceAPI,
+			ForecastDateTime:    f.ForecastDateTime.In(loc).Format("2006-01-02 15:04"),
+			Temperature:         f.Temperature,
+			Humidity:            f.Humidity,
+			WindSpeed:           f.WindSpeed,
+			Precipitation:       f.Precipitation,
+			PrecipitationChance: f.PrecipitationChance,
+			Condition:           f.Condition,
+		}
+	}
+
 	response := HourlyForecastsResponse{
 		Location:  location,
-		Forecasts: forecast,
+		Forecasts: forecastsJSON,
 	}
 
 	cfg.respondWithJSON(w, http.StatusOK, response)

@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"io"
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/cor0nius/willitrain/internal/database"
 )
 
 func (cfg *apiConfig) requestCurrentWeather(location Location) ([]CurrentWeather, error) {
@@ -25,12 +29,21 @@ func (cfg *apiConfig) requestCurrentWeather(location Location) ([]CurrentWeather
 		},
 	}
 
-	results, err := processForecastRequests(cfg, urls, providers)
+	results, tz, err := processForecastRequests(cfg, urls, providers)
 	if err != nil {
 		return nil, err
 	}
 
-	// Populate the Location field for each result
+	if tz != "" && location.Timezone == "" {
+		params := database.UpdateTimezoneParams{
+			ID:       location.LocationID,
+			Timezone: sql.NullString{String: tz, Valid: true},
+		}
+		if err := cfg.dbQueries.UpdateTimezone(context.Background(), params); err != nil {
+			cfg.logger.Warn("failed to update timezone", "location", location.CityName, "error", err)
+		}
+	}
+
 	for i := range results {
 		results[i].Location = location
 	}
@@ -57,9 +70,19 @@ func (cfg *apiConfig) requestDailyForecast(location Location) ([]DailyForecast, 
 		},
 	}
 
-	results, err := processForecastRequests(cfg, urls, providers)
+	results, tz, err := processForecastRequests(cfg, urls, providers)
 	if err != nil {
 		return nil, err
+	}
+
+	if tz != "" && location.Timezone == "" {
+		params := database.UpdateTimezoneParams{
+			ID:       location.LocationID,
+			Timezone: sql.NullString{String: tz, Valid: true},
+		}
+		if err := cfg.dbQueries.UpdateTimezone(context.Background(), params); err != nil {
+			cfg.logger.Warn("failed to update timezone", "location", location.CityName, "error", err)
+		}
 	}
 
 	var allForecasts []DailyForecast
@@ -67,7 +90,6 @@ func (cfg *apiConfig) requestDailyForecast(location Location) ([]DailyForecast, 
 		allForecasts = append(allForecasts, forecastSlice...)
 	}
 
-	// Populate the Location field for each result
 	for i := range allForecasts {
 		allForecasts[i].Location = location
 		allForecasts[i].Timestamp = fetchedAt
@@ -95,9 +117,19 @@ func (cfg *apiConfig) requestHourlyForecast(location Location) ([]HourlyForecast
 		},
 	}
 
-	results, err := processForecastRequests(cfg, urls, providers)
+	results, tz, err := processForecastRequests(cfg, urls, providers)
 	if err != nil {
 		return nil, err
+	}
+
+	if tz != "" && location.Timezone == "" {
+		params := database.UpdateTimezoneParams{
+			ID:       location.LocationID,
+			Timezone: sql.NullString{String: tz, Valid: true},
+		}
+		if err := cfg.dbQueries.UpdateTimezone(context.Background(), params); err != nil {
+			cfg.logger.Warn("failed to update timezone", "location", location.CityName, "error", err)
+		}
 	}
 
 	var allForecasts []HourlyForecast
@@ -105,7 +137,6 @@ func (cfg *apiConfig) requestHourlyForecast(location Location) ([]HourlyForecast
 		allForecasts = append(allForecasts, forecastSlice...)
 	}
 
-	// Populate the Location field for each result
 	for i := range allForecasts {
 		allForecasts[i].Location = location
 		allForecasts[i].Timestamp = fetchedAt
@@ -118,10 +149,11 @@ func processForecastRequests[T Forecast](
 	cfg *apiConfig,
 	urls map[string]string,
 	providers map[string]forecastProvider[T],
-) ([]T, error) {
+) ([]T, string, error) {
 	var wg sync.WaitGroup
 	results := make(chan struct {
 		t   T
+		tz  string
 		err error
 	}, len(urls))
 
@@ -140,6 +172,7 @@ func processForecastRequests[T Forecast](
 	}()
 
 	var allResults []T
+	var timezone string
 	for res := range results {
 		if res.err != nil {
 			var sourceAPI string
@@ -163,13 +196,16 @@ func processForecastRequests[T Forecast](
 			}
 		} else {
 			allResults = append(allResults, res.t)
+			if timezone == "" && res.tz != "" {
+				timezone = res.tz
+			}
 		}
 	}
 
-	return allResults, nil
+	return allResults, timezone, nil
 }
 
 type forecastProvider[T Forecast] struct {
-	parser   func(io.Reader, *slog.Logger) (T, error)
+	parser   func(io.Reader, *slog.Logger) (T, string, error)
 	errorVal T
 }

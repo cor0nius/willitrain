@@ -227,6 +227,52 @@ func (q *Queries) GetHourlyForecastAtLocationAndTimeFromAPI(ctx context.Context,
 	return i, err
 }
 
+const getUpcomingHourlyForecastsAtLocation = `-- name: GetUpcomingHourlyForecastsAtLocation :many
+SELECT id, location_id, source_api, forecast_datetime_utc, updated_at, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text FROM hourly_forecasts
+WHERE location_id = $1 AND forecast_datetime_utc >= $2
+ORDER BY forecast_datetime_utc ASC
+`
+
+type GetUpcomingHourlyForecastsAtLocationParams struct {
+	LocationID          uuid.UUID
+	ForecastDatetimeUtc time.Time
+}
+
+func (q *Queries) GetUpcomingHourlyForecastsAtLocation(ctx context.Context, arg GetUpcomingHourlyForecastsAtLocationParams) ([]HourlyForecast, error) {
+	rows, err := q.db.QueryContext(ctx, getUpcomingHourlyForecastsAtLocation, arg.LocationID, arg.ForecastDatetimeUtc)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []HourlyForecast
+	for rows.Next() {
+		var i HourlyForecast
+		if err := rows.Scan(
+			&i.ID,
+			&i.LocationID,
+			&i.SourceApi,
+			&i.ForecastDatetimeUtc,
+			&i.UpdatedAt,
+			&i.TemperatureC,
+			&i.Humidity,
+			&i.WindSpeedKmh,
+			&i.PrecipitationMm,
+			&i.PrecipitationChancePercent,
+			&i.ConditionText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateHourlyForecast = `-- name: UpdateHourlyForecast :one
 UPDATE hourly_forecasts
 SET updated_at=$2, forecast_datetime_utc=$3, temperature_c=$4, humidity=$5, wind_speed_kmh=$6, precipitation_mm=$7, precipitation_chance_percent=$8, condition_text=$9

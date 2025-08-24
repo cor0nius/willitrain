@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -14,7 +15,7 @@ import (
 const createLocation = `-- name: CreateLocation :one
 INSERT INTO locations (id, city_name, latitude, longitude, country_code)
 VALUES (gen_random_uuid(), $1, $2, $3, $4)
-RETURNING id, city_name, latitude, longitude, country_code
+RETURNING id, city_name, latitude, longitude, country_code, timezone
 `
 
 type CreateLocationParams struct {
@@ -38,6 +39,7 @@ func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) 
 		&i.Latitude,
 		&i.Longitude,
 		&i.CountryCode,
+		&i.Timezone,
 	)
 	return i, err
 }
@@ -61,7 +63,7 @@ func (q *Queries) DeleteLocation(ctx context.Context, id uuid.UUID) error {
 }
 
 const getLocationByCoordinates = `-- name: GetLocationByCoordinates :one
-SELECT id, city_name, latitude, longitude, country_code FROM locations WHERE latitude=$1 AND longitude=$2
+SELECT id, city_name, latitude, longitude, country_code, timezone FROM locations WHERE latitude=$1 AND longitude=$2
 `
 
 type GetLocationByCoordinatesParams struct {
@@ -78,12 +80,13 @@ func (q *Queries) GetLocationByCoordinates(ctx context.Context, arg GetLocationB
 		&i.Latitude,
 		&i.Longitude,
 		&i.CountryCode,
+		&i.Timezone,
 	)
 	return i, err
 }
 
 const getLocationByName = `-- name: GetLocationByName :one
-SELECT id, city_name, latitude, longitude, country_code FROM locations WHERE city_name=$1
+SELECT id, city_name, latitude, longitude, country_code, timezone FROM locations WHERE city_name=$1
 `
 
 func (q *Queries) GetLocationByName(ctx context.Context, cityName string) (Location, error) {
@@ -95,12 +98,13 @@ func (q *Queries) GetLocationByName(ctx context.Context, cityName string) (Locat
 		&i.Latitude,
 		&i.Longitude,
 		&i.CountryCode,
+		&i.Timezone,
 	)
 	return i, err
 }
 
 const listLocations = `-- name: ListLocations :many
-SELECT id, city_name, latitude, longitude, country_code FROM locations ORDER BY city_name ASC
+SELECT id, city_name, latitude, longitude, country_code, timezone FROM locations ORDER BY city_name ASC
 `
 
 func (q *Queries) ListLocations(ctx context.Context) ([]Location, error) {
@@ -118,6 +122,7 @@ func (q *Queries) ListLocations(ctx context.Context) ([]Location, error) {
 			&i.Latitude,
 			&i.Longitude,
 			&i.CountryCode,
+			&i.Timezone,
 		); err != nil {
 			return nil, err
 		}
@@ -130,4 +135,20 @@ func (q *Queries) ListLocations(ctx context.Context) ([]Location, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateTimezone = `-- name: UpdateTimezone :exec
+UPDATE locations
+SET timezone = $2
+WHERE id = $1
+`
+
+type UpdateTimezoneParams struct {
+	ID       uuid.UUID
+	Timezone sql.NullString
+}
+
+func (q *Queries) UpdateTimezone(ctx context.Context, arg UpdateTimezoneParams) error {
+	_, err := q.db.ExecContext(ctx, updateTimezone, arg.ID, arg.Timezone)
+	return err
 }

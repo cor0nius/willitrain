@@ -227,6 +227,52 @@ func (q *Queries) GetDailyForecastAtLocationAndDateFromAPI(ctx context.Context, 
 	return i, err
 }
 
+const getUpcomingDailyForecastsAtLocation = `-- name: GetUpcomingDailyForecastsAtLocation :many
+SELECT id, location_id, source_api, forecast_date, updated_at, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity FROM daily_forecasts
+WHERE location_id = $1 AND forecast_date >= $2
+ORDER BY forecast_date ASC
+`
+
+type GetUpcomingDailyForecastsAtLocationParams struct {
+	LocationID   uuid.UUID
+	ForecastDate time.Time
+}
+
+func (q *Queries) GetUpcomingDailyForecastsAtLocation(ctx context.Context, arg GetUpcomingDailyForecastsAtLocationParams) ([]DailyForecast, error) {
+	rows, err := q.db.QueryContext(ctx, getUpcomingDailyForecastsAtLocation, arg.LocationID, arg.ForecastDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DailyForecast
+	for rows.Next() {
+		var i DailyForecast
+		if err := rows.Scan(
+			&i.ID,
+			&i.LocationID,
+			&i.SourceApi,
+			&i.ForecastDate,
+			&i.UpdatedAt,
+			&i.MinTempC,
+			&i.MaxTempC,
+			&i.PrecipitationMm,
+			&i.PrecipitationChancePercent,
+			&i.WindSpeedKmh,
+			&i.Humidity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateDailyForecast = `-- name: UpdateDailyForecast :one
 UPDATE daily_forecasts
 SET updated_at=$2, forecast_date=$3, min_temp_c=$4, max_temp_c=$5, precipitation_mm=$6, precipitation_chance_percent=$7, wind_speed_kmh=$8, humidity=$9

@@ -1,10 +1,13 @@
 import type { CurrentWeatherResponse, DailyForecastsResponse, HourlyForecastsResponse, DailyForecast, HourlyForecast } from './types';
 
 // --- Helper Functions ---
-function formatDate(date: Date): string {
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
-  return `${day}.${month}`;
+function getDayAndMonth(dateString: string): string {
+  // Input format is "YYYY-MM-DD"
+  const parts = dateString.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}.${parts[1]}`; // Returns "DD.MM"
+  }
+  return dateString; // Fallback
 }
 
 // --- DOM Element References ---
@@ -78,7 +81,7 @@ export function renderCurrentWeather(data: CurrentWeatherResponse) {
       <p><strong>Wind:</strong> ${weather.wind_speed_kmh.toFixed(1)} km/h</p>
       <p><strong>Humidity:</strong> ${weather.humidity} %</p>
       <p><strong>Precipitation:</strong> ${weather.precipitation_mm.toFixed(1)} mm</p>
-      <p><em><small>Source: ${weather.source_api} at ${new Date(weather.timestamp).toLocaleTimeString()}</small></em></p>
+      <p><em><small>Source: ${weather.source_api} at ${weather.timestamp}</small></em></p>
     </div>
   `).join('');
   dom.panels.current.innerHTML = `
@@ -94,7 +97,7 @@ export function renderDailyForecast(data: DailyForecastsResponse) {
     throw new Error('No daily forecast data available for this location.');
   }
   const forecastsByDate = data.forecasts.reduce((acc: Record<string, DailyForecast[]>, forecast) => {
-    const date = new Date(forecast.forecast_date).toISOString().split('T')[0]; // Use YYYY-MM-DD for reliable key
+    const date = forecast.forecast_date;
     if (!acc[date]) acc[date] = [];
     acc[date].push(forecast);
     return acc;
@@ -103,13 +106,13 @@ export function renderDailyForecast(data: DailyForecastsResponse) {
   const sortedDates = Object.keys(forecastsByDate).sort();
 
   dom.dailyElements.list.innerHTML = sortedDates.map((dateKey, index) => {
-    const displayDate = formatDate(new Date(dateKey + 'T12:00:00Z'));
+    const displayDate = getDayAndMonth(dateKey);
     return `<div class="forecast-list-item ${index === 0 ? 'active' : ''}" data-date-key="${dateKey}">${displayDate}</div>`;
   }).join('');
 
   const renderDetails = (dateKey: string) => {
     const forecasts = forecastsByDate[dateKey];
-    const displayDate = formatDate(new Date(dateKey + 'T12:00:00Z'));
+    const displayDate = getDayAndMonth(dateKey);
     dom.dailyElements.details.innerHTML = `
       <h3>Forecast for ${displayDate} in ${data.location.city_name}</h3>
       <div class="weather-cards-container">
@@ -142,7 +145,7 @@ export function renderHourlyForecast(data: HourlyForecastsResponse) {
     throw new Error('No hourly forecast data available for this location.');
   }
   const forecastsByHour = data.forecasts.reduce((acc: Record<string, HourlyForecast[]>, forecast) => {
-    const key = new Date(forecast.forecast_datetime).toISOString();
+    const key = forecast.forecast_datetime;
     if (!acc[key]) acc[key] = [];
     acc[key].push(forecast);
     return acc;
@@ -151,9 +154,9 @@ export function renderHourlyForecast(data: HourlyForecastsResponse) {
   const sortedHours = Object.keys(forecastsByHour).sort();
 
   dom.hourlyElements.list.innerHTML = sortedHours.map((hourKey, index) => {
-    const date = new Date(hourKey);
-    const displayTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const displayDate = formatDate(date);
+    const [date, time] = hourKey.split(' ');
+    const displayDate = getDayAndMonth(date);
+    const displayTime = time.substring(0, 5); // "HH:MM"
     return `
       <div class="forecast-list-item ${index === 0 ? 'active' : ''}" data-hour-key="${hourKey}">
         <span class="time">${displayTime}</span>
@@ -164,9 +167,9 @@ export function renderHourlyForecast(data: HourlyForecastsResponse) {
 
   const renderDetails = (hourKey: string) => {
     const forecasts = forecastsByHour[hourKey];
-    const date = new Date(hourKey);
-    const displayHour = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const displayDate = formatDate(date);
+    const [date, time] = hourKey.split(' ');
+    const displayDate = getDayAndMonth(date);
+    const displayHour = time.substring(0, 5);
     dom.hourlyElements.details.innerHTML = `
       <h3>Forecast for ${displayDate} at ${displayHour} in ${data.location.city_name}</h3>
       <div class="weather-cards-container">

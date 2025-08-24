@@ -41,3 +41,8 @@ DELETE FROM hourly_forecasts WHERE source_api=$1;
 
 -- name: DeleteAllHourlyForecasts :exec
 DELETE FROM hourly_forecasts;
+
+-- name: GetUpcomingHourlyForecastsAtLocation :many
+SELECT * FROM hourly_forecasts
+WHERE location_id = $1 AND forecast_datetime_utc >= $2
+ORDER BY forecast_datetime_utc ASC;
