@@ -234,6 +234,15 @@ func (cfg *apiConfig) getCachedOrFetchCurrentWeather(ctx context.Context, locati
 
 // getCachedOrFetchDailyForecast checks for fresh cached data and fetches from APIs if it's stale or missing.
 func (cfg *apiConfig) getCachedOrFetchDailyForecast(ctx context.Context, location Location) ([]DailyForecast, error) {
+	dbFetcher := func(ctx context.Context, locationID uuid.UUID) ([]database.DailyForecast, error) {
+		// Truncate to the beginning of the day in UTC to get all of today's forecasts
+		today := time.Now().UTC().Truncate(24 * time.Hour)
+		return cfg.dbQueries.GetUpcomingDailyForecastsAtLocation(ctx, database.GetUpcomingDailyForecastsAtLocationParams{
+			LocationID:    locationID,
+			ForecastDate:  today,
+		})
+	}
+
 	return getCachedOrFetch(
 		cfg,
 		ctx,
@@ -241,7 +250,7 @@ func (cfg *apiConfig) getCachedOrFetchDailyForecast(ctx context.Context, locatio
 		"dailyforecast",
 		dailyForecastCacheTTL,
 		redisDailyForecastCacheTTL,
-		cfg.dbQueries.GetAllDailyForecastsAtLocation,
+		dbFetcher,
 		cfg.requestDailyForecast,
 		cfg.persistDailyForecast,
 		databaseDailyForecastToDailyForecast,
@@ -256,6 +265,13 @@ func (cfg *apiConfig) getCachedOrFetchDailyForecast(ctx context.Context, locatio
 
 // getCachedOrFetchHourlyForecast checks for fresh cached data and fetches from APIs if it's stale or missing.
 func (cfg *apiConfig) getCachedOrFetchHourlyForecast(ctx context.Context, location Location) ([]HourlyForecast, error) {
+	dbFetcher := func(ctx context.Context, locationID uuid.UUID) ([]database.HourlyForecast, error) {
+		return cfg.dbQueries.GetUpcomingHourlyForecastsAtLocation(ctx, database.GetUpcomingHourlyForecastsAtLocationParams{
+			LocationID:          locationID,
+			ForecastDatetimeUtc: time.Now().UTC(),
+		})
+	}
+
 	return getCachedOrFetch(
 		cfg,
 		ctx,
@@ -263,7 +279,7 @@ func (cfg *apiConfig) getCachedOrFetchHourlyForecast(ctx context.Context, locati
 		"hourlyforecast",
 		hourlyForecastCacheTTL,
 		redisHourlyForecastCacheTTL,
-		cfg.dbQueries.GetAllHourlyForecastsAtLocation,
+		dbFetcher,
 		cfg.requestHourlyForecast,
 		cfg.persistHourlyForecast,
 		databaseHourlyForecastToHourlyForecast,

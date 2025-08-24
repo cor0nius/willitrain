@@ -57,6 +57,7 @@ type Location struct {
 	Latitude    float64
 	Longitude   float64
 	CountryCode string
+	Timezone    sql.NullString
 }
 
 type LocationAlias struct {

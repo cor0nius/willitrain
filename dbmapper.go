@@ -14,6 +14,7 @@ func databaseLocationToLocation(dbLocation database.Location) Location {
 		Latitude:    dbLocation.Latitude,
 		Longitude:   dbLocation.Longitude,
 		CountryCode: dbLocation.CountryCode,
+		Timezone:    dbLocation.Timezone.String,
 	}
 }
 

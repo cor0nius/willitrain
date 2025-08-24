@@ -98,6 +98,10 @@ func (s *Scheduler) runUpdateForLocations(jobType string, updateFunc func(contex
 
 func (s *Scheduler) runCurrentWeatherJobs() {
 	updateFunc := func(ctx context.Context, location Location) {
+		if err := s.cfg.dbQueries.DeleteCurrentWeatherAtLocation(ctx, location.LocationID); err != nil {
+			s.cfg.logger.Error("failed to delete current weather", "location", location.CityName, "error", err)
+			return
+		}
 		weather, err := s.cfg.requestCurrentWeather(location)
 		if err != nil {
 			s.cfg.logger.Error("failed to request current weather", "location", location.CityName, "error", err)
@@ -111,6 +115,10 @@ func (s *Scheduler) runCurrentWeatherJobs() {
 
 func (s *Scheduler) runHourlyForecastJobs() {
 	updateFunc := func(ctx context.Context, location Location) {
+		if err := s.cfg.dbQueries.DeleteHourlyForecastsAtLocation(ctx, location.LocationID); err != nil {
+			s.cfg.logger.Error("failed to delete hourly forecasts", "location", location.CityName, "error", err)
+			return
+		}
 		forecast, err := s.cfg.requestHourlyForecast(location)
 		if err != nil {
 			s.cfg.logger.Error("failed to request hourly forecast", "location", location.CityName, "error", err)
@@ -124,6 +132,10 @@ func (s *Scheduler) runHourlyForecastJobs() {
 
 func (s *Scheduler) runDailyForecastJobs() {
 	updateFunc := func(ctx context.Context, location Location) {
+		if err := s.cfg.dbQueries.DeleteDailyForecastsAtLocation(ctx, location.LocationID); err != nil {
+			s.cfg.logger.Error("failed to delete daily forecasts", "location", location.CityName, "error", err)
+			return
+		}
 		forecast, err := s.cfg.requestDailyForecast(location)
 		if err != nil {
 			s.cfg.logger.Error("failed to request daily forecast", "location", location.CityName, "error", err)

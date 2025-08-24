@@ -30,7 +30,7 @@ func (q *Queries) CreateLocationAlias(ctx context.Context, arg CreateLocationAli
 }
 
 const getLocationByAlias = `-- name: GetLocationByAlias :one
-SELECT l.id, l.city_name, l.latitude, l.longitude, l.country_code FROM locations l JOIN location_aliases la ON l.id = la.location_id
+SELECT l.id, l.city_name, l.latitude, l.longitude, l.country_code, l.timezone FROM locations l JOIN location_aliases la ON l.id = la.location_id
 WHERE la.alias = $1
 `
 
@@ -43,6 +43,7 @@ func (q *Queries) GetLocationByAlias(ctx context.Context, alias string) (Locatio
 		&i.Latitude,
 		&i.Longitude,
 		&i.CountryCode,
+		&i.Timezone,
 	)
 	return i, err
 }

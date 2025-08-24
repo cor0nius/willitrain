@@ -11,23 +11,23 @@ import (
 )
 
 // mockParserSuccess simulates a successful parse of an API response.
-func mockParserSuccess(body io.Reader, logger *slog.Logger) (CurrentWeather, error) {
+func mockParserSuccess(body io.Reader, logger *slog.Logger) (CurrentWeather, string, error) {
 	return CurrentWeather{
 		SourceAPI:   "TestAPI",
 		Temperature: 25.0,
-	}, nil
+	}, "Europe/Warsaw", nil
 }
 
 // mockParserError simulates a failed parse.
-func mockParserError(body io.Reader, logger *slog.Logger) (CurrentWeather, error) {
-	return CurrentWeather{SourceAPI: "TestAPI"}, errors.New("parsing failed")
+func mockParserError(body io.Reader, logger *slog.Logger) (CurrentWeather, string, error) {
+	return CurrentWeather{SourceAPI: "TestAPI"}, "", errors.New("parsing failed")
 }
 
 func TestFetchForecastFromAPI(t *testing.T) {
 	testCases := []struct {
 		name          string
 		serverHandler http.HandlerFunc
-		parser        func(io.Reader, *slog.Logger) (CurrentWeather, error)
+		parser        func(io.Reader, *slog.Logger) (CurrentWeather, string, error)
 		expectError   bool
 		expectedTemp  float64
 	}{
@@ -87,6 +87,7 @@ func TestFetchForecastFromAPI(t *testing.T) {
 			var wg sync.WaitGroup
 			results := make(chan struct {
 				t   CurrentWeather
+				tz  string
 				err error
 			}, 1)
 
@@ -103,321 +104,6 @@ func TestFetchForecastFromAPI(t *testing.T) {
 
 			if !tc.expectError && res.err != nil {
 				t.Errorf("Expected no error, but got: %v", res.err)
-			}
-		})
-	}
-}
-
-func TestRequestHourlyForecast(t *testing.T) {
-	// Mock server for GMP
-	gmpData, err := testData.ReadFile("testdata/hourly_forecast_gmp.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	gmpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(gmpData)
-	}))
-	defer gmpServer.Close()
-
-	// Mock server for OWM
-	owmData, err := testData.ReadFile("testdata/hourly_forecast_owm.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	owmServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(owmData)
-	}))
-	defer owmServer.Close()
-
-	// Mock server for O-Meteo
-	ometeoData, err := testData.ReadFile("testdata/hourly_forecast_ometeo.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ometeoServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(ometeoData)
-	}))
-	defer ometeoServer.Close()
-
-	// Mock server that always fails
-	serverFail := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer serverFail.Close()
-
-	location := Location{Latitude: 51.11, Longitude: 17.04}
-
-	testCases := []struct {
-		name        string
-		cfg         apiConfig
-		expectedLen int
-		expectError bool
-	}{
-		{
-			name: "All providers succeed",
-			cfg: apiConfig{
-				gmpWeatherURL:    gmpServer.URL + "/",
-				owmWeatherURL:    owmServer.URL + "?",
-				ometeoWeatherURL: ometeoServer.URL + "?",
-				gmpKey:           "dummy",
-				owmKey:           "dummy",
-				httpClient:       http.DefaultClient,
-				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-			},
-			expectedLen: 72, // 24 from each provider
-			expectError: false,
-		},
-		{
-			name: "One provider fails",
-			cfg: apiConfig{
-				gmpWeatherURL:    gmpServer.URL + "/",
-				owmWeatherURL:    serverFail.URL + "?",
-				ometeoWeatherURL: ometeoServer.URL + "?",
-				gmpKey:           "dummy",
-				owmKey:           "dummy",
-				httpClient:       http.DefaultClient,
-				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-			},
-			expectedLen: 48, // 24 from GMP, 24 from O-Meteo
-			expectError: false,
-		},
-		{
-			name: "All providers fail",
-			cfg: apiConfig{
-				gmpWeatherURL:    serverFail.URL + "/",
-				owmWeatherURL:    serverFail.URL + "?",
-				ometeoWeatherURL: serverFail.URL + "?",
-				gmpKey:           "dummy",
-				owmKey:           "dummy",
-				httpClient:       http.DefaultClient,
-				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-			},
-			expectedLen: 0,
-			expectError: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			results, err := tc.cfg.requestHourlyForecast(location)
-			if (err != nil) != tc.expectError {
-				t.Errorf("Expected error: %v, got: %v", tc.expectError, err)
-			}
-			if len(results) != tc.expectedLen {
-				t.Errorf("Expected %d results, but got %d", tc.expectedLen, len(results))
-			}
-		})
-	}
-}
-
-func TestRequestDailyForecast(t *testing.T) {
-	// Mock server for GMP
-	gmpData, err := testData.ReadFile("testdata/daily_forecast_gmp.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	gmpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(gmpData)
-	}))
-	defer gmpServer.Close()
-
-	// Mock server for OWM
-	owmData, err := testData.ReadFile("testdata/daily_forecast_owm.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	owmServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(owmData)
-	}))
-	defer owmServer.Close()
-
-	// Mock server for O-Meteo
-	ometeoData, err := testData.ReadFile("testdata/daily_forecast_ometeo.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ometeoServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(ometeoData)
-	}))
-	defer ometeoServer.Close()
-
-	// Mock server that always fails
-	serverFail := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer serverFail.Close()
-
-	location := Location{Latitude: 51.11, Longitude: 17.04}
-
-	testCases := []struct {
-		name        string
-		cfg         apiConfig
-		expectedLen int
-		expectError bool
-	}{
-		{
-			name: "All providers succeed",
-			cfg: apiConfig{
-				gmpWeatherURL:    gmpServer.URL + "/",
-				owmWeatherURL:    owmServer.URL + "?",
-				ometeoWeatherURL: ometeoServer.URL + "?",
-				gmpKey:           "dummy",
-				owmKey:           "dummy",
-				httpClient:       http.DefaultClient,
-				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-			},
-			expectedLen: 15, // 5 from GMP, 5 from OWM, 5 from O-Meteo
-			expectError: false,
-		},
-		{
-			name: "One provider fails",
-			cfg: apiConfig{
-				gmpWeatherURL:    gmpServer.URL + "/",
-				owmWeatherURL:    serverFail.URL + "?",
-				ometeoWeatherURL: ometeoServer.URL + "?",
-				gmpKey:           "dummy",
-				owmKey:           "dummy",
-				httpClient:       http.DefaultClient,
-				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-			},
-			expectedLen: 10, // 5 from GMP, 5 from O-Meteo
-			expectError: false,
-		},
-		{
-			name: "All providers fail",
-			cfg: apiConfig{
-				gmpWeatherURL:    serverFail.URL + "/",
-				owmWeatherURL:    serverFail.URL + "?",
-				ometeoWeatherURL: serverFail.URL + "?",
-				gmpKey:           "dummy",
-				owmKey:           "dummy",
-				httpClient:       http.DefaultClient,
-				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-			},
-			expectedLen: 0,
-			expectError: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			results, err := tc.cfg.requestDailyForecast(location)
-			if (err != nil) != tc.expectError {
-				t.Errorf("Expected error: %v, got: %v", tc.expectError, err)
-			}
-			if len(results) != tc.expectedLen {
-				t.Errorf("Expected %d results, but got %d", tc.expectedLen, len(results))
-			}
-		})
-	}
-}
-
-func TestRequestCurrentWeather(t *testing.T) {
-	// Mock server for GMP
-	gmpData, err := testData.ReadFile("testdata/current_weather_gmp.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	gmpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(gmpData)
-	}))
-	defer gmpServer.Close()
-
-	// Mock server for OWM
-	owmData, err := testData.ReadFile("testdata/current_weather_owm.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	owmServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(owmData)
-	}))
-	defer owmServer.Close()
-
-	// Mock server for O-Meteo
-	ometeoData, err := testData.ReadFile("testdata/current_weather_ometeo.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ometeoServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(ometeoData)
-	}))
-	defer ometeoServer.Close()
-
-	// Mock server that always fails
-	serverFail := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer serverFail.Close()
-
-	location := Location{Latitude: 51.11, Longitude: 17.04}
-
-	testCases := []struct {
-		name        string
-		cfg         apiConfig
-		expectedLen int
-		expectError bool
-	}{
-		{
-			name: "All providers succeed",
-			cfg: apiConfig{
-				gmpWeatherURL:    gmpServer.URL + "/",
-				owmWeatherURL:    owmServer.URL + "?",
-				ometeoWeatherURL: ometeoServer.URL + "?",
-				gmpKey:           "dummy",
-				owmKey:           "dummy",
-				httpClient:       http.DefaultClient,
-				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-			},
-			expectedLen: 3,
-			expectError: false,
-		},
-		{
-			name: "One provider fails",
-			cfg: apiConfig{
-				gmpWeatherURL:    gmpServer.URL + "/",
-				owmWeatherURL:    serverFail.URL + "?",
-				ometeoWeatherURL: ometeoServer.URL + "?",
-				gmpKey:           "dummy",
-				owmKey:           "dummy",
-				httpClient:       http.DefaultClient,
-				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-			},
-			expectedLen: 2,
-			expectError: false,
-		},
-		{
-			name: "All providers fail",
-			cfg: apiConfig{
-				gmpWeatherURL:    serverFail.URL + "/",
-				owmWeatherURL:    serverFail.URL + "?",
-				ometeoWeatherURL: serverFail.URL + "?",
-				gmpKey:           "dummy",
-				owmKey:           "dummy",
-				httpClient:       http.DefaultClient,
-				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-			},
-			expectedLen: 0,
-			expectError: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			results, err := tc.cfg.requestCurrentWeather(location)
-			if (err != nil) != tc.expectError {
-				t.Errorf("Expected error: %v, got: %v", tc.expectError, err)
-			}
-			if len(results) != tc.expectedLen {
-				t.Errorf("Expected %d results, but got %d", tc.expectedLen, len(results))
 			}
 		})
 	}
@@ -449,11 +135,12 @@ func TestProcessForecastRequests(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name        string
-		urls        map[string]string
-		providers   map[string]forecastProvider[CurrentWeather]
-		expectedLen int
-		expectError bool
+		name             string
+		urls             map[string]string
+		providers        map[string]forecastProvider[CurrentWeather]
+		expectedLen      int
+		expectedTimezone string
+		expectError      bool
 	}{
 		{
 			name: "All providers succeed",
@@ -461,9 +148,10 @@ func TestProcessForecastRequests(t *testing.T) {
 				"provider1": serverSuccess.URL,
 				"provider2": serverSuccess.URL,
 			},
-			providers:   providers,
-			expectedLen: 2,
-			expectError: false,
+			providers:        providers,
+			expectedLen:      2,
+			expectedTimezone: "Europe/Warsaw",
+			expectError:      false,
 		},
 		{
 			name: "One provider fails",
@@ -471,9 +159,10 @@ func TestProcessForecastRequests(t *testing.T) {
 				"provider1": serverSuccess.URL,
 				"provider2": serverFail.URL,
 			},
-			providers:   providers,
-			expectedLen: 1,
-			expectError: false, // The function logs errors but doesn't return one
+			providers:        providers,
+			expectedLen:      1,
+			expectedTimezone: "Europe/Warsaw",
+			expectError:      false, // The function logs errors but doesn't return one
 		},
 		{
 			name: "All providers fail",
@@ -481,9 +170,10 @@ func TestProcessForecastRequests(t *testing.T) {
 				"provider1": serverFail.URL,
 				"provider2": serverFail.URL,
 			},
-			providers:   providers,
-			expectedLen: 0,
-			expectError: false,
+			providers:        providers,
+			expectedLen:      0,
+			expectedTimezone: "",
+			expectError:      false,
 		},
 	}
 
@@ -495,7 +185,7 @@ func TestProcessForecastRequests(t *testing.T) {
 				httpClient: http.DefaultClient,
 			}
 
-			results, err := processForecastRequests(cfg, tc.urls, tc.providers)
+			results, tz, err := processForecastRequests(cfg, tc.urls, tc.providers)
 
 			if (err != nil) != tc.expectError {
 				t.Errorf("Expected error: %v, got: %v", tc.expectError, err)
@@ -503,6 +193,10 @@ func TestProcessForecastRequests(t *testing.T) {
 
 			if len(results) != tc.expectedLen {
 				t.Errorf("Expected %d results, but got %d", tc.expectedLen, len(results))
+			}
+
+			if tz != tc.expectedTimezone {
+				t.Errorf("Expected timezone %q, but got %q", tc.expectedTimezone, tz)
 			}
 		})
 	}

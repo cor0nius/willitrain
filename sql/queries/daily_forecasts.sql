@@ -41,3 +41,8 @@ DELETE FROM daily_forecasts WHERE source_api=$1;
 
 -- name: DeleteAllDailyForecasts :exec
 DELETE FROM daily_forecasts;
+
+-- name: GetUpcomingDailyForecastsAtLocation :many
+SELECT * FROM daily_forecasts
+WHERE location_id = $1 AND forecast_date >= $2
+ORDER BY forecast_date ASC;

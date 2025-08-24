@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -20,15 +21,15 @@ import (
 func TestRunCurrentWeatherJobs(t *testing.T) {
 	// --- Setup ---
 	// Mock server for all weather APIs
-	gmpData, err := testData.ReadFile("testdata/current_weather_gmp.json")
+	gmpData, err := os.ReadFile("testdata/current_weather_gmp.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	owmData, err := testData.ReadFile("testdata/current_weather_owm.json")
+	owmData, err := os.ReadFile("testdata/current_weather_owm.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ometeoData, err := testData.ReadFile("testdata/current_weather_ometeo.json")
+	ometeoData, err := os.ReadFile("testdata/current_weather_ometeo.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,15 +91,15 @@ func TestRunCurrentWeatherJobs(t *testing.T) {
 func TestRunDailyForecastJobs(t *testing.T) {
 	// --- Setup ---
 	// Mock server for all weather APIs
-	gmpData, err := testData.ReadFile("testdata/daily_forecast_gmp.json")
+	gmpData, err := os.ReadFile("testdata/daily_forecast_gmp.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	owmData, err := testData.ReadFile("testdata/daily_forecast_owm.json")
+	owmData, err := os.ReadFile("testdata/daily_forecast_owm.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ometeoData, err := testData.ReadFile("testdata/daily_forecast_ometeo.json")
+	ometeoData, err := os.ReadFile("testdata/daily_forecast_ometeo.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,15 +157,15 @@ func TestRunDailyForecastJobs(t *testing.T) {
 func TestRunHourlyForecastJobs(t *testing.T) {
 	// --- Setup ---
 	// Mock server for all weather APIs
-	gmpData, err := testData.ReadFile("testdata/hourly_forecast_gmp.json")
+	gmpData, err := os.ReadFile("testdata/hourly_forecast_gmp.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	owmData, err := testData.ReadFile("testdata/hourly_forecast_owm.json")
+	owmData, err := os.ReadFile("testdata/hourly_forecast_owm.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ometeoData, err := testData.ReadFile("testdata/hourly_forecast_ometeo.json")
+	ometeoData, err := os.ReadFile("testdata/hourly_forecast_ometeo.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -334,15 +335,15 @@ func TestRunUpdateForLocations_PartialAPIFailure(t *testing.T) {
 	goodCityLat := "1.00"
 	badCityLat := "2.00"
 
-	gmpData, err := testData.ReadFile("testdata/current_weather_gmp.json")
+	gmpData, err := os.ReadFile("testdata/current_weather_gmp.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	owmData, err := testData.ReadFile("testdata/current_weather_owm.json")
+	owmData, err := os.ReadFile("testdata/current_weather_owm.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ometeoData, err := testData.ReadFile("testdata/current_weather_ometeo.json")
+	ometeoData, err := os.ReadFile("testdata/current_weather_ometeo.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,6 +465,18 @@ func (m *mockQuerier) DeleteAllHourlyForecasts(ctx context.Context) error { retu
 
 func (m *mockQuerier) DeleteAllLocations(ctx context.Context) error { return nil }
 
+func (m *mockQuerier) DeleteCurrentWeatherAtLocation(ctx context.Context, locationID uuid.UUID) error {
+	return nil
+}
+
+func (m *mockQuerier) DeleteDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) error {
+	return nil
+}
+
+func (m *mockQuerier) DeleteHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) error {
+	return nil
+}
+
 func (m *mockQuerier) GetAllDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.DailyForecast, error) {
 	return nil, nil
 }
@@ -526,6 +539,10 @@ func (m *mockQuerier) UpdateHourlyForecast(ctx context.Context, arg database.Upd
 	return database.HourlyForecast{}, nil
 }
 
+func (m *mockQuerier) UpdateTimezone(ctx context.Context, arg database.UpdateTimezoneParams) error {
+	return nil
+}
+
 // Add stubs for the remaining dbQuerier methods to satisfy the interface.
 // These are not used by the scheduler tests, so they can be empty.
 func (m *mockQuerier) CreateLocationAlias(ctx context.Context, arg database.CreateLocationAliasParams) (database.LocationAlias, error) {
@@ -542,4 +559,12 @@ func (m *mockQuerier) GetLocationByAlias(ctx context.Context, alias string) (dat
 
 func (m *mockQuerier) GetLocationByCoordinates(ctx context.Context, arg database.GetLocationByCoordinatesParams) (database.Location, error) {
 	return database.Location{}, nil
+}
+
+func (m *mockQuerier) GetUpcomingDailyForecastsAtLocation(ctx context.Context, arg database.GetUpcomingDailyForecastsAtLocationParams) ([]database.DailyForecast, error) {
+	return nil, nil
+}
+
+func (m *mockQuerier) GetUpcomingHourlyForecastsAtLocation(ctx context.Context, arg database.GetUpcomingHourlyForecastsAtLocationParams) ([]database.HourlyForecast, error) {
+	return nil, nil
 }
