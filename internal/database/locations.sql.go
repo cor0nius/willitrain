@@ -25,6 +25,7 @@ type CreateLocationParams struct {
 	CountryCode string
 }
 
+// CreateLocation inserts a new location record.
 func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) (Location, error) {
 	row := q.db.QueryRowContext(ctx, createLocation,
 		arg.CityName,
@@ -48,6 +49,7 @@ const deleteAllLocations = `-- name: DeleteAllLocations :exec
 DELETE FROM locations
 `
 
+// DeleteAllLocations deletes all locations from the database.
 func (q *Queries) DeleteAllLocations(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, deleteAllLocations)
 	return err
@@ -57,6 +59,7 @@ const deleteLocation = `-- name: DeleteLocation :exec
 DELETE FROM locations WHERE id=$1
 `
 
+// DeleteLocation deletes a location by its ID.
 func (q *Queries) DeleteLocation(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteLocation, id)
 	return err
@@ -71,6 +74,7 @@ type GetLocationByCoordinatesParams struct {
 	Longitude float64
 }
 
+// GetLocationByCoordinates retrieves a location by its latitude and longitude.
 func (q *Queries) GetLocationByCoordinates(ctx context.Context, arg GetLocationByCoordinatesParams) (Location, error) {
 	row := q.db.QueryRowContext(ctx, getLocationByCoordinates, arg.Latitude, arg.Longitude)
 	var i Location
@@ -89,6 +93,7 @@ const getLocationByName = `-- name: GetLocationByName :one
 SELECT id, city_name, latitude, longitude, country_code, timezone FROM locations WHERE city_name=$1
 `
 
+// GetLocationByName retrieves a location by its city name.
 func (q *Queries) GetLocationByName(ctx context.Context, cityName string) (Location, error) {
 	row := q.db.QueryRowContext(ctx, getLocationByName, cityName)
 	var i Location
@@ -107,6 +112,7 @@ const listLocations = `-- name: ListLocations :many
 SELECT id, city_name, latitude, longitude, country_code, timezone FROM locations ORDER BY city_name ASC
 `
 
+// ListLocations retrieves all locations, ordered by city name.
 func (q *Queries) ListLocations(ctx context.Context) ([]Location, error) {
 	rows, err := q.db.QueryContext(ctx, listLocations)
 	if err != nil {
@@ -148,6 +154,7 @@ type UpdateTimezoneParams struct {
 	Timezone sql.NullString
 }
 
+// UpdateTimezone updates the timezone for a specific location.
 func (q *Queries) UpdateTimezone(ctx context.Context, arg UpdateTimezoneParams) error {
 	_, err := q.db.ExecContext(ctx, updateTimezone, arg.ID, arg.Timezone)
 	return err

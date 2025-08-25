@@ -44,6 +44,7 @@ type CreateDailyForecastParams struct {
 	Humidity                   sql.NullInt32
 }
 
+// CreateDailyForecast inserts a new daily forecast record.
 func (q *Queries) CreateDailyForecast(ctx context.Context, arg CreateDailyForecastParams) (DailyForecast, error) {
 	row := q.db.QueryRowContext(ctx, createDailyForecast,
 		arg.LocationID,
@@ -78,6 +79,7 @@ const deleteAllDailyForecasts = `-- name: DeleteAllDailyForecasts :exec
 DELETE FROM daily_forecasts
 `
 
+// DeleteAllDailyForecasts deletes all daily forecasts from the database.
 func (q *Queries) DeleteAllDailyForecasts(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, deleteAllDailyForecasts)
 	return err
@@ -87,6 +89,7 @@ const deleteDailyForecastsAtLocation = `-- name: DeleteDailyForecastsAtLocation 
 DELETE FROM daily_forecasts WHERE location_id=$1
 `
 
+// DeleteDailyForecastsAtLocation deletes all daily forecasts for a specific location.
 func (q *Queries) DeleteDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteDailyForecastsAtLocation, locationID)
 	return err
@@ -101,6 +104,7 @@ type DeleteDailyForecastsAtLocationFromAPIParams struct {
 	SourceApi  string
 }
 
+// DeleteDailyForecastsAtLocationFromAPI deletes all daily forecasts for a specific location and API source.
 func (q *Queries) DeleteDailyForecastsAtLocationFromAPI(ctx context.Context, arg DeleteDailyForecastsAtLocationFromAPIParams) error {
 	_, err := q.db.ExecContext(ctx, deleteDailyForecastsAtLocationFromAPI, arg.LocationID, arg.SourceApi)
 	return err
@@ -110,6 +114,7 @@ const deleteDailyForecastsFromApi = `-- name: DeleteDailyForecastsFromApi :exec
 DELETE FROM daily_forecasts WHERE source_api=$1
 `
 
+// DeleteDailyForecastsFromApi deletes all daily forecasts from a specific API source.
 func (q *Queries) DeleteDailyForecastsFromApi(ctx context.Context, sourceApi string) error {
 	_, err := q.db.ExecContext(ctx, deleteDailyForecastsFromApi, sourceApi)
 	return err
@@ -119,6 +124,7 @@ const getAllDailyForecastsAtLocation = `-- name: GetAllDailyForecastsAtLocation 
 SELECT id, location_id, source_api, forecast_date, updated_at, min_temp_c, max_temp_c, precipitation_mm, precipitation_chance_percent, wind_speed_kmh, humidity FROM daily_forecasts WHERE location_id=$1
 `
 
+// GetAllDailyForecastsAtLocation retrieves all daily forecasts for a specific location.
 func (q *Queries) GetAllDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]DailyForecast, error) {
 	rows, err := q.db.QueryContext(ctx, getAllDailyForecastsAtLocation, locationID)
 	if err != nil {
@@ -163,6 +169,7 @@ type GetDailyForecastAtLocationAndDateParams struct {
 	ForecastDate time.Time
 }
 
+// GetDailyForecastAtLocationAndDate retrieves all daily forecasts for a specific location and date.
 func (q *Queries) GetDailyForecastAtLocationAndDate(ctx context.Context, arg GetDailyForecastAtLocationAndDateParams) ([]DailyForecast, error) {
 	rows, err := q.db.QueryContext(ctx, getDailyForecastAtLocationAndDate, arg.LocationID, arg.ForecastDate)
 	if err != nil {
@@ -208,6 +215,7 @@ type GetDailyForecastAtLocationAndDateFromAPIParams struct {
 	SourceApi    string
 }
 
+// GetDailyForecastAtLocationAndDateFromAPI retrieves the daily forecast for a specific location, date, and API source.
 func (q *Queries) GetDailyForecastAtLocationAndDateFromAPI(ctx context.Context, arg GetDailyForecastAtLocationAndDateFromAPIParams) (DailyForecast, error) {
 	row := q.db.QueryRowContext(ctx, getDailyForecastAtLocationAndDateFromAPI, arg.LocationID, arg.ForecastDate, arg.SourceApi)
 	var i DailyForecast
@@ -238,6 +246,7 @@ type GetUpcomingDailyForecastsAtLocationParams struct {
 	ForecastDate time.Time
 }
 
+// GetUpcomingDailyForecastsAtLocation retrieves all upcoming daily forecasts for a specific location.
 func (q *Queries) GetUpcomingDailyForecastsAtLocation(ctx context.Context, arg GetUpcomingDailyForecastsAtLocationParams) ([]DailyForecast, error) {
 	rows, err := q.db.QueryContext(ctx, getUpcomingDailyForecastsAtLocation, arg.LocationID, arg.ForecastDate)
 	if err != nil {
@@ -292,6 +301,7 @@ type UpdateDailyForecastParams struct {
 	Humidity                   sql.NullInt32
 }
 
+// UpdateDailyForecast updates an existing daily forecast record.
 func (q *Queries) UpdateDailyForecast(ctx context.Context, arg UpdateDailyForecastParams) (DailyForecast, error) {
 	row := q.db.QueryRowContext(ctx, updateDailyForecast,
 		arg.ID,

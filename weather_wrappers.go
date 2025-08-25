@@ -4,6 +4,11 @@ import (
 	"fmt"
 )
 
+// The WrapFor... functions are responsible for constructing the full request URLs
+// for the various external weather APIs (Google Weather, OpenWeatherMap, and Open-Meteo).
+// Each function takes a Location and prepares a map of API-specific URLs
+// for a particular type of forecast (current, daily, or hourly).
+
 func (cfg *apiConfig) WrapForCurrentWeather(location Location) map[string]string {
 
 	gmpWrappedURL := fmt.Sprintf("%scurrentConditions:lookup?key=%s&location.latitude=%.2f&location.longitude=%.2f", cfg.gmpWeatherURL, cfg.gmpKey, location.Latitude, location.Longitude)

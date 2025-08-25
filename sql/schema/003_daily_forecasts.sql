@@ -1,4 +1,5 @@
 -- +goose Up
+-- daily_forecasts stores the weather forecast for a specific location and date from a particular source.
 CREATE TABLE daily_forecasts (
     id UUID PRIMARY KEY,
     location_id UUID REFERENCES locations(id) ON DELETE CASCADE NOT NULL,

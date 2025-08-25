@@ -10,13 +10,23 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// This file is the main entrypoint for the WillItRain application.
+// It is responsible for initializing the configuration, starting the background
+// scheduler, setting up the HTTP router with all the API and frontend routes,
+// and starting the web server.
+
+// frontendFS embeds the compiled frontend assets into the Go binary.
+// This allows the application to be deployed as a single, self-contained executable.
 //go:embed all:frontend/dist
 var frontendFS embed.FS
 
 func main() {
+	// Initialize the application configuration, which includes setting up
+	// the logger, database connections, and other dependencies.
 	cfg := config()
 	cfg.logger.Debug("configuration loaded")
 
+	// Create and start the scheduler for periodic weather data updates.
 	scheduler := NewScheduler(cfg,
 		cfg.schedulerCurrentInterval,
 		cfg.schedulerHourlyInterval,
@@ -30,22 +40,24 @@ func main() {
 	)
 	scheduler.Start()
 
+	// Set up the HTTP request multiplexer (router).
 	mux := http.NewServeMux()
 
-	// API routes
+	// Register the public API endpoints.
 	mux.HandleFunc("/api/config", cfg.handlerConfig)
 	mux.HandleFunc("/api/currentweather", cfg.handlerCurrentWeather)
 	mux.HandleFunc("/api/dailyforecast", cfg.handlerDailyForecast)
 	mux.HandleFunc("/api/hourlyforecast", cfg.handlerHourlyForecast)
 	mux.HandleFunc("/metrics", cfg.handlerMetrics)
 
+	// Register development-only endpoints if dev mode is enabled.
 	if cfg.devMode {
 		cfg.logger.Debug("development mode enabled. Registering /dev/reset-db, /dev/runschedulerjobs endpoints.")
 		mux.HandleFunc("/dev/reset-db", cfg.handlerResetDB)
 		mux.HandleFunc("/dev/runschedulerjobs", scheduler.handlerRunSchedulerJobs)
 	}
 
-	// Frontend file server
+	// Set up the file server to serve the embedded frontend assets.
 	distFS, err := fs.Sub(frontendFS, "frontend/dist")
 	if err != nil {
 		cfg.logger.Error("failed to create frontend file system", "error", err)
@@ -53,6 +65,7 @@ func main() {
 	}
 	mux.Handle("/", http.FileServer(http.FS(distFS)))
 
+	// Configure and start the HTTP server, wrapping the router with middleware.
 	server := &http.Server{
 		Addr:              ":" + cfg.port,
 		Handler:           metricsMiddleware(corsMiddleware(mux)),

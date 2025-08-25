@@ -1,4 +1,5 @@
 -- +goose Up
+-- current_weather stores the most recent weather observation for a specific location from a particular source.
 CREATE TABLE current_weather (
     id UUID PRIMARY KEY,
     location_id UUID REFERENCES locations(id) ON DELETE CASCADE NOT NULL,

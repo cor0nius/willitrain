@@ -40,6 +40,7 @@ type CreateCurrentWeatherParams struct {
 	ConditionText   sql.NullString
 }
 
+// CreateCurrentWeather inserts a new current weather record into the database.
 func (q *Queries) CreateCurrentWeather(ctx context.Context, arg CreateCurrentWeatherParams) (CurrentWeather, error) {
 	row := q.db.QueryRowContext(ctx, createCurrentWeather,
 		arg.LocationID,
@@ -70,6 +71,7 @@ const deleteAllCurrentWeather = `-- name: DeleteAllCurrentWeather :exec
 DELETE FROM current_weather
 `
 
+// DeleteAllCurrentWeather deletes all current weather records from the database.
 func (q *Queries) DeleteAllCurrentWeather(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, deleteAllCurrentWeather)
 	return err
@@ -79,6 +81,7 @@ const deleteAllCurrentWeatherFromAPI = `-- name: DeleteAllCurrentWeatherFromAPI 
 DELETE FROM current_weather WHERE source_api=$1
 `
 
+// DeleteAllCurrentWeatherFromAPI deletes all current weather records from a specific API source.
 func (q *Queries) DeleteAllCurrentWeatherFromAPI(ctx context.Context, sourceApi string) error {
 	_, err := q.db.ExecContext(ctx, deleteAllCurrentWeatherFromAPI, sourceApi)
 	return err
@@ -88,6 +91,7 @@ const deleteCurrentWeatherAtLocation = `-- name: DeleteCurrentWeatherAtLocation 
 DELETE FROM current_weather WHERE location_id=$1
 `
 
+// DeleteCurrentWeatherAtLocation deletes all current weather records for a specific location.
 func (q *Queries) DeleteCurrentWeatherAtLocation(ctx context.Context, locationID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteCurrentWeatherAtLocation, locationID)
 	return err
@@ -102,6 +106,7 @@ type DeleteCurrentWeatherAtLocationFromAPIParams struct {
 	SourceApi  string
 }
 
+// DeleteCurrentWeatherAtLocationFromAPI deletes the current weather record for a specific location and API source.
 func (q *Queries) DeleteCurrentWeatherAtLocationFromAPI(ctx context.Context, arg DeleteCurrentWeatherAtLocationFromAPIParams) error {
 	_, err := q.db.ExecContext(ctx, deleteCurrentWeatherAtLocationFromAPI, arg.LocationID, arg.SourceApi)
 	return err
@@ -111,6 +116,7 @@ const getCurrentWeatherAtLocation = `-- name: GetCurrentWeatherAtLocation :many
 SELECT id, location_id, source_api, updated_at, temperature_c, humidity, wind_speed_kmh, precipitation_mm, condition_text FROM current_weather WHERE location_id=$1
 `
 
+// GetCurrentWeatherAtLocation retrieves all current weather records for a specific location.
 func (q *Queries) GetCurrentWeatherAtLocation(ctx context.Context, locationID uuid.UUID) ([]CurrentWeather, error) {
 	rows, err := q.db.QueryContext(ctx, getCurrentWeatherAtLocation, locationID)
 	if err != nil {
@@ -153,6 +159,7 @@ type GetCurrentWeatherAtLocationFromAPIParams struct {
 	SourceApi  string
 }
 
+// GetCurrentWeatherAtLocationFromAPI retrieves the current weather record for a specific location and API source.
 func (q *Queries) GetCurrentWeatherAtLocationFromAPI(ctx context.Context, arg GetCurrentWeatherAtLocationFromAPIParams) (CurrentWeather, error) {
 	row := q.db.QueryRowContext(ctx, getCurrentWeatherAtLocationFromAPI, arg.LocationID, arg.SourceApi)
 	var i CurrentWeather
@@ -187,6 +194,7 @@ type UpdateCurrentWeatherParams struct {
 	ConditionText   sql.NullString
 }
 
+// UpdateCurrentWeather updates an existing current weather record.
 func (q *Queries) UpdateCurrentWeather(ctx context.Context, arg UpdateCurrentWeatherParams) (CurrentWeather, error) {
 	row := q.db.QueryRowContext(ctx, updateCurrentWeather,
 		arg.ID,

@@ -44,6 +44,7 @@ type CreateHourlyForecastParams struct {
 	ConditionText              sql.NullString
 }
 
+// CreateHourlyForecast inserts a new hourly forecast record.
 func (q *Queries) CreateHourlyForecast(ctx context.Context, arg CreateHourlyForecastParams) (HourlyForecast, error) {
 	row := q.db.QueryRowContext(ctx, createHourlyForecast,
 		arg.LocationID,
@@ -78,6 +79,7 @@ const deleteAllHourlyForecasts = `-- name: DeleteAllHourlyForecasts :exec
 DELETE FROM hourly_forecasts
 `
 
+// DeleteAllHourlyForecasts deletes all hourly forecasts from the database.
 func (q *Queries) DeleteAllHourlyForecasts(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, deleteAllHourlyForecasts)
 	return err
@@ -87,6 +89,7 @@ const deleteHourlyForecastsAtLocation = `-- name: DeleteHourlyForecastsAtLocatio
 DELETE FROM hourly_forecasts WHERE location_id=$1
 `
 
+// DeleteHourlyForecastsAtLocation deletes all hourly forecasts for a specific location.
 func (q *Queries) DeleteHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteHourlyForecastsAtLocation, locationID)
 	return err
@@ -101,6 +104,7 @@ type DeleteHourlyForecastsAtLocationFromAPIParams struct {
 	SourceApi  string
 }
 
+// DeleteHourlyForecastsAtLocationFromAPI deletes all hourly forecasts for a specific location and API source.
 func (q *Queries) DeleteHourlyForecastsAtLocationFromAPI(ctx context.Context, arg DeleteHourlyForecastsAtLocationFromAPIParams) error {
 	_, err := q.db.ExecContext(ctx, deleteHourlyForecastsAtLocationFromAPI, arg.LocationID, arg.SourceApi)
 	return err
@@ -110,6 +114,7 @@ const deleteHourlyForecastsFromAPI = `-- name: DeleteHourlyForecastsFromAPI :exe
 DELETE FROM hourly_forecasts WHERE source_api=$1
 `
 
+// DeleteHourlyForecastsFromAPI deletes all hourly forecasts from a specific API source.
 func (q *Queries) DeleteHourlyForecastsFromAPI(ctx context.Context, sourceApi string) error {
 	_, err := q.db.ExecContext(ctx, deleteHourlyForecastsFromAPI, sourceApi)
 	return err
@@ -119,6 +124,7 @@ const getAllHourlyForecastsAtLocation = `-- name: GetAllHourlyForecastsAtLocatio
 SELECT id, location_id, source_api, forecast_datetime_utc, updated_at, temperature_c, humidity, wind_speed_kmh, precipitation_mm, precipitation_chance_percent, condition_text FROM hourly_forecasts WHERE location_id=$1
 `
 
+// GetAllHourlyForecastsAtLocation retrieves all hourly forecasts for a specific location.
 func (q *Queries) GetAllHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]HourlyForecast, error) {
 	rows, err := q.db.QueryContext(ctx, getAllHourlyForecastsAtLocation, locationID)
 	if err != nil {
@@ -163,6 +169,7 @@ type GetHourlyForecastAtLocationAndTimeParams struct {
 	ForecastDatetimeUtc time.Time
 }
 
+// GetHourlyForecastAtLocationAndTime retrieves all hourly forecasts for a specific location and time.
 func (q *Queries) GetHourlyForecastAtLocationAndTime(ctx context.Context, arg GetHourlyForecastAtLocationAndTimeParams) ([]HourlyForecast, error) {
 	rows, err := q.db.QueryContext(ctx, getHourlyForecastAtLocationAndTime, arg.LocationID, arg.ForecastDatetimeUtc)
 	if err != nil {
@@ -208,6 +215,7 @@ type GetHourlyForecastAtLocationAndTimeFromAPIParams struct {
 	SourceApi           string
 }
 
+// GetHourlyForecastAtLocationAndTimeFromAPI retrieves the hourly forecast for a specific location, time, and API source.
 func (q *Queries) GetHourlyForecastAtLocationAndTimeFromAPI(ctx context.Context, arg GetHourlyForecastAtLocationAndTimeFromAPIParams) (HourlyForecast, error) {
 	row := q.db.QueryRowContext(ctx, getHourlyForecastAtLocationAndTimeFromAPI, arg.LocationID, arg.ForecastDatetimeUtc, arg.SourceApi)
 	var i HourlyForecast
@@ -238,6 +246,7 @@ type GetUpcomingHourlyForecastsAtLocationParams struct {
 	ForecastDatetimeUtc time.Time
 }
 
+// GetUpcomingHourlyForecastsAtLocation retrieves all upcoming hourly forecasts for a specific location.
 func (q *Queries) GetUpcomingHourlyForecastsAtLocation(ctx context.Context, arg GetUpcomingHourlyForecastsAtLocationParams) ([]HourlyForecast, error) {
 	rows, err := q.db.QueryContext(ctx, getUpcomingHourlyForecastsAtLocation, arg.LocationID, arg.ForecastDatetimeUtc)
 	if err != nil {
@@ -292,6 +301,7 @@ type UpdateHourlyForecastParams struct {
 	ConditionText              sql.NullString
 }
 
+// UpdateHourlyForecast updates an existing hourly forecast record.
 func (q *Queries) UpdateHourlyForecast(ctx context.Context, arg UpdateHourlyForecastParams) (HourlyForecast, error) {
 	row := q.db.QueryRowContext(ctx, updateHourlyForecast,
 		arg.ID,

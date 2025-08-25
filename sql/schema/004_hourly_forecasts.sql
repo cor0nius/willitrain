@@ -1,4 +1,5 @@
 -- +goose Up
+-- hourly_forecasts stores the weather forecast for a specific hour for a given location and source.
 CREATE TABLE hourly_forecasts (
     id UUID PRIMARY KEY,
     location_id UUID REFERENCES locations(id) ON DELETE CASCADE NOT NULL,

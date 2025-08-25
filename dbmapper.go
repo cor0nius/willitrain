@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// databaseLocationToLocation converts a database.Location to a Location.
 func databaseLocationToLocation(dbLocation database.Location) Location {
 	return Location{
 		LocationID:  dbLocation.ID,
@@ -18,6 +19,7 @@ func databaseLocationToLocation(dbLocation database.Location) Location {
 	}
 }
 
+// locationToCreateLocationParams converts a Location to database.CreateLocationParams.
 func locationToCreateLocationParams(location Location) database.CreateLocationParams {
 	return database.CreateLocationParams{
 		CityName:    location.CityName,
@@ -27,6 +29,7 @@ func locationToCreateLocationParams(location Location) database.CreateLocationPa
 	}
 }
 
+// databaseCurrentWeatherToCurrentWeather converts a database.CurrentWeather to a CurrentWeather.
 func databaseCurrentWeatherToCurrentWeather(dbWeather database.CurrentWeather, location Location) CurrentWeather {
 	return CurrentWeather{
 		Location:      location,
@@ -40,6 +43,7 @@ func databaseCurrentWeatherToCurrentWeather(dbWeather database.CurrentWeather, l
 	}
 }
 
+// currentWeatherToCreateCurrentWeatherParams converts a CurrentWeather to database.CreateCurrentWeatherParams.
 func currentWeatherToCreateCurrentWeatherParams(weather CurrentWeather) database.CreateCurrentWeatherParams {
 	return database.CreateCurrentWeatherParams{
 		LocationID: weather.Location.LocationID,
@@ -68,6 +72,7 @@ func currentWeatherToCreateCurrentWeatherParams(weather CurrentWeather) database
 	}
 }
 
+// currentWeatherToUpdateCurrentWeatherParams converts a CurrentWeather to database.UpdateCurrentWeatherParams.
 func currentWeatherToUpdateCurrentWeatherParams(weather CurrentWeather, dbWeatherID uuid.UUID) database.UpdateCurrentWeatherParams {
 	return database.UpdateCurrentWeatherParams{
 		ID:        dbWeatherID,
@@ -95,6 +100,7 @@ func currentWeatherToUpdateCurrentWeatherParams(weather CurrentWeather, dbWeathe
 	}
 }
 
+// databaseDailyForecastToDailyForecast converts a database.DailyForecast to a DailyForecast.
 func databaseDailyForecastToDailyForecast(dbForecast database.DailyForecast, location Location) DailyForecast {
 	return DailyForecast{
 		Location:            location,
@@ -110,6 +116,7 @@ func databaseDailyForecastToDailyForecast(dbForecast database.DailyForecast, loc
 	}
 }
 
+// dailyForecastToCreateDailyForecastParams converts a DailyForecast to database.CreateDailyForecastParams.
 func dailyForecastToCreateDailyForecastParams(forecast DailyForecast) database.CreateDailyForecastParams {
 	return database.CreateDailyForecastParams{
 		LocationID:   forecast.Location.LocationID,
@@ -143,6 +150,7 @@ func dailyForecastToCreateDailyForecastParams(forecast DailyForecast) database.C
 	}
 }
 
+// dailyForecastToUpdateDailyForecastParams converts a DailyForecast to database.UpdateDailyForecastParams.
 func dailyForecastToUpdateDailyForecastParams(forecast DailyForecast, dbForecastID uuid.UUID) database.UpdateDailyForecastParams {
 	return database.UpdateDailyForecastParams{
 		ID:           dbForecastID,
@@ -175,6 +183,7 @@ func dailyForecastToUpdateDailyForecastParams(forecast DailyForecast, dbForecast
 	}
 }
 
+// databaseHourlyForecastToHourlyForecast converts a database.HourlyForecast to an HourlyForecast.
 func databaseHourlyForecastToHourlyForecast(dbForecast database.HourlyForecast, location Location) HourlyForecast {
 	return HourlyForecast{
 		Location:            location,
@@ -190,6 +199,7 @@ func databaseHourlyForecastToHourlyForecast(dbForecast database.HourlyForecast, 
 	}
 }
 
+// hourlyForecastToCreateHourlyForecastParams converts an HourlyForecast to database.CreateHourlyForecastParams.
 func hourlyForecastToCreateHourlyForecastParams(forecast HourlyForecast) database.CreateHourlyForecastParams {
 	return database.CreateHourlyForecastParams{
 		LocationID:          forecast.Location.LocationID,
@@ -223,6 +233,7 @@ func hourlyForecastToCreateHourlyForecastParams(forecast HourlyForecast) databas
 	}
 }
 
+// hourlyForecastToUpdateHourlyForecastParams converts an HourlyForecast to database.UpdateHourlyForecastParams.
 func hourlyForecastToUpdateHourlyForecastParams(forecast HourlyForecast, dbForecastID uuid.UUID) database.UpdateHourlyForecastParams {
 	return database.UpdateHourlyForecastParams{
 		ID:                  dbForecastID,
