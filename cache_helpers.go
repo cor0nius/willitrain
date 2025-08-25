@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -65,7 +66,7 @@ func getCachedOrFetch[T apiModel, D dbModel](
 	}
 
 	dbItems, err := dbFetcher(ctx, location.LocationID)
-	if err != nil && err != redis.Nil { // sql.ErrNoRows is handled gracefully
+	if err != nil && err != sql.ErrNoRows { // sql.ErrNoRows is handled gracefully
 		return nil, fmt.Errorf("database error when fetching %s: %w", cacheKeyPrefix, err)
 	}
 
