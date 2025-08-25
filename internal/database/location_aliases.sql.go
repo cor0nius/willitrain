@@ -22,6 +22,7 @@ type CreateLocationAliasParams struct {
 	LocationID uuid.UUID
 }
 
+// CreateLocationAlias creates a new alias for a location.
 func (q *Queries) CreateLocationAlias(ctx context.Context, arg CreateLocationAliasParams) (LocationAlias, error) {
 	row := q.db.QueryRowContext(ctx, createLocationAlias, arg.Alias, arg.LocationID)
 	var i LocationAlias
@@ -34,6 +35,7 @@ SELECT l.id, l.city_name, l.latitude, l.longitude, l.country_code, l.timezone FR
 WHERE la.alias = $1
 `
 
+// GetLocationByAlias retrieves a location's details by its alias.
 func (q *Queries) GetLocationByAlias(ctx context.Context, alias string) (Location, error) {
 	row := q.db.QueryRowContext(ctx, getLocationByAlias, alias)
 	var i Location

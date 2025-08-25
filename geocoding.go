@@ -8,6 +8,7 @@ import (
 	"net/url"
 )
 
+// ErrNoResultsFound is returned when a geocoding query yields no results.
 var ErrNoResultsFound = errors.New("no results found for the given query")
 
 // GeocodingService defines the interface for geocoding and reverse geocoding operations.
@@ -32,6 +33,9 @@ func NewGmpGeocodingService(gmpKey, gmpGeocodeURL string, httpClient *http.Clien
 	}
 }
 
+// Geocode and ReverseGeocode are wrappers that prepare the specific parameters
+// for their respective operations (by address or by lat/lng) and then delegate
+// the core API call logic to performGeocodeRequest.
 func (s *GmpGeocodingService) Geocode(cityName string) (Location, error) {
 	params := map[string]string{
 		"address": cityName,
@@ -46,6 +50,7 @@ func (s *GmpGeocodingService) ReverseGeocode(lat, lng float64) (Location, error)
 	return s.performGeocodeRequest(params)
 }
 
+// performGeocodeRequest handles the actual HTTP request to the Google Geocoding API.
 func (s *GmpGeocodingService) performGeocodeRequest(queryParams map[string]string) (Location, error) {
 	baseURL, err := url.Parse(s.gmpGeocodeURL + "json")
 	if err != nil {
@@ -89,6 +94,7 @@ func (s *GmpGeocodingService) performGeocodeRequest(queryParams map[string]strin
 	return location, nil
 }
 
+// parseLocationFromResult extracts Location data from a single geocoding API result.
 func parseLocationFromResult(result Result) Location {
 	var location Location
 	location.Latitude = result.Geometry.Location.Latitude
@@ -107,6 +113,8 @@ func parseLocationFromResult(result Result) Location {
 	return location
 }
 
+// The following structs represent the structure of the Google Geocoding API JSON response.
+// They are used by the json decoder to parse the API's output.
 type Response struct {
 	Results []Result `json:"results"`
 	Status  string   `json:"status"`

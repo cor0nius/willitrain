@@ -8,6 +8,11 @@ import (
 	"github.com/cor0nius/willitrain/internal/database"
 )
 
+// This file implements a scheduler that periodically fetches and updates weather data.
+// It manages separate tickers for current, hourly, and daily forecasts and runs the
+// update jobs for all stored locations concurrently.
+
+// Scheduler manages the periodic execution of weather data updates.
 type Scheduler struct {
 	cfg                *apiConfig
 	currentChan        <-chan time.Time
@@ -21,6 +26,7 @@ type Scheduler struct {
 	jobWG              sync.WaitGroup
 }
 
+// NewScheduler creates and initializes a new Scheduler instance.
 func NewScheduler(cfg *apiConfig, currentInterval, hourlyInterval, dailyInterval time.Duration) *Scheduler {
 	currentTicker := time.NewTicker(currentInterval)
 	hourlyTicker := time.NewTicker(hourlyInterval)
@@ -39,6 +45,8 @@ func NewScheduler(cfg *apiConfig, currentInterval, hourlyInterval, dailyInterval
 	return s
 }
 
+// Start begins the scheduler's main loop in a new goroutine.
+// It listens on the ticker channels and triggers the corresponding job functions.
 func (s *Scheduler) Start() {
 	go func() {
 		for {
@@ -69,12 +77,16 @@ func (s *Scheduler) Start() {
 	}()
 }
 
+// Stop gracefully shuts down the scheduler.
+// It stops all tickers and waits for any running jobs to complete.
 func (s *Scheduler) Stop() {
 	close(s.stop)
 	s.jobWG.Wait()
 	s.cfg.logger.Info("scheduler stopped")
 }
 
+// runUpdateForLocations retrieves all locations from the database and runs a given update
+// function for each one concurrently.
 func (s *Scheduler) runUpdateForLocations(jobType string, updateFunc func(context.Context, Location)) {
 	ctx := context.Background()
 	locations, err := s.cfg.dbQueries.ListLocations(ctx)
@@ -96,6 +108,9 @@ func (s *Scheduler) runUpdateForLocations(jobType string, updateFunc func(contex
 	s.cfg.logger.Info("scheduler jobs for this cycle completed", "type", jobType)
 }
 
+// The run...Jobs functions define the specific update logic for each forecast type.
+// They fetch all locations from the database and then, for each location, they delete
+// the old data and request new data from the external APIs.
 func (s *Scheduler) runCurrentWeatherJobs() {
 	updateFunc := func(ctx context.Context, location Location) {
 		if err := s.cfg.dbQueries.DeleteCurrentWeatherAtLocation(ctx, location.LocationID); err != nil {

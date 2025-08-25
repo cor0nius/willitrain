@@ -17,6 +17,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// apiConfig holds all the dependencies and configuration required by the application.
+// This includes database connections, API clients, and other settings.
 type apiConfig struct {
 	dbQueries                dbQuerier
 	cache                    Cache
@@ -69,6 +71,10 @@ func getEnvAsInt(key string, fallback int, logger *slog.Logger) int {
 	return val
 }
 
+// config initializes and returns a new apiConfig struct.
+// It loads configuration from environment variables, establishes database and cache connections,
+// and sets up the necessary clients and services for the application to run.
+// The function will exit the application if any required configuration is missing or invalid.
 func config() *apiConfig {
 	if err := godotenv.Load(); err != nil {
 		log.Println("could not load .env file, proceeding with environment variables")
@@ -145,6 +151,8 @@ func config() *apiConfig {
 	return &cfg
 }
 
+// dbQuerier is an interface that defines all the database operations required by the application.
+// It is implemented by the sqlc-generated Queries struct, allowing for easy mocking in tests.
 type dbQuerier interface {
 	CreateCurrentWeather(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error)
 	CreateDailyForecast(ctx context.Context, arg database.CreateDailyForecastParams) (database.DailyForecast, error)

@@ -11,6 +11,15 @@ import (
 	"github.com/cor0nius/willitrain/internal/database"
 )
 
+// This file contains the high-level logic for fetching weather forecasts.
+// It orchestrates the process of preparing API requests, fetching data concurrently from multiple sources,
+// parsing the responses, and updating the database with new information.
+
+// The request... functions are the main entry points for fetching a specific type of forecast.
+// Each function prepares the necessary URLs and provider configurations for its forecast type
+// (current, daily, or hourly) and then passes them to the generic processForecastRequests function
+// to handle the concurrent API calls. They also handle post-processing, such as updating
+// the location's timezone in the database if it's discovered during the fetch.
 func (cfg *apiConfig) requestCurrentWeather(location Location) ([]CurrentWeather, error) {
 	urls := cfg.WrapForCurrentWeather(location)
 
@@ -145,6 +154,9 @@ func (cfg *apiConfig) requestHourlyForecast(location Location) ([]HourlyForecast
 	return allForecasts, nil
 }
 
+// processForecastRequests is a generic function that manages the concurrent fetching of forecasts.
+// It takes a map of URLs and a corresponding map of providers, launches a goroutine for each,
+// waits for them to complete, and then aggregates the results.
 func processForecastRequests[T Forecast](
 	cfg *apiConfig,
 	urls map[string]string,
@@ -205,6 +217,8 @@ func processForecastRequests[T Forecast](
 	return allResults, timezone, nil
 }
 
+// forecastProvider is a helper struct that bundles a parser function with its corresponding zero-value.
+// This allows the generic fetcher to know which parser to use for a given API response.
 type forecastProvider[T Forecast] struct {
 	parser   func(io.Reader, *slog.Logger) (T, string, error)
 	errorVal T

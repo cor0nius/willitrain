@@ -9,6 +9,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// This file contains the main HTTP handlers for the application. Each handler is responsible
+// for processing incoming API requests, calling the appropriate helper functions to fetch
+// and process data, and writing the final JSON response.
+
+// The weather handlers (handlerCurrentWeather, handlerDailyForecast, handlerHourlyForecast)
+// follow a similar pattern:
+// 1. They ensure the request method is GET.
+// 2. They extract the location from the request using getLocationFromRequest.
+// 3. They fetch the relevant forecast data using the appropriate getCachedOrFetch... function.
+// 4. They sort the results for a consistent response order.
+// 5. They format the data into the final JSON response structure.
+// 6. They send the JSON response to the client.
 func (cfg *apiConfig) handlerCurrentWeather(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if r.Method != http.MethodGet {
@@ -173,10 +185,13 @@ func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Reque
 	cfg.respondWithJSON(w, http.StatusOK, response)
 }
 
+// handlerMetrics exposes the application's Prometheus metrics.
 func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	promhttp.Handler().ServeHTTP(w, r)
 }
 
+// handlerResetDB is a development-only endpoint that completely wipes the database and the Redis cache.
+// Deleting all locations cascades and clears all related weather and forecast data.
 func (cfg *apiConfig) handlerResetDB(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		cfg.respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
@@ -201,6 +216,8 @@ func (cfg *apiConfig) handlerResetDB(w http.ResponseWriter, r *http.Request) {
 	cfg.respondWithJSON(w, http.StatusOK, map[string]string{"status": "database and cache reset"})
 }
 
+// handlerRunSchedulerJobs is a development-only endpoint that manually triggers
+// a run of all scheduled data update jobs.
 func (s *Scheduler) handlerRunSchedulerJobs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		s.cfg.respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
@@ -238,6 +255,8 @@ func (s *Scheduler) handlerRunSchedulerJobs(w http.ResponseWriter, r *http.Reque
 	s.cfg.respondWithJSON(w, http.StatusAccepted, map[string]string{"status": "scheduler jobs triggered"})
 }
 
+// handlerConfig provides client-side applications with necessary configuration,
+// such as whether the application is running in development mode.
 func (cfg *apiConfig) handlerConfig(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		cfg.respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
