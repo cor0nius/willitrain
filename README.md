@@ -36,7 +36,7 @@ This is the simplest way to get the entire application stack running.
 
 1.  **Clone the repository:**
     ```sh
-    git clone https://github.com/your-username/willitrain.git
+    git clone https://github.com/cor0nius/willitrain.git
     cd willitrain
     ```
 
