@@ -11,9 +11,12 @@ import (
 )
 
 // This file is the main entrypoint for the WillItRain application.
-// It is responsible for initializing the configuration, starting the background
-// scheduler, setting up the HTTP router with all the API and frontend routes,
-// and starting the web server.
+// It orchestrates the entire startup sequence:
+// 1. Initializes the application configuration.
+// 2. Starts the background scheduler for periodic data updates.
+// 3. Sets up the HTTP router with all API and frontend routes.
+// 4. Wraps the router in middleware for metrics and CORS.
+// 5. Starts the web server.
 
 // frontendFS embeds the compiled frontend assets into the Go binary.
 // This allows the application to be deployed as a single, self-contained executable.

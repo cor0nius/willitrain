@@ -7,7 +7,20 @@ import (
 	"github.com/google/uuid"
 )
 
-// Location represents the geographic and identifying details of a specific place.
+// This file defines the core data structures for the WillItRain application.
+// It establishes a clear separation between the internal business logic models and
+// the data transfer objects (DTOs) used for API JSON responses.
+//
+// - Business Logic Structs (e.g., Location, CurrentWeather): These are the primary,
+//   rich models used throughout the application's core logic. They are decoupled
+//   from both the database schema and the API response format.
+// - JSON Structs (e.g., CurrentWeatherJSON): These structs define the precise
+//   shape of the JSON data sent to the client. This separation allows the API
+//   contract to evolve independently of the internal data models.
+
+// --- Business Logic Models ---
+
+// Location represents the core geographic and identifying details of a place.
 type Location struct {
 	LocationID  uuid.UUID `json:"location_id"`
 	CityName    string    `json:"city_name"`
@@ -17,7 +30,7 @@ type Location struct {
 	Timezone    string    `json:"timezone,omitempty"`
 }
 
-// CurrentWeather holds the weather conditions for a location at a specific moment.
+// CurrentWeather is the internal model for weather conditions at a specific moment.
 type CurrentWeather struct {
 	Location      Location
 	SourceAPI     string
@@ -29,7 +42,7 @@ type CurrentWeather struct {
 	Condition     string
 }
 
-// DailyForecast represents the predicted weather conditions for a full day.
+// DailyForecast is the internal model for predicted weather conditions for a full day.
 type DailyForecast struct {
 	Location            Location
 	SourceAPI           string
@@ -43,7 +56,7 @@ type DailyForecast struct {
 	Humidity            int32
 }
 
-// HourlyForecast represents the predicted weather conditions for a specific hour.
+// HourlyForecast is the internal model for predicted weather conditions for a specific hour.
 type HourlyForecast struct {
 	Location            Location
 	SourceAPI           string
@@ -57,12 +70,9 @@ type HourlyForecast struct {
 	Condition           string
 }
 
-// Forecast is a generic type constraint that allows functions to work with any of the forecast types.
-type Forecast interface {
-	CurrentWeather | []DailyForecast | []HourlyForecast
-}
+// --- API Response DTOs (JSON Models) ---
 
-// CurrentWeatherJSON is the structure used to serialize current weather data to JSON for API responses.
+// CurrentWeatherJSON defines the JSON structure for current weather data in API responses.
 type CurrentWeatherJSON struct {
 	SourceAPI     string  `json:"source_api"`
 	Timestamp     string  `json:"timestamp"`
@@ -73,7 +83,7 @@ type CurrentWeatherJSON struct {
 	Condition     string  `json:"condition_text"`
 }
 
-// DailyForecastJSON is the structure used to serialize daily forecast data to JSON.
+// DailyForecastJSON defines the JSON structure for daily forecast data in API responses.
 type DailyForecastJSON struct {
 	SourceAPI           string  `json:"source_api"`
 	ForecastDate        string  `json:"forecast_date"`
@@ -85,7 +95,7 @@ type DailyForecastJSON struct {
 	Humidity            int32   `json:"humidity"`
 }
 
-// HourlyForecastJSON is the structure used to serialize hourly forecast data to JSON.
+// HourlyForecastJSON defines the JSON structure for hourly forecast data in API responses.
 type HourlyForecastJSON struct {
 	SourceAPI           string  `json:"source_api"`
 	ForecastDateTime    string  `json:"forecast_datetime"`
@@ -97,22 +107,29 @@ type HourlyForecastJSON struct {
 	Condition           string  `json:"condition_text"`
 }
 
-// CurrentWeatherResponse is the top-level structure for the /api/currentweather endpoint.
+// CurrentWeatherResponse is the top-level JSON structure for the /api/currentweather endpoint.
 type CurrentWeatherResponse struct {
 	Location Location             `json:"location"`
 	Weather  []CurrentWeatherJSON `json:"weather"`
 }
 
-// DailyForecastsResponse is the top-level structure for the /api/dailyforecast endpoint.
+// DailyForecastsResponse is the top-level JSON structure for the /api/dailyforecast endpoint.
 type DailyForecastsResponse struct {
 	Location  Location            `json:"location"`
 	Forecasts []DailyForecastJSON `json:"forecasts"`
 }
 
-// HourlyForecastsResponse is the top-level structure for the /api/hourlyforecast endpoint.
+// HourlyForecastsResponse is the top-level JSON structure for the /api/hourlyforecast endpoint.
 type HourlyForecastsResponse struct {
 	Location  Location             `json:"location"`
 	Forecasts []HourlyForecastJSON `json:"forecasts"`
+}
+
+// --- Generic Type Constraints ---
+
+// Forecast is a generic type constraint that allows functions to work with any of the forecast types.
+type Forecast interface {
+	CurrentWeather | []DailyForecast | []HourlyForecast
 }
 
 // apiModel and dbModel are generic type constraints used in the caching and persistence helpers.

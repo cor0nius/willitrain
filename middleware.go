@@ -28,8 +28,8 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-// metricsMiddleware captures the HTTP status code of a response and records it
-// as a Prometheus metric, along with the request path and method.
+// metricsMiddleware is a wrapping handler that captures the HTTP status code of a
+// response and records it as a Prometheus metric, along with the request path and method.
 func metricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw := newResponseWriter(w)
@@ -40,8 +40,8 @@ func metricsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// corsMiddleware adds the Access-Control-Allow-Origin header to all responses
-// to allow cross-origin requests from any domain.
+// corsMiddleware is a wrapping handler that adds the Access-Control-Allow-Origin
+// header to all responses to allow cross-origin requests from any domain.
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")

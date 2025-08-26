@@ -9,11 +9,19 @@ import (
 	"time"
 )
 
-// This file contains the parser functions responsible for decoding the JSON responses
-// from the various external weather APIs and mapping them to the application's internal domain types.
-// It also includes the struct definitions required for unmarshaling each unique API response.
+// This file is the data transformation layer for external API interactions.
+// It contains the logic for parsing the unique JSON responses from each weather
+// provider and mapping them into the application's standardized internal data
+// structures (CurrentWeather, DailyForecast, HourlyForecast).
+//
+// Each external API has its own set of structs for unmarshaling its specific
+// JSON format. The parser functions (e.g., ParseCurrentWeatherGMP) are responsible
+// for the crucial task of translating this provider-specific data into the
+// application's common domain models. This decoupling is essential for maintaining
+// a clean architecture and allows new API providers to be added without changing
+// the core application logic.
 
-// ParseCurrentWeatherGMP decodes the JSON response from the Google Weather API for current weather.
+// ParseCurrentWeatherGMP decodes the JSON response from the Google Weather API and maps it to the internal CurrentWeather struct.
 func ParseCurrentWeatherGMP(body io.Reader, logger *slog.Logger) (CurrentWeather, string, error) {
 	var response ResponseCurrentWeatherGMP
 
@@ -43,7 +51,7 @@ func ParseCurrentWeatherGMP(body io.Reader, logger *slog.Logger) (CurrentWeather
 	return weather, response.TimeZone.ID, nil
 }
 
-// ParseCurrentWeatherOWM decodes the JSON response from the OpenWeatherMap API for current weather.
+// ParseCurrentWeatherOWM decodes the JSON response from the OpenWeatherMap API and maps it to the internal CurrentWeather struct.
 func ParseCurrentWeatherOWM(body io.Reader, logger *slog.Logger) (CurrentWeather, string, error) {
 	var response ResponseCurrentWeatherOWM
 
@@ -73,7 +81,7 @@ func ParseCurrentWeatherOWM(body io.Reader, logger *slog.Logger) (CurrentWeather
 	return weather, response.Timezone, nil
 }
 
-// ParseCurrentWeatherOMeteo decodes the JSON response from the Open-Meteo API for current weather.
+// ParseCurrentWeatherOMeteo decodes the JSON response from the Open-Meteo API and maps it to the internal CurrentWeather struct.
 func ParseCurrentWeatherOMeteo(body io.Reader, logger *slog.Logger) (CurrentWeather, string, error) {
 	var response ResponseCurrentWeatherOMeteo
 
@@ -103,7 +111,7 @@ func ParseCurrentWeatherOMeteo(body io.Reader, logger *slog.Logger) (CurrentWeat
 	return weather, response.Timezone, nil
 }
 
-// ParseDailyForecastGMP decodes the JSON response from the Google Weather API for a daily forecast.
+// ParseDailyForecastGMP decodes the JSON response from the Google Weather API and maps it to a slice of internal DailyForecast structs.
 func ParseDailyForecastGMP(body io.Reader, logger *slog.Logger) ([]DailyForecast, string, error) {
 	var response ResponseDailyForecastGMP
 
@@ -142,7 +150,7 @@ func ParseDailyForecastGMP(body io.Reader, logger *slog.Logger) ([]DailyForecast
 	return forecast, response.TimeZone.ID, nil
 }
 
-// ParseDailyForecastOWM decodes the JSON response from the OpenWeatherMap API for a daily forecast.
+// ParseDailyForecastOWM decodes the JSON response from the OpenWeatherMap API and maps it to a slice of internal DailyForecast structs.
 func ParseDailyForecastOWM(body io.Reader, logger *slog.Logger) ([]DailyForecast, string, error) {
 	var response ResponseDailyForecastOWM
 
@@ -181,7 +189,7 @@ func ParseDailyForecastOWM(body io.Reader, logger *slog.Logger) ([]DailyForecast
 	return forecast, response.Timezone, nil
 }
 
-// ParseDailyForecastOMeteo decodes the JSON response from the Open-Meteo API for a daily forecast.
+// ParseDailyForecastOMeteo decodes the JSON response from the Open-Meteo API and maps it to a slice of internal DailyForecast structs.
 func ParseDailyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]DailyForecast, string, error) {
 	var response ResponseDailyForecastOMeteo
 
@@ -223,7 +231,7 @@ func ParseDailyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]DailyForec
 	return forecast, response.Timezone, nil
 }
 
-// ParseHourlyForecastGMP decodes the JSON response from the Google Weather API for an hourly forecast.
+// ParseHourlyForecastGMP decodes the JSON response from the Google Weather API and maps it to a slice of internal HourlyForecast structs.
 func ParseHourlyForecastGMP(body io.Reader, logger *slog.Logger) ([]HourlyForecast, string, error) {
 	var response ResponseHourlyForecastGMP
 
@@ -260,7 +268,7 @@ func ParseHourlyForecastGMP(body io.Reader, logger *slog.Logger) ([]HourlyForeca
 	return forecast, response.TimeZone.ID, nil
 }
 
-// ParseHourlyForecastOWM decodes the JSON response from the OpenWeatherMap API for an hourly forecast.
+// ParseHourlyForecastOWM decodes the JSON response from the OpenWeatherMap API and maps it to a slice of internal HourlyForecast structs.
 func ParseHourlyForecastOWM(body io.Reader, logger *slog.Logger) ([]HourlyForecast, string, error) {
 	var response ResponseHourlyForecastOWM
 
@@ -297,7 +305,7 @@ func ParseHourlyForecastOWM(body io.Reader, logger *slog.Logger) ([]HourlyForeca
 	return forecast, response.Timezone, nil
 }
 
-// ParseHourlyForecastOMeteo decodes the JSON response from the Open-Meteo API for an hourly forecast.
+// ParseHourlyForecastOMeteo decodes the JSON response from the Open-Meteo API and maps it to a slice of internal HourlyForecast structs.
 func ParseHourlyForecastOMeteo(body io.Reader, logger *slog.Logger) ([]HourlyForecast, string, error) {
 	var response ResponseHourlyForecastOMeteo
 

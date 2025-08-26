@@ -5,10 +5,13 @@ import (
 	"net/http"
 )
 
-// This file contains helper functions for sending standardized JSON responses.
+// This file provides centralized helper functions for creating and sending
+// standardized JSON responses. Using these helpers ensures that all API responses
+// are consistent in structure, which simplifies client-side development.
 
-// respondWithError logs an error message (if one is provided) and sends a
-// JSON error response to the client with a given message and status code.
+// respondWithError standardizes error responses. It logs the actual error for
+// server-side debugging while sending a clean, structured JSON error message to the
+// client. This prevents exposing internal implementation details in error messages.
 func (cfg *apiConfig) respondWithError(w http.ResponseWriter, code int, msg string, err error) {
 	if err != nil {
 		cfg.logger.Error(msg, "error", err)
@@ -21,8 +24,9 @@ func (cfg *apiConfig) respondWithError(w http.ResponseWriter, code int, msg stri
 	})
 }
 
-// respondWithJSON marshals a payload to JSON, sets the appropriate content-type header,
-// writes the HTTP status code, and sends the JSON response to the client.
+// respondWithJSON handles the serialization and transmission of all successful JSON
+// responses. It ensures that the correct HTTP status code and `Content-Type`
+// header are set, providing a consistent and reliable response format.
 func (cfg *apiConfig) respondWithJSON(w http.ResponseWriter, code int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	data, err := json.Marshal(payload)
