@@ -8,10 +8,19 @@ import (
 	"net/url"
 )
 
+// This file provides the application's geocoding capabilities, which are essential
+// for converting between city names and geographical coordinates (latitude/longitude).
+// It abstracts the geocoding provider behind a `GeocodingService` interface, making
+// the application independent of a specific service like the Google Maps Platform.
+// This design allows for easier testing and future replacement of the geocoding provider.
+
 // ErrNoResultsFound is returned when a geocoding query yields no results.
 var ErrNoResultsFound = errors.New("no results found for the given query")
 
-// GeocodingService defines the interface for geocoding and reverse geocoding operations.
+// GeocodingService defines a generic interface for geocoding operations.
+// Using an interface decouples the application's core logic from the concrete
+// implementation of a geocoding client, which simplifies testing and allows for
+// different providers to be used.
 type GeocodingService interface {
 	Geocode(cityName string) (Location, error)
 	ReverseGeocode(lat, lng float64) (Location, error)

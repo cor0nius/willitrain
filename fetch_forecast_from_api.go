@@ -8,9 +8,20 @@ import (
 	"sync"
 )
 
-// fetchForecastFromAPI is a generic function that concurrently fetches and parses weather data from a given URL.
-// It is designed to work with any type of forecast (CurrentWeather, []DailyForecast, []HourlyForecast)
-// by accepting a parser function tailored to the specific API response structure.
+// fetchForecastFromAPI provides a generic and concurrent mechanism for fetching and
+// parsing weather data from an external API.
+//
+// This function is central to the application's data aggregation strategy. Its key features are:
+//   - Generics (`[T Forecast]`): It can be used to fetch any type of forecast
+//     (current, daily, hourly) without code duplication.
+//   - Parser Function: It accepts a parser function as an argument, decoupling the
+//     core fetching logic from the specific data format of each external API.
+//   - Concurrency: It is designed to be run in a separate goroutine and uses a
+//     `sync.WaitGroup` and a channel to manage concurrent operations and return
+//     results safely.
+//
+// This design allows the application to efficiently query multiple weather APIs in
+// parallel, improving performance and resilience.
 func fetchForecastFromAPI[T Forecast](
 	cfg *apiConfig, // The application's configuration, containing the HTTP client.
 	url string, // The specific API endpoint URL to fetch.

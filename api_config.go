@@ -17,8 +17,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// apiConfig holds all the dependencies and configuration required by the application.
-// This includes database connections, API clients, and other settings.
+// apiConfig serves as the application's dependency injection container.
+// It holds all runtime dependencies, such as database connections, external API clients,
+// and configuration values. This struct is passed as a receiver to most high-level
+// functions, providing them with the necessary context to operate without relying on
+// global state. This design improves testability and clarifies dependencies.
 type apiConfig struct {
 	dbQueries                dbQuerier
 	cache                    Cache
@@ -37,7 +40,10 @@ type apiConfig struct {
 	logger                   *slog.Logger
 }
 
-// getRequiredEnv retrieves an environment variable by key, and fatals if it's not set.
+// getRequiredEnv provides a safe way to read a mandatory environment variable.
+// It ensures that the application will not start without critical configuration,
+// logging a fatal error and exiting if the variable is not found. This prevents
+// runtime errors due to missing configuration.
 func getRequiredEnv(key string, logger *slog.Logger) string {
 	val, ok := os.LookupEnv(key)
 	if !ok {
@@ -47,7 +53,9 @@ func getRequiredEnv(key string, logger *slog.Logger) string {
 	return val
 }
 
-// getEnv retrieves an environment variable by key, with a fallback value.
+// getEnv provides a safe way to read an optional environment variable with a fallback.
+// This is used for non-critical configuration where a default value is acceptable,
+// making the application more flexible and easier to configure.
 func getEnv(key, fallback string, logger *slog.Logger) string {
 	if val, ok := os.LookupEnv(key); ok {
 		return val
@@ -56,7 +64,9 @@ func getEnv(key, fallback string, logger *slog.Logger) string {
 	return fallback
 }
 
-// getEnvAsInt retrieves an environment variable as an integer, with a fallback value.
+// getEnvAsInt provides a safe way to read an optional integer environment variable.
+// It handles parsing and provides a fallback value if the variable is not set or is
+// invalid, preventing configuration errors from crashing the application.
 func getEnvAsInt(key string, fallback int, logger *slog.Logger) int {
 	valStr, ok := os.LookupEnv(key)
 	if !ok {
@@ -71,10 +81,14 @@ func getEnvAsInt(key string, fallback int, logger *slog.Logger) int {
 	return val
 }
 
-// config initializes and returns a new apiConfig struct.
-// It loads configuration from environment variables, establishes database and cache connections,
-// and sets up the necessary clients and services for the application to run.
-// The function will exit the application if any required configuration is missing or invalid.
+// config is the application's configuration hub and initialization function.
+// It orchestrates the entire setup process by:
+// 1. Loading environment variables from a .env file for local development.
+// 2. Establishing and verifying connections to the database (PostgreSQL) and cache (Redis).
+// 3. Initializing service clients for external APIs (e.g., geocoding).
+// 4. Assembling all runtime parameters and dependencies into a single, fully populated
+//    apiConfig struct.
+// This function ensures the application is in a valid state before it starts serving requests.
 func config() *apiConfig {
 	if err := godotenv.Load(); err != nil {
 		log.Println("could not load .env file, proceeding with environment variables")
@@ -151,8 +165,9 @@ func config() *apiConfig {
 	return &cfg
 }
 
-// dbQuerier is an interface that defines all the database operations required by the application.
-// It is implemented by the sqlc-generated Queries struct, allowing for easy mocking in tests.
+// dbQuerier is an interface that abstracts all database operations.
+// It is implemented by the sqlc-generated Queries struct, allowing for dependency
+// injection and easy mocking in tests. This decouples business logic from the data layer.
 type dbQuerier interface {
 	CreateCurrentWeather(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error)
 	CreateDailyForecast(ctx context.Context, arg database.CreateDailyForecastParams) (database.DailyForecast, error)
