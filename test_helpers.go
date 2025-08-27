@@ -15,6 +15,15 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// errorTransport is a custom http.RoundTripper that always returns an error.
+type errorTransport struct {
+	err error
+}
+
+func (t *errorTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return nil, t.err
+}
+
 // --- Mocks ---
 
 // mockGeocodingService is a mock for the Geocoder interface.
@@ -71,10 +80,7 @@ type mockQuerier struct {
 	t *testing.T
 
 	// Scheduler test fields
-	locationsToReturn []database.Location
-	listLocationsErr  error
 	mu                sync.Mutex
-
 	createCurrentWeatherCalls     int
 	createDailyForecastCalls      int
 	createHourlyForecastCalls     int

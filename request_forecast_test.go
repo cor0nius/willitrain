@@ -173,7 +173,7 @@ func TestProcessForecastRequests(t *testing.T) {
 			providers:        providers,
 			expectedLen:      0,
 			expectedTimezone: "",
-			expectError:      false,
+			expectError:      true,
 		},
 	}
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"io"
 	"log/slog"
 	"sync"
@@ -212,6 +213,11 @@ func processForecastRequests[T Forecast](
 				timezone = res.tz
 			}
 		}
+	}
+
+	if len(allResults) == 0 {
+		cfg.logger.Error("all forecast fetches failed")
+		return nil, "", errors.New("all forecast fetches failed")
 	}
 
 	return allResults, timezone, nil
