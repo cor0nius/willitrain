@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"io"
-	"log/slog"
 	"reflect"
 	"testing"
 
@@ -35,14 +33,14 @@ func TestGetOrCreateLocation(t *testing.T) {
 	testCases := []struct {
 		name       string
 		cityName   string
-		setupMocks func(db *mockHandlerHelpersQuerier, geo *mockGeocodingService)
+		setupMocks func(cfg *testAPIConfig)
 		check      func(t *testing.T, loc Location, err error)
 	}{
 		{
 			name:     "Success: Alias Exists in DB",
 			cityName: "wroclaw",
-			setupMocks: func(db *mockHandlerHelpersQuerier, geo *mockGeocodingService) {
-				db.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
+			setupMocks: func(cfg *testAPIConfig) {
+				cfg.mockDB.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
 					if alias != "wroclaw" {
 						t.Errorf("expected alias 'wroclaw', got '%s'", alias)
 					}
@@ -61,17 +59,17 @@ func TestGetOrCreateLocation(t *testing.T) {
 		{
 			name:     "Success: Canonical Name Exists in DB",
 			cityName: "wroclaw",
-			setupMocks: func(db *mockHandlerHelpersQuerier, geo *mockGeocodingService) {
-				db.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
+			setupMocks: func(cfg *testAPIConfig) {
+				cfg.mockDB.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
 					return database.Location{}, sql.ErrNoRows
 				}
-				geo.GeocodeFunc = func(cityName string) (Location, error) {
+				cfg.mockGeo.GeocodeFunc = func(cityName string) (Location, error) {
 					return expectedLocation, nil
 				}
-				db.GetLocationByNameFunc = func(ctx context.Context, cityName string) (database.Location, error) {
+				cfg.mockDB.GetLocationByNameFunc = func(ctx context.Context, cityName string) (database.Location, error) {
 					return dbLocation, nil
 				}
-				db.CreateLocationAliasFunc = func(ctx context.Context, arg database.CreateLocationAliasParams) (database.LocationAlias, error) {
+				cfg.mockDB.CreateLocationAliasFunc = func(ctx context.Context, arg database.CreateLocationAliasParams) (database.LocationAlias, error) {
 					return database.LocationAlias{}, nil
 				}
 			},
@@ -87,22 +85,22 @@ func TestGetOrCreateLocation(t *testing.T) {
 		{
 			name:     "Success: New City",
 			cityName: "newville",
-			setupMocks: func(db *mockHandlerHelpersQuerier, geo *mockGeocodingService) {
+			setupMocks: func(cfg *testAPIConfig) {
 				newLocation := Location{LocationID: uuid.New(), CityName: "Newville", CountryCode: "NV"}
 				dbNewLocation := database.Location{ID: newLocation.LocationID, CityName: newLocation.CityName, CountryCode: newLocation.CountryCode}
-				db.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
+				cfg.mockDB.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
 					return database.Location{}, sql.ErrNoRows
 				}
-				geo.GeocodeFunc = func(cityName string) (Location, error) {
+				cfg.mockGeo.GeocodeFunc = func(cityName string) (Location, error) {
 					return newLocation, nil
 				}
-				db.GetLocationByNameFunc = func(ctx context.Context, cityName string) (database.Location, error) {
+				cfg.mockDB.GetLocationByNameFunc = func(ctx context.Context, cityName string) (database.Location, error) {
 					return database.Location{}, sql.ErrNoRows
 				}
-				db.CreateLocationFunc = func(ctx context.Context, arg database.CreateLocationParams) (database.Location, error) {
+				cfg.mockDB.CreateLocationFunc = func(ctx context.Context, arg database.CreateLocationParams) (database.Location, error) {
 					return dbNewLocation, nil
 				}
-				db.CreateLocationAliasFunc = func(ctx context.Context, arg database.CreateLocationAliasParams) (database.LocationAlias, error) {
+				cfg.mockDB.CreateLocationAliasFunc = func(ctx context.Context, arg database.CreateLocationAliasParams) (database.LocationAlias, error) {
 					return database.LocationAlias{}, nil
 				}
 			},
@@ -118,11 +116,11 @@ func TestGetOrCreateLocation(t *testing.T) {
 		{
 			name:     "Failure: Geocoder Error",
 			cityName: "errorcity",
-			setupMocks: func(db *mockHandlerHelpersQuerier, geo *mockGeocodingService) {
-				db.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
+			setupMocks: func(cfg *testAPIConfig) {
+				cfg.mockDB.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
 					return database.Location{}, sql.ErrNoRows
 				}
-				geo.GeocodeFunc = func(cityName string) (Location, error) {
+				cfg.mockGeo.GeocodeFunc = func(cityName string) (Location, error) {
 					return Location{}, errors.New("geocoder service unavailable")
 				}
 			},
@@ -135,8 +133,8 @@ func TestGetOrCreateLocation(t *testing.T) {
 		{
 			name:     "Failure: DB Error on GetLocationByAlias",
 			cityName: "dberror",
-			setupMocks: func(db *mockHandlerHelpersQuerier, geo *mockGeocodingService) {
-				db.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
+			setupMocks: func(cfg *testAPIConfig) {
+				cfg.mockDB.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
 					return database.Location{}, errors.New("db connection lost")
 				}
 			},
@@ -150,12 +148,10 @@ func TestGetOrCreateLocation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			dbMock := &mockHandlerHelpersQuerier{t: t}
-			geoMock := &mockGeocodingService{}
-			tc.setupMocks(dbMock, geoMock)
+			testCfg := newTestAPIConfig(t)
+			tc.setupMocks(testCfg)
 
-			cfg := &apiConfig{dbQueries: dbMock, geocoder: geoMock, logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
-			loc, err := cfg.getOrCreateLocation(ctx, tc.cityName)
+			loc, err := testCfg.apiConfig.getOrCreateLocation(ctx, tc.cityName)
 			tc.check(t, loc, err)
 		})
 	}

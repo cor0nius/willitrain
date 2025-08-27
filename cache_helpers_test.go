@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -38,14 +36,14 @@ func TestGetCachedOrFetchCurrentWeather(t *testing.T) {
 
 	testCases := []struct {
 		name       string
-		setupMocks func(db *mockHandlerHelpersQuerier, cache *mockCache, server *httptest.Server)
+		setupMocks func(cfg *testAPIConfig, server *httptest.Server)
 		check      func(t *testing.T, weather []CurrentWeather, err error)
 	}{
 		{
 			name: "Success: Redis Hit",
-			setupMocks: func(db *mockHandlerHelpersQuerier, cache *mockCache, server *httptest.Server) {
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
 				cachedData, _ := json.Marshal(apiWeather)
-				cache.getFunc = func(ctx context.Context, key string) (string, error) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) {
 					return string(cachedData), nil
 				}
 			},
@@ -60,14 +58,14 @@ func TestGetCachedOrFetchCurrentWeather(t *testing.T) {
 		},
 		{
 			name: "Success: DB Hit",
-			setupMocks: func(db *mockHandlerHelpersQuerier, cache *mockCache, server *httptest.Server) {
-				cache.getFunc = func(ctx context.Context, key string) (string, error) {
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) {
 					return "", redis.Nil
 				}
-				db.GetCurrentWeatherAtLocationFunc = func(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error) {
+				cfg.mockDB.GetCurrentWeatherAtLocationFunc = func(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error) {
 					return dbWeather, nil
 				}
-				cache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error {
+				cfg.mockCache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error {
 					return nil // Expect cache to be warmed
 				}
 			},
@@ -82,21 +80,21 @@ func TestGetCachedOrFetchCurrentWeather(t *testing.T) {
 		},
 		{
 			name: "Success: API Fetch",
-			setupMocks: func(db *mockHandlerHelpersQuerier, cache *mockCache, server *httptest.Server) {
-				cache.getFunc = func(ctx context.Context, key string) (string, error) { return "", redis.Nil }
-				db.GetCurrentWeatherAtLocationFunc = func(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error) {
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) { return "", redis.Nil }
+				cfg.mockDB.GetCurrentWeatherAtLocationFunc = func(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error) {
 					return nil, sql.ErrNoRows
 				}
-				db.GetCurrentWeatherAtLocationFromAPIFunc = func(ctx context.Context, arg database.GetCurrentWeatherAtLocationFromAPIParams) (database.CurrentWeather, error) {
+				cfg.mockDB.GetCurrentWeatherAtLocationFromAPIFunc = func(ctx context.Context, arg database.GetCurrentWeatherAtLocationFromAPIParams) (database.CurrentWeather, error) {
 					return database.CurrentWeather{}, sql.ErrNoRows
 				}
-				db.CreateCurrentWeatherFunc = func(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error) {
+				cfg.mockDB.CreateCurrentWeatherFunc = func(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error) {
 					return database.CurrentWeather{}, nil
 				}
-				db.UpdateTimezoneFunc = func(ctx context.Context, arg database.UpdateTimezoneParams) error {
+				cfg.mockDB.UpdateTimezoneFunc = func(ctx context.Context, arg database.UpdateTimezoneParams) error {
 					return nil
 				}
-				cache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error { return nil }
+				cfg.mockCache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error { return nil }
 			},
 			check: func(t *testing.T, weather []CurrentWeather, err error) {
 				if err != nil {
@@ -126,23 +124,17 @@ func TestGetCachedOrFetchCurrentWeather(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			dbMock := &mockHandlerHelpersQuerier{t: t}
-			cacheMock := &mockCache{}
-			tc.setupMocks(dbMock, cacheMock, mockServer)
+			testCfg := newTestAPIConfig(t)
+			tc.setupMocks(testCfg, mockServer)
 
-			cfg := &apiConfig{
-				dbQueries:        dbMock,
-				cache:            cacheMock,
-				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-				gmpWeatherURL:    mockServer.URL + "/gmp",
-				owmWeatherURL:    mockServer.URL + "/owm",
-				ometeoWeatherURL: mockServer.URL + "/ometeo",
-				httpClient:       mockServer.Client(),
-				gmpKey:           "dummy",
-				owmKey:           "dummy",
-			}
+			testCfg.apiConfig.gmpWeatherURL = mockServer.URL + "/gmp"
+			testCfg.apiConfig.owmWeatherURL = mockServer.URL + "/owm"
+			testCfg.apiConfig.ometeoWeatherURL = mockServer.URL + "/ometeo"
+			testCfg.apiConfig.httpClient = mockServer.Client()
+			testCfg.apiConfig.gmpKey = "dummy"
+			testCfg.apiConfig.owmKey = "dummy"
 
-			weather, err := cfg.getCachedOrFetchCurrentWeather(ctx, location)
+			weather, err := testCfg.apiConfig.getCachedOrFetchCurrentWeather(ctx, location)
 			tc.check(t, weather, err)
 		})
 	}
@@ -158,14 +150,14 @@ func TestGetCachedOrFetchDailyForecast(t *testing.T) {
 
 	testCases := []struct {
 		name       string
-		setupMocks func(db *mockHandlerHelpersQuerier, cache *mockCache, server *httptest.Server)
+		setupMocks func(cfg *testAPIConfig, server *httptest.Server)
 		check      func(t *testing.T, forecast []DailyForecast, err error)
 	}{
 		{
 			name: "Success: Redis Hit",
-			setupMocks: func(db *mockHandlerHelpersQuerier, cache *mockCache, server *httptest.Server) {
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
 				cachedData, _ := json.Marshal(apiForecast)
-				cache.getFunc = func(ctx context.Context, key string) (string, error) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) {
 					return string(cachedData), nil
 				}
 			},
@@ -180,12 +172,12 @@ func TestGetCachedOrFetchDailyForecast(t *testing.T) {
 		},
 		{
 			name: "Success: DB Hit",
-			setupMocks: func(db *mockHandlerHelpersQuerier, cache *mockCache, server *httptest.Server) {
-				cache.getFunc = func(ctx context.Context, key string) (string, error) { return "", redis.Nil }
-				db.GetUpcomingDailyForecastsAtLocationFunc = func(ctx context.Context, arg database.GetUpcomingDailyForecastsAtLocationParams) ([]database.DailyForecast, error) {
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) { return "", redis.Nil }
+				cfg.mockDB.GetUpcomingDailyForecastsAtLocationFunc = func(ctx context.Context, arg database.GetUpcomingDailyForecastsAtLocationParams) ([]database.DailyForecast, error) {
 					return dbForecast, nil
 				}
-				cache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error { return nil }
+				cfg.mockCache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error { return nil }
 			},
 			check: func(t *testing.T, forecast []DailyForecast, err error) {
 				if err != nil {
@@ -198,21 +190,21 @@ func TestGetCachedOrFetchDailyForecast(t *testing.T) {
 		},
 		{
 			name: "Success: API Fetch",
-			setupMocks: func(db *mockHandlerHelpersQuerier, cache *mockCache, server *httptest.Server) {
-				cache.getFunc = func(ctx context.Context, key string) (string, error) { return "", redis.Nil }
-				db.GetUpcomingDailyForecastsAtLocationFunc = func(ctx context.Context, arg database.GetUpcomingDailyForecastsAtLocationParams) ([]database.DailyForecast, error) {
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) { return "", redis.Nil }
+				cfg.mockDB.GetUpcomingDailyForecastsAtLocationFunc = func(ctx context.Context, arg database.GetUpcomingDailyForecastsAtLocationParams) ([]database.DailyForecast, error) {
 					return nil, sql.ErrNoRows
 				}
-				db.GetDailyForecastAtLocationAndDateFromAPIFunc = func(ctx context.Context, arg database.GetDailyForecastAtLocationAndDateFromAPIParams) (database.DailyForecast, error) {
+				cfg.mockDB.GetDailyForecastAtLocationAndDateFromAPIFunc = func(ctx context.Context, arg database.GetDailyForecastAtLocationAndDateFromAPIParams) (database.DailyForecast, error) {
 					return database.DailyForecast{}, sql.ErrNoRows
 				}
-				db.CreateDailyForecastFunc = func(ctx context.Context, arg database.CreateDailyForecastParams) (database.DailyForecast, error) {
+				cfg.mockDB.CreateDailyForecastFunc = func(ctx context.Context, arg database.CreateDailyForecastParams) (database.DailyForecast, error) {
 					return database.DailyForecast{}, nil
 				}
-				db.UpdateTimezoneFunc = func(ctx context.Context, arg database.UpdateTimezoneParams) error {
+				cfg.mockDB.UpdateTimezoneFunc = func(ctx context.Context, arg database.UpdateTimezoneParams) error {
 					return nil
 				}
-				cache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error { return nil }
+				cfg.mockCache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error { return nil }
 			},
 			check: func(t *testing.T, forecast []DailyForecast, err error) {
 				if err != nil {
@@ -242,23 +234,17 @@ func TestGetCachedOrFetchDailyForecast(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			dbMock := &mockHandlerHelpersQuerier{t: t}
-			cacheMock := &mockCache{}
-			tc.setupMocks(dbMock, cacheMock, mockServer)
+			testCfg := newTestAPIConfig(t)
+			tc.setupMocks(testCfg, mockServer)
 
-			cfg := &apiConfig{
-				dbQueries:        dbMock,
-				cache:            cacheMock,
-				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-				gmpWeatherURL:    mockServer.URL + "/gmp",
-				owmWeatherURL:    mockServer.URL + "/owm",
-				ometeoWeatherURL: mockServer.URL + "/ometeo",
-				httpClient:       mockServer.Client(),
-				gmpKey:           "dummy",
-				owmKey:           "dummy",
-			}
+			testCfg.apiConfig.gmpWeatherURL = mockServer.URL + "/gmp"
+			testCfg.apiConfig.owmWeatherURL = mockServer.URL + "/owm"
+			testCfg.apiConfig.ometeoWeatherURL = mockServer.URL + "/ometeo"
+			testCfg.apiConfig.httpClient = mockServer.Client()
+			testCfg.apiConfig.gmpKey = "dummy"
+			testCfg.apiConfig.owmKey = "dummy"
 
-			forecast, err := cfg.getCachedOrFetchDailyForecast(ctx, location)
+			forecast, err := testCfg.apiConfig.getCachedOrFetchDailyForecast(ctx, location)
 			tc.check(t, forecast, err)
 		})
 	}
@@ -274,14 +260,14 @@ func TestGetCachedOrFetchHourlyForecast(t *testing.T) {
 
 	testCases := []struct {
 		name       string
-		setupMocks func(db *mockHandlerHelpersQuerier, cache *mockCache, server *httptest.Server)
+		setupMocks func(cfg *testAPIConfig, server *httptest.Server)
 		check      func(t *testing.T, forecast []HourlyForecast, err error)
 	}{
 		{
 			name: "Success: Redis Hit",
-			setupMocks: func(db *mockHandlerHelpersQuerier, cache *mockCache, server *httptest.Server) {
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
 				cachedData, _ := json.Marshal(apiForecast)
-				cache.getFunc = func(ctx context.Context, key string) (string, error) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) {
 					return string(cachedData), nil
 				}
 			},
@@ -296,12 +282,12 @@ func TestGetCachedOrFetchHourlyForecast(t *testing.T) {
 		},
 		{
 			name: "Success: DB Hit",
-			setupMocks: func(db *mockHandlerHelpersQuerier, cache *mockCache, server *httptest.Server) {
-				cache.getFunc = func(ctx context.Context, key string) (string, error) { return "", redis.Nil }
-				db.GetUpcomingHourlyForecastsAtLocationFunc = func(ctx context.Context, arg database.GetUpcomingHourlyForecastsAtLocationParams) ([]database.HourlyForecast, error) {
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) { return "", redis.Nil }
+				cfg.mockDB.GetUpcomingHourlyForecastsAtLocationFunc = func(ctx context.Context, arg database.GetUpcomingHourlyForecastsAtLocationParams) ([]database.HourlyForecast, error) {
 					return dbForecast, nil
 				}
-				cache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error { return nil }
+				cfg.mockCache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error { return nil }
 			},
 			check: func(t *testing.T, forecast []HourlyForecast, err error) {
 				if err != nil {
@@ -314,21 +300,21 @@ func TestGetCachedOrFetchHourlyForecast(t *testing.T) {
 		},
 		{
 			name: "Success: API Fetch",
-			setupMocks: func(db *mockHandlerHelpersQuerier, cache *mockCache, server *httptest.Server) {
-				cache.getFunc = func(ctx context.Context, key string) (string, error) { return "", redis.Nil }
-				db.GetUpcomingHourlyForecastsAtLocationFunc = func(ctx context.Context, arg database.GetUpcomingHourlyForecastsAtLocationParams) ([]database.HourlyForecast, error) {
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) { return "", redis.Nil }
+				cfg.mockDB.GetUpcomingHourlyForecastsAtLocationFunc = func(ctx context.Context, arg database.GetUpcomingHourlyForecastsAtLocationParams) ([]database.HourlyForecast, error) {
 					return nil, sql.ErrNoRows
 				}
-				db.GetHourlyForecastAtLocationAndTimeFromAPIFunc = func(ctx context.Context, arg database.GetHourlyForecastAtLocationAndTimeFromAPIParams) (database.HourlyForecast, error) {
+				cfg.mockDB.GetHourlyForecastAtLocationAndTimeFromAPIFunc = func(ctx context.Context, arg database.GetHourlyForecastAtLocationAndTimeFromAPIParams) (database.HourlyForecast, error) {
 					return database.HourlyForecast{}, sql.ErrNoRows
 				}
-				db.CreateHourlyForecastFunc = func(ctx context.Context, arg database.CreateHourlyForecastParams) (database.HourlyForecast, error) {
+				cfg.mockDB.CreateHourlyForecastFunc = func(ctx context.Context, arg database.CreateHourlyForecastParams) (database.HourlyForecast, error) {
 					return database.HourlyForecast{}, nil
 				}
-				db.UpdateTimezoneFunc = func(ctx context.Context, arg database.UpdateTimezoneParams) error {
+				cfg.mockDB.UpdateTimezoneFunc = func(ctx context.Context, arg database.UpdateTimezoneParams) error {
 					return nil
 				}
-				cache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error { return nil }
+				cfg.mockCache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error { return nil }
 			},
 			check: func(t *testing.T, forecast []HourlyForecast, err error) {
 				if err != nil {
@@ -358,23 +344,17 @@ func TestGetCachedOrFetchHourlyForecast(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			dbMock := &mockHandlerHelpersQuerier{t: t}
-			cacheMock := &mockCache{}
-			tc.setupMocks(dbMock, cacheMock, mockServer)
+			testCfg := newTestAPIConfig(t)
+			tc.setupMocks(testCfg, mockServer)
 
-			cfg := &apiConfig{
-				dbQueries:        dbMock,
-				cache:            cacheMock,
-				logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-				gmpWeatherURL:    mockServer.URL + "/gmp",
-				owmWeatherURL:    mockServer.URL + "/owm",
-				ometeoWeatherURL: mockServer.URL + "/ometeo",
-				httpClient:       mockServer.Client(),
-				gmpKey:           "dummy",
-				owmKey:           "dummy",
-			}
+			testCfg.apiConfig.gmpWeatherURL = mockServer.URL + "/gmp"
+			testCfg.apiConfig.owmWeatherURL = mockServer.URL + "/owm"
+			testCfg.apiConfig.ometeoWeatherURL = mockServer.URL + "/ometeo"
+			testCfg.apiConfig.httpClient = mockServer.Client()
+			testCfg.apiConfig.gmpKey = "dummy"
+			testCfg.apiConfig.owmKey = "dummy"
 
-			forecast, err := cfg.getCachedOrFetchHourlyForecast(ctx, location)
+			forecast, err := testCfg.apiConfig.getCachedOrFetchHourlyForecast(ctx, location)
 			tc.check(t, forecast, err)
 		})
 	}

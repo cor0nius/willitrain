@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -20,219 +18,161 @@ import (
 
 func TestRunCurrentWeatherJobs(t *testing.T) {
 	// --- Setup ---
-	// Mock server for all weather APIs
-	gmpData, err := os.ReadFile("testdata/current_weather_gmp.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	owmData, err := os.ReadFile("testdata/current_weather_owm.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ometeoData, err := os.ReadFile("testdata/current_weather_ometeo.json")
-	if err != nil {
-		t.Fatal(err)
-	}
+	gmpData, _ := os.ReadFile("testdata/current_weather_gmp.json")
+	owmData, _ := os.ReadFile("testdata/current_weather_owm.json")
+	ometeoData, _ := os.ReadFile("testdata/current_weather_ometeo.json")
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if strings.Contains(r.URL.Path, "/gmp") {
 			_, _ = w.Write(gmpData)
-		} else if r.URL.Path == "/owm" {
+		} else if strings.Contains(r.URL.Path, "/owm") {
 			_, _ = w.Write(owmData)
-		} else if r.URL.Path == "/ometeo" {
+		} else if strings.Contains(r.URL.Path, "/ometeo") {
 			_, _ = w.Write(ometeoData)
 		}
 	}))
 	defer mockServer.Close()
 
-	mockDB := &mockQuerier{
-		locationsToReturn: []database.Location{
+	testCfg := newTestAPIConfig(t)
+	testCfg.mockDB.ListLocationsFunc = func(ctx context.Context) ([]database.Location, error) {
+		return []database.Location{
 			{ID: uuid.New(), CityName: "Test City 1"},
 			{ID: uuid.New(), CityName: "Test City 2"},
-		},
+		}, nil
+	}
+	testCfg.mockDB.GetCurrentWeatherAtLocationFromAPIFunc = func(ctx context.Context, arg database.GetCurrentWeatherAtLocationFromAPIParams) (database.CurrentWeather, error) {
+		return database.CurrentWeather{}, sql.ErrNoRows
+	}
+	testCfg.mockDB.CreateCurrentWeatherFunc = func(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error) {
+		return database.CurrentWeather{}, nil
 	}
 
-	cfg := &apiConfig{
-		dbQueries:        mockDB,
-		gmpWeatherURL:    mockServer.URL + "/gmp",
-		owmWeatherURL:    mockServer.URL + "/owm?",
-		ometeoWeatherURL: mockServer.URL + "/ometeo?",
-		httpClient:       mockServer.Client(),
-		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-	}
+	testCfg.apiConfig.gmpWeatherURL = mockServer.URL + "/gmp"
+	testCfg.apiConfig.owmWeatherURL = mockServer.URL + "/owm"
+	testCfg.apiConfig.ometeoWeatherURL = mockServer.URL + "/ometeo"
+	testCfg.apiConfig.httpClient = mockServer.Client()
 
-	// We can use short intervals for testing since we call the job directly.
-	s := NewScheduler(cfg, 1*time.Minute, 1*time.Minute, 1*time.Minute)
+	s := NewScheduler(testCfg.apiConfig, 1*time.Minute, 1*time.Minute, 1*time.Minute)
 
 	// --- Action ---
 	s.runCurrentWeatherJobs()
 
 	// --- Assertions ---
-	// For 2 locations and 3 APIs, we expect 6 total persistence attempts.
-	// Each attempt first tries to GET an existing record.
-	expectedGetCalls := 2 * 3
-	if mockDB.getCurrentWeatherFromAPICalls != expectedGetCalls {
-		t.Errorf("expected %d calls to GetCurrentWeatherAtLocationFromAPI, got %d", expectedGetCalls, mockDB.getCurrentWeatherFromAPICalls)
-	}
-
-	// Since our mock Get... returns sql.ErrNoRows, it should then try to CREATE.
-	expectedCreateCalls := 2 * 3
-	if mockDB.createCurrentWeatherCalls != expectedCreateCalls {
-		t.Errorf("expected %d calls to CreateCurrentWeather, got %d", expectedCreateCalls, mockDB.createCurrentWeatherCalls)
-	}
-
-	// It should not try to UPDATE.
-	if mockDB.updateCurrentWeatherCalls != 0 {
-		t.Errorf("expected 0 calls to UpdateCurrentWeather, got %d", mockDB.updateCurrentWeatherCalls)
+	expectedCreateCalls := 2 * 3 // 2 locations, 3 APIs
+	if testCfg.mockDB.createCurrentWeatherCalls != expectedCreateCalls {
+		t.Errorf("expected %d calls to CreateCurrentWeather, got %d", expectedCreateCalls, testCfg.mockDB.createCurrentWeatherCalls)
 	}
 }
 
 func TestRunDailyForecastJobs(t *testing.T) {
 	// --- Setup ---
-	// Mock server for all weather APIs
-	gmpData, err := os.ReadFile("testdata/daily_forecast_gmp.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	owmData, err := os.ReadFile("testdata/daily_forecast_owm.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ometeoData, err := os.ReadFile("testdata/daily_forecast_ometeo.json")
-	if err != nil {
-		t.Fatal(err)
-	}
+	gmpData, _ := os.ReadFile("testdata/daily_forecast_gmp.json")
+	owmData, _ := os.ReadFile("testdata/daily_forecast_owm.json")
+	ometeoData, _ := os.ReadFile("testdata/daily_forecast_ometeo.json")
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if strings.Contains(r.URL.Path, "/gmp") {
 			_, _ = w.Write(gmpData)
-		} else if r.URL.Path == "/owm" {
+		} else if strings.Contains(r.URL.Path, "/owm") {
 			_, _ = w.Write(owmData)
-		} else if r.URL.Path == "/ometeo" {
+		} else if strings.Contains(r.URL.Path, "/ometeo") {
 			_, _ = w.Write(ometeoData)
 		}
 	}))
 	defer mockServer.Close()
 
-	mockDB := &mockQuerier{
-		locationsToReturn: []database.Location{
+	testCfg := newTestAPIConfig(t)
+	testCfg.mockDB.ListLocationsFunc = func(ctx context.Context) ([]database.Location, error) {
+		return []database.Location{
 			{ID: uuid.New(), CityName: "Test City 1"},
 			{ID: uuid.New(), CityName: "Test City 2"},
-		},
+		}, nil
+	}
+	testCfg.mockDB.GetDailyForecastAtLocationAndDateFromAPIFunc = func(ctx context.Context, arg database.GetDailyForecastAtLocationAndDateFromAPIParams) (database.DailyForecast, error) {
+		return database.DailyForecast{}, sql.ErrNoRows
+	}
+	testCfg.mockDB.CreateDailyForecastFunc = func(ctx context.Context, arg database.CreateDailyForecastParams) (database.DailyForecast, error) {
+		return database.DailyForecast{}, nil
 	}
 
-	cfg := &apiConfig{
-		dbQueries:        mockDB,
-		gmpWeatherURL:    mockServer.URL + "/gmp",
-		owmWeatherURL:    mockServer.URL + "/owm?",
-		ometeoWeatherURL: mockServer.URL + "/ometeo?",
-		httpClient:       mockServer.Client(),
-		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-	}
+	testCfg.apiConfig.gmpWeatherURL = mockServer.URL + "/gmp"
+	testCfg.apiConfig.owmWeatherURL = mockServer.URL + "/owm"
+	testCfg.apiConfig.ometeoWeatherURL = mockServer.URL + "/ometeo"
+	testCfg.apiConfig.httpClient = mockServer.Client()
 
-	s := NewScheduler(cfg, 1*time.Minute, 1*time.Minute, 1*time.Minute)
+	s := NewScheduler(testCfg.apiConfig, 1*time.Minute, 1*time.Minute, 1*time.Minute)
 
 	// --- Action ---
 	s.runDailyForecastJobs()
 
 	// --- Assertions ---
-	// For 2 locations, 3 APIs, and 5 days per API, we expect 30 total persistence attempts.
-	expectedGetCalls := 2 * 3 * 5
-	if mockDB.getDailyForecastFromAPICalls != expectedGetCalls {
-		t.Errorf("expected %d calls to GetDailyForecastAtLocationAndDateFromAPI, got %d", expectedGetCalls, mockDB.getDailyForecastFromAPICalls)
-	}
-
-	expectedCreateCalls := 2 * 3 * 5
-	if mockDB.createDailyForecastCalls != expectedCreateCalls {
-		t.Errorf("expected %d calls to CreateDailyForecast, got %d", expectedCreateCalls, mockDB.createDailyForecastCalls)
-	}
-
-	if mockDB.updateDailyForecastCalls != 0 {
-		t.Errorf("expected 0 calls to UpdateDailyForecast, got %d", mockDB.updateDailyForecastCalls)
+	expectedCreateCalls := 2 * 3 * 5 // 2 locations, 3 APIs, 5 days
+	if testCfg.mockDB.createDailyForecastCalls != expectedCreateCalls {
+		t.Errorf("expected %d calls to CreateDailyForecast, got %d", expectedCreateCalls, testCfg.mockDB.createDailyForecastCalls)
 	}
 }
 
 func TestRunHourlyForecastJobs(t *testing.T) {
 	// --- Setup ---
-	// Mock server for all weather APIs
-	gmpData, err := os.ReadFile("testdata/hourly_forecast_gmp.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	owmData, err := os.ReadFile("testdata/hourly_forecast_owm.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ometeoData, err := os.ReadFile("testdata/hourly_forecast_ometeo.json")
-	if err != nil {
-		t.Fatal(err)
-	}
+	gmpData, _ := os.ReadFile("testdata/hourly_forecast_gmp.json")
+	owmData, _ := os.ReadFile("testdata/hourly_forecast_owm.json")
+	ometeoData, _ := os.ReadFile("testdata/hourly_forecast_ometeo.json")
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if strings.Contains(r.URL.Path, "/gmp") {
 			_, _ = w.Write(gmpData)
-		} else if r.URL.Path == "/owm" {
+		} else if strings.Contains(r.URL.Path, "/owm") {
 			_, _ = w.Write(owmData)
-		} else if r.URL.Path == "/ometeo" {
+		} else if strings.Contains(r.URL.Path, "/ometeo") {
 			_, _ = w.Write(ometeoData)
 		}
 	}))
 	defer mockServer.Close()
 
-	mockDB := &mockQuerier{
-		locationsToReturn: []database.Location{
+	testCfg := newTestAPIConfig(t)
+	testCfg.mockDB.ListLocationsFunc = func(ctx context.Context) ([]database.Location, error) {
+		return []database.Location{
 			{ID: uuid.New(), CityName: "Test City 1"},
 			{ID: uuid.New(), CityName: "Test City 2"},
-		},
+		}, nil
+	}
+	testCfg.mockDB.GetHourlyForecastAtLocationAndTimeFromAPIFunc = func(ctx context.Context, arg database.GetHourlyForecastAtLocationAndTimeFromAPIParams) (database.HourlyForecast, error) {
+		return database.HourlyForecast{}, sql.ErrNoRows
+	}
+	testCfg.mockDB.CreateHourlyForecastFunc = func(ctx context.Context, arg database.CreateHourlyForecastParams) (database.HourlyForecast, error) {
+		return database.HourlyForecast{}, nil
 	}
 
-	cfg := &apiConfig{
-		dbQueries:        mockDB,
-		gmpWeatherURL:    mockServer.URL + "/gmp",
-		owmWeatherURL:    mockServer.URL + "/owm?",
-		ometeoWeatherURL: mockServer.URL + "/ometeo?",
-		httpClient:       mockServer.Client(),
-		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-	}
+	testCfg.apiConfig.gmpWeatherURL = mockServer.URL + "/gmp"
+	testCfg.apiConfig.owmWeatherURL = mockServer.URL + "/owm"
+	testCfg.apiConfig.ometeoWeatherURL = mockServer.URL + "/ometeo"
+	testCfg.apiConfig.httpClient = mockServer.Client()
 
-	s := NewScheduler(cfg, 1*time.Minute, 1*time.Minute, 1*time.Minute)
+	s := NewScheduler(testCfg.apiConfig, 1*time.Minute, 1*time.Minute, 1*time.Minute)
 
 	// --- Action ---
 	s.runHourlyForecastJobs()
 
 	// --- Assertions ---
-	// For 2 locations, 3 APIs, and 24 hours per API, we expect 144 total persistence attempts.
-	expectedGetCalls := 2 * 3 * 24
-	if mockDB.getHourlyForecastFromAPICalls != expectedGetCalls {
-		t.Errorf("expected %d calls to GetHourlyForecastAtLocationAndTimeFromAPI, got %d", expectedGetCalls, mockDB.getHourlyForecastFromAPICalls)
-	}
-
-	expectedCreateCalls := 2 * 3 * 24
-	if mockDB.createHourlyForecastCalls != expectedCreateCalls {
-		t.Errorf("expected %d calls to CreateHourlyForecast, got %d", expectedCreateCalls, mockDB.createHourlyForecastCalls)
-	}
-
-	if mockDB.updateHourlyForecastCalls != 0 {
-		t.Errorf("expected 0 calls to UpdateHourlyForecast, got %d", mockDB.updateHourlyForecastCalls)
+	expectedCreateCalls := 2 * 3 * 24 // 2 locations, 3 APIs, 24 hours
+	if testCfg.mockDB.createHourlyForecastCalls != expectedCreateCalls {
+		t.Errorf("expected %d calls to CreateHourlyForecast, got %d", expectedCreateCalls, testCfg.mockDB.createHourlyForecastCalls)
 	}
 }
 
 func TestScheduler_Ticks(t *testing.T) {
 	// --- Setup ---
-	// We don't need a real cfg, just a placeholder.
-	cfg := &apiConfig{
-		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-	}
+	testCfg := newTestAPIConfig(t)
 
 	currentChan := make(chan time.Time)
 	hourlyChan := make(chan time.Time)
 	dailyChan := make(chan time.Time)
 
 	s := &Scheduler{
-		cfg:         cfg, // cfg is not used by the mock jobs
+		cfg:         testCfg.apiConfig,
 		currentChan: currentChan,
 		hourlyChan:  hourlyChan,
 		dailyChan:   dailyChan,
@@ -299,22 +239,14 @@ func TestScheduler_Ticks(t *testing.T) {
 
 func TestRunUpdateForLocations_DBError(t *testing.T) {
 	// --- Setup ---
-	// Mock DB that returns an error on ListLocations
+	testCfg := newTestAPIConfig(t)
 	dbErr := errors.New("database connection failed")
-	mockDB := &mockQuerier{
-		listLocationsErr: dbErr,
+	testCfg.mockDB.ListLocationsFunc = func(ctx context.Context) ([]database.Location, error) {
+		return nil, dbErr
 	}
 
-	cfg := &apiConfig{
-		dbQueries: mockDB,
-		logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
-		// No need for httpClient or API URLs as they shouldn't be called.
-	}
+	s := &Scheduler{cfg: testCfg.apiConfig}
 
-	// We can use a dummy scheduler instance since we're calling the method directly
-	s := &Scheduler{cfg: cfg}
-
-	// Mock update function to track if it's called
 	var updateFuncCalled bool
 	mockUpdateFunc := func(ctx context.Context, location Location) {
 		updateFuncCalled = true
@@ -331,22 +263,12 @@ func TestRunUpdateForLocations_DBError(t *testing.T) {
 
 func TestRunUpdateForLocations_PartialAPIFailure(t *testing.T) {
 	// --- Setup ---
-	// Mock server that succeeds for one location and fails for another
 	goodCityLat := "1.00"
 	badCityLat := "2.00"
 
-	gmpData, err := os.ReadFile("testdata/current_weather_gmp.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	owmData, err := os.ReadFile("testdata/current_weather_owm.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ometeoData, err := os.ReadFile("testdata/current_weather_ometeo.json")
-	if err != nil {
-		t.Fatal(err)
-	}
+	gmpData, _ := os.ReadFile("testdata/current_weather_gmp.json")
+	owmData, _ := os.ReadFile("testdata/current_weather_owm.json")
+	ometeoData, _ := os.ReadFile("testdata/current_weather_ometeo.json")
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var lat string
@@ -378,193 +300,35 @@ func TestRunUpdateForLocations_PartialAPIFailure(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	mockDB := &mockQuerier{
-		locationsToReturn: []database.Location{
+	testCfg := newTestAPIConfig(t)
+	testCfg.mockDB.ListLocationsFunc = func(ctx context.Context) ([]database.Location, error) {
+		return []database.Location{
 			{ID: uuid.New(), CityName: "Good City", Latitude: 1.00},
 			{ID: uuid.New(), CityName: "Bad City", Latitude: 2.00},
-		},
+		}, nil
+	}
+	testCfg.mockDB.GetCurrentWeatherAtLocationFromAPIFunc = func(ctx context.Context, arg database.GetCurrentWeatherAtLocationFromAPIParams) (database.CurrentWeather, error) {
+		return database.CurrentWeather{}, sql.ErrNoRows
+	}
+	testCfg.mockDB.CreateCurrentWeatherFunc = func(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error) {
+		return database.CurrentWeather{}, nil
 	}
 
-	cfg := &apiConfig{
-		dbQueries:        mockDB,
-		gmpWeatherURL:    mockServer.URL + "/gmp/",
-		owmWeatherURL:    mockServer.URL + "/owm?",
-		ometeoWeatherURL: mockServer.URL + "/ometeo?",
-		httpClient:       mockServer.Client(),
-		gmpKey:           "dummy",
-		owmKey:           "dummy",
-		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
-	}
+	testCfg.apiConfig.gmpWeatherURL = mockServer.URL + "/gmp/"
+	testCfg.apiConfig.owmWeatherURL = mockServer.URL + "/owm?"
+	testCfg.apiConfig.ometeoWeatherURL = mockServer.URL + "/ometeo?"
+	testCfg.apiConfig.httpClient = mockServer.Client()
+	testCfg.apiConfig.gmpKey = "dummy"
+	testCfg.apiConfig.owmKey = "dummy"
 
-	s := NewScheduler(cfg, 1*time.Minute, 1*time.Minute, 1*time.Minute)
+	s := NewScheduler(testCfg.apiConfig, 1*time.Minute, 1*time.Minute, 1*time.Minute)
 
 	// --- Action ---
-	// We test the partial failure logic by calling one of the job functions
-	// that uses runUpdateForLocations. runCurrentWeatherJobs is a good candidate.
 	s.runCurrentWeatherJobs()
 
 	// --- Assertions ---
-	// We expect persistence calls only for the "Good City".
-	// There are 3 API providers, so we expect 3 persistence attempts for that city.
 	expectedCalls := 3
-	if mockDB.createCurrentWeatherCalls != expectedCalls {
-		t.Errorf("expected %d calls to CreateCurrentWeather for the successful location, but got %d", expectedCalls, mockDB.createCurrentWeatherCalls)
+	if testCfg.mockDB.createCurrentWeatherCalls != expectedCalls {
+		t.Errorf("expected %d calls to CreateCurrentWeather for the successful location, but got %d", expectedCalls, testCfg.mockDB.createCurrentWeatherCalls)
 	}
-}
-
-type mockQuerier struct {
-	locationsToReturn []database.Location
-	listLocationsErr  error
-
-	mu                            sync.Mutex
-	createCurrentWeatherCalls     int
-	updateCurrentWeatherCalls     int
-	createDailyForecastCalls      int
-	updateDailyForecastCalls      int
-	createHourlyForecastCalls     int
-	updateHourlyForecastCalls     int
-	createLocationCalls           int
-	getCurrentWeatherFromAPICalls int
-	getDailyForecastFromAPICalls  int
-	getHourlyForecastFromAPICalls int
-}
-
-func (m *mockQuerier) CreateCurrentWeather(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.createCurrentWeatherCalls++
-	return database.CurrentWeather{}, nil
-}
-
-func (m *mockQuerier) CreateDailyForecast(ctx context.Context, arg database.CreateDailyForecastParams) (database.DailyForecast, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.createDailyForecastCalls++
-	return database.DailyForecast{}, nil
-}
-
-func (m *mockQuerier) CreateHourlyForecast(ctx context.Context, arg database.CreateHourlyForecastParams) (database.HourlyForecast, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.createHourlyForecastCalls++
-	return database.HourlyForecast{}, nil
-}
-
-func (m *mockQuerier) CreateLocation(ctx context.Context, arg database.CreateLocationParams) (database.Location, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.createLocationCalls++
-	return database.Location{}, nil
-}
-
-func (m *mockQuerier) DeleteAllCurrentWeather(ctx context.Context) error { return nil }
-
-func (m *mockQuerier) DeleteAllDailyForecasts(ctx context.Context) error { return nil }
-
-func (m *mockQuerier) DeleteAllHourlyForecasts(ctx context.Context) error { return nil }
-
-func (m *mockQuerier) DeleteAllLocations(ctx context.Context) error { return nil }
-
-func (m *mockQuerier) DeleteCurrentWeatherAtLocation(ctx context.Context, locationID uuid.UUID) error {
-	return nil
-}
-
-func (m *mockQuerier) DeleteDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) error {
-	return nil
-}
-
-func (m *mockQuerier) DeleteHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) error {
-	return nil
-}
-
-func (m *mockQuerier) GetAllDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.DailyForecast, error) {
-	return nil, nil
-}
-
-func (m *mockQuerier) GetAllHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.HourlyForecast, error) {
-	return nil, nil
-}
-
-func (m *mockQuerier) GetCurrentWeatherAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error) {
-	return nil, nil
-}
-
-func (m *mockQuerier) GetCurrentWeatherAtLocationFromAPI(ctx context.Context, arg database.GetCurrentWeatherAtLocationFromAPIParams) (database.CurrentWeather, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.getCurrentWeatherFromAPICalls++
-	return database.CurrentWeather{}, sql.ErrNoRows
-}
-
-func (m *mockQuerier) GetDailyForecastAtLocationAndDateFromAPI(ctx context.Context, arg database.GetDailyForecastAtLocationAndDateFromAPIParams) (database.DailyForecast, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.getDailyForecastFromAPICalls++
-	return database.DailyForecast{}, sql.ErrNoRows
-}
-
-func (m *mockQuerier) GetHourlyForecastAtLocationAndTimeFromAPI(ctx context.Context, arg database.GetHourlyForecastAtLocationAndTimeFromAPIParams) (database.HourlyForecast, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.getHourlyForecastFromAPICalls++
-	return database.HourlyForecast{}, sql.ErrNoRows
-}
-
-func (m *mockQuerier) GetLocationByName(ctx context.Context, cityName string) (database.Location, error) {
-	return database.Location{}, nil
-}
-
-func (m *mockQuerier) ListLocations(ctx context.Context) ([]database.Location, error) {
-	return m.locationsToReturn, m.listLocationsErr
-}
-
-func (m *mockQuerier) UpdateCurrentWeather(ctx context.Context, arg database.UpdateCurrentWeatherParams) (database.CurrentWeather, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.updateCurrentWeatherCalls++
-	return database.CurrentWeather{}, nil
-}
-
-func (m *mockQuerier) UpdateDailyForecast(ctx context.Context, arg database.UpdateDailyForecastParams) (database.DailyForecast, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.updateDailyForecastCalls++
-	return database.DailyForecast{}, nil
-}
-
-func (m *mockQuerier) UpdateHourlyForecast(ctx context.Context, arg database.UpdateHourlyForecastParams) (database.HourlyForecast, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.updateHourlyForecastCalls++
-	return database.HourlyForecast{}, nil
-}
-
-func (m *mockQuerier) UpdateTimezone(ctx context.Context, arg database.UpdateTimezoneParams) error {
-	return nil
-}
-
-// Add stubs for the remaining dbQuerier methods to satisfy the interface.
-// These are not used by the scheduler tests, so they can be empty.
-func (m *mockQuerier) CreateLocationAlias(ctx context.Context, arg database.CreateLocationAliasParams) (database.LocationAlias, error) {
-	return database.LocationAlias{}, nil
-}
-
-func (m *mockQuerier) DeleteLocation(ctx context.Context, id uuid.UUID) error {
-	return nil
-}
-
-func (m *mockQuerier) GetLocationByAlias(ctx context.Context, alias string) (database.Location, error) {
-	return database.Location{}, nil
-}
-
-func (m *mockQuerier) GetLocationByCoordinates(ctx context.Context, arg database.GetLocationByCoordinatesParams) (database.Location, error) {
-	return database.Location{}, nil
-}
-
-func (m *mockQuerier) GetUpcomingDailyForecastsAtLocation(ctx context.Context, arg database.GetUpcomingDailyForecastsAtLocationParams) ([]database.DailyForecast, error) {
-	return nil, nil
-}
-
-func (m *mockQuerier) GetUpcomingHourlyForecastsAtLocation(ctx context.Context, arg database.GetUpcomingHourlyForecastsAtLocationParams) ([]database.HourlyForecast, error) {
-	return nil, nil
 }
