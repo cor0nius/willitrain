@@ -1,0 +1,5 @@
+comment: false
+
+ignore:
+  - "internal/"
+  - "test_helpers.go"
