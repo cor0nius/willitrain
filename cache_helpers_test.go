@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -105,6 +106,166 @@ func TestGetCachedOrFetchCurrentWeather(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "Fail: Invalid JSON in Redis",
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) {
+					return "invalid json", nil
+				}
+				cfg.mockDB.GetCurrentWeatherAtLocationFunc = func(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error) {
+					return dbWeather, nil // Fallback to DB
+				}
+				cfg.mockCache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error {
+					return nil
+				}
+			},
+			check: func(t *testing.T, weather []CurrentWeather, err error) {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if len(weather) != 3 {
+					t.Fatalf("expected 3 weather items from DB, got %d", len(weather))
+				}
+			},
+		},
+		{
+			name: "Fail: Invalid data in Redis",
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				invalidAPIWeather := []CurrentWeather{{SourceAPI: "gmp", Temperature: 22.0}}
+				cachedData, _ := json.Marshal(invalidAPIWeather)
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) {
+					return string(cachedData), nil
+				}
+				cfg.mockDB.GetCurrentWeatherAtLocationFunc = func(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error) {
+					return dbWeather, nil // Fallback to DB
+				}
+				cfg.mockCache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error {
+					return nil
+				}
+			},
+			check: func(t *testing.T, weather []CurrentWeather, err error) {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if len(weather) != 3 {
+					t.Fatalf("expected 3 weather items from DB, got %d", len(weather))
+				}
+			},
+		},
+		{
+			name: "Fail: Generic Redis error",
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) {
+					return "", sql.ErrConnDone // Using a random persistent error
+				}
+				cfg.mockDB.GetCurrentWeatherAtLocationFunc = func(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error) {
+					return dbWeather, nil // Fallback to DB
+				}
+				cfg.mockCache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error {
+					return nil
+				}
+			},
+			check: func(t *testing.T, weather []CurrentWeather, err error) {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if len(weather) != 3 {
+					t.Fatalf("expected 3 weather items from DB, got %d", len(weather))
+				}
+			},
+		},
+		{
+			name: "Fail: DB error on fetch",
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) {
+					return "", redis.Nil
+				}
+				cfg.mockDB.GetCurrentWeatherAtLocationFunc = func(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error) {
+					return nil, sql.ErrConnDone
+				}
+			},
+			check: func(t *testing.T, weather []CurrentWeather, err error) {
+				if err == nil {
+					t.Fatal("expected a database error, got nil")
+				}
+				if !strings.Contains(err.Error(), "database error") {
+					t.Fatalf("expected error to contain 'database error', got %v", err)
+				}
+			},
+		},
+		{
+			name: "Fail: Redis error on set after DB fetch",
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) {
+					return "", redis.Nil
+				}
+				cfg.mockDB.GetCurrentWeatherAtLocationFunc = func(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error) {
+					return dbWeather, nil
+				}
+				cfg.mockCache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error {
+					return sql.ErrConnDone // Some error
+				}
+			},
+			check: func(t *testing.T, weather []CurrentWeather, err error) {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if len(weather) != 3 {
+					t.Fatalf("expected 3 weather items from DB, got %d", len(weather))
+				}
+			},
+		},
+		{
+			name: "Fail: API fetch error",
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) { return "", redis.Nil }
+				cfg.mockDB.GetCurrentWeatherAtLocationFunc = func(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error) {
+					return nil, sql.ErrNoRows
+				}
+
+				// To simulate an API error, we replace the http client with one that always fails.
+				cfg.apiConfig.httpClient = &http.Client{
+					Transport: &errorTransport{err: errors.New("network error")},
+				}
+			},
+			check: func(t *testing.T, weather []CurrentWeather, err error) {
+				if err == nil {
+					t.Fatal("expected an API fetch error, got nil")
+				}
+				if !strings.Contains(err.Error(), "could not fetch") {
+					t.Fatalf("expected error to contain 'could not fetch', got %v", err)
+				}
+			},
+		},
+		{
+			name: "Fail: Redis error on set after API fetch",
+			setupMocks: func(cfg *testAPIConfig, server *httptest.Server) {
+				cfg.mockCache.getFunc = func(ctx context.Context, key string) (string, error) { return "", redis.Nil }
+				cfg.mockDB.GetCurrentWeatherAtLocationFunc = func(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error) {
+					return nil, sql.ErrNoRows
+				}
+				cfg.mockDB.GetCurrentWeatherAtLocationFromAPIFunc = func(ctx context.Context, arg database.GetCurrentWeatherAtLocationFromAPIParams) (database.CurrentWeather, error) {
+					return database.CurrentWeather{}, sql.ErrNoRows
+				}
+				cfg.mockDB.CreateCurrentWeatherFunc = func(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error) {
+					return database.CurrentWeather{}, nil
+				}
+				cfg.mockDB.UpdateTimezoneFunc = func(ctx context.Context, arg database.UpdateTimezoneParams) error {
+					return nil
+				}
+				cfg.mockCache.setFunc = func(ctx context.Context, key string, value any, expiration time.Duration) error {
+					return sql.ErrConnDone
+				}
+			},
+			check: func(t *testing.T, weather []CurrentWeather, err error) {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if len(weather) != 3 {
+					t.Fatalf("expected 3 weather items from API, got %d", len(weather))
+				}
+			},
+		},
 	}
 
 	// --- Mock API Server ---
@@ -125,14 +286,17 @@ func TestGetCachedOrFetchCurrentWeather(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			testCfg := newTestAPIConfig(t)
-			tc.setupMocks(testCfg, mockServer)
 
+			// Set up the default configuration to use the mock server.
 			testCfg.apiConfig.gmpWeatherURL = mockServer.URL + "/gmp"
 			testCfg.apiConfig.owmWeatherURL = mockServer.URL + "/owm"
 			testCfg.apiConfig.ometeoWeatherURL = mockServer.URL + "/ometeo"
 			testCfg.apiConfig.httpClient = mockServer.Client()
 			testCfg.apiConfig.gmpKey = "dummy"
 			testCfg.apiConfig.owmKey = "dummy"
+
+			// Allow the specific test case to override the default configuration.
+			tc.setupMocks(testCfg, mockServer)
 
 			weather, err := testCfg.apiConfig.getCachedOrFetchCurrentWeather(ctx, location)
 			tc.check(t, weather, err)
