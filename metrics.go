@@ -20,7 +20,7 @@ var (
 	externalRequestDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "willitrain_external_request_duration_seconds",
 		Help:    "Duration of outgoing HTTP requests to external APIs.",
-		Buckets: prometheus.LinearBuckets(0.1, 0.1, 10), // 10 buckets from 0.1s to 1.0s
+		Buckets: prometheus.LinearBuckets(1.0, 1.0, 10), // 10 buckets from 1s to 10s
 	}, []string{"host"})
 
 	// parserDuration is a Prometheus histogram that tracks the duration of parsing API responses.
