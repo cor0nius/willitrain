@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"time"
 )
 
 // fetchForecastFromAPI provides a generic and concurrent mechanism for fetching and
@@ -45,7 +46,6 @@ func fetchForecastFromAPI[T Forecast](
 		}{t: errorVal, tz: "", err: err}
 		return
 	}
-
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -57,7 +57,33 @@ func fetchForecastFromAPI[T Forecast](
 		return
 	}
 
+	// Instrument the parser duration.
+	start := time.Now()
 	data, tz, err := parser(resp.Body, cfg.logger)
+	duration := time.Since(start).Seconds()
+
+	// Determine provider and forecast type for metric labels.
+	var provider, forecastType string
+	v := any(errorVal)
+	switch val := v.(type) {
+	case CurrentWeather:
+		provider = val.SourceAPI
+		forecastType = "current"
+	case []DailyForecast:
+		if len(val) > 0 {
+			provider = val[0].SourceAPI
+		}
+		forecastType = "daily"
+	case []HourlyForecast:
+		if len(val) > 0 {
+			provider = val[0].SourceAPI
+		}
+		forecastType = "hourly"
+	}
+	if provider != "" {
+		parserDuration.WithLabelValues(provider, forecastType).Observe(duration)
+	}
+
 	if err != nil {
 		results <- struct {
 			t   T

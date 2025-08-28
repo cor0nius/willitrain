@@ -140,6 +140,9 @@ func config() *apiConfig {
 
 	httpClient := &http.Client{
 		Timeout: 10 * time.Second,
+		Transport: &metricsTransport{
+			wrapped: http.DefaultTransport,
+		},
 	}
 
 	geocoder := NewGmpGeocodingService(getRequiredEnv("GMP_KEY", logger), getRequiredEnv("GMP_GEOCODE_URL", logger), httpClient)
