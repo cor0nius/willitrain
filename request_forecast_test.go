@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -8,6 +9,9 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+
+	"github.com/cor0nius/willitrain/internal/database"
+	"github.com/google/uuid"
 )
 
 // mockParserSuccess simulates a successful parse of an API response.
@@ -72,7 +76,7 @@ func TestFetchForecastFromAPI(t *testing.T) {
 			var url string
 
 			if tc.serverHandler != nil {
-				server = httptest.NewServer(tc.serverHandler)
+				server = setupMockServer(tc.serverHandler)
 				defer server.Close()
 				url = server.URL
 			} else {
@@ -110,17 +114,17 @@ func TestFetchForecastFromAPI(t *testing.T) {
 }
 
 func TestProcessForecastRequests(t *testing.T) {
-	// Mock server that always succeeds
-	serverSuccess := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handlerSuccess := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"temp": 25.0}`))
-	}))
+	}
+	serverSuccess := setupMockServer(handlerSuccess)
 	defer serverSuccess.Close()
 
-	// Mock server that always fails
-	serverFail := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handlerFail := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-	}))
+	}
+	serverFail := setupMockServer(handlerFail)
 	defer serverFail.Close()
 
 	providers := map[string]forecastProvider[CurrentWeather]{
@@ -162,7 +166,7 @@ func TestProcessForecastRequests(t *testing.T) {
 			providers:        providers,
 			expectedLen:      1,
 			expectedTimezone: "Europe/Warsaw",
-			expectError:      false, // The function logs errors but doesn't return one
+			expectError:      false,
 		},
 		{
 			name: "All providers fail",
@@ -175,11 +179,21 @@ func TestProcessForecastRequests(t *testing.T) {
 			expectedTimezone: "",
 			expectError:      true,
 		},
+		{
+			name: "No provider found for URL",
+			urls: map[string]string{
+				"provider1":       serverSuccess.URL,
+				"unknownProvider": serverSuccess.URL,
+			},
+			providers:        providers,
+			expectedLen:      1,
+			expectedTimezone: "Europe/Warsaw",
+			expectError:      false,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Create a minimal apiConfig with a logger that discards output
 			cfg := &apiConfig{
 				logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 				httpClient: http.DefaultClient,
@@ -198,6 +212,114 @@ func TestProcessForecastRequests(t *testing.T) {
 			if tz != tc.expectedTimezone {
 				t.Errorf("Expected timezone %q, but got %q", tc.expectedTimezone, tz)
 			}
+		})
+	}
+}
+
+func TestRequestWeatherFunctions(t *testing.T) {
+	location := Location{LocationID: uuid.New(), CityName: "Testville"}
+
+	// This handler will now serve the correct data based on the URL path,
+	// ensuring that each real parser gets the data it expects.
+	handlerSuccess := createWeatherAPIHandler(t, "current_weather")
+	serverSuccess := setupMockServer(handlerSuccess)
+	defer serverSuccess.Close()
+
+	testCases := []struct {
+		name           string
+		functionToTest string // "current", "daily", "hourly"
+		setupMocks     func(cfg *testAPIConfig)
+		check          func(t *testing.T, err error)
+	}{
+		{
+			name:           "requestCurrentWeather - All providers fail",
+			functionToTest: "current",
+			setupMocks: func(cfg *testAPIConfig) {
+				cfg.apiConfig.httpClient = &http.Client{Transport: &errorTransport{err: errors.New("network error")}}
+			},
+			check: func(t *testing.T, err error) {
+				if err == nil {
+					t.Error("expected an error, but got nil")
+				}
+			},
+		},
+		{
+			name:           "requestDailyForecast - All providers fail",
+			functionToTest: "daily",
+			setupMocks: func(cfg *testAPIConfig) {
+				cfg.apiConfig.httpClient = &http.Client{Transport: &errorTransport{err: errors.New("network error")}}
+			},
+			check: func(t *testing.T, err error) {
+				if err == nil {
+					t.Error("expected an error, but got nil")
+				}
+			},
+		},
+		{
+			name:           "requestHourlyForecast - All providers fail",
+			functionToTest: "hourly",
+			setupMocks: func(cfg *testAPIConfig) {
+				cfg.apiConfig.httpClient = &http.Client{Transport: &errorTransport{err: errors.New("network error")}}
+			},
+			check: func(t *testing.T, err error) {
+				if err == nil {
+					t.Error("expected an error, but got nil")
+				}
+			},
+		},
+		{
+			name:           "requestCurrentWeather - UpdateTimezone fails",
+			functionToTest: "current",
+			setupMocks: func(cfg *testAPIConfig) {
+				cfg.mockDB.UpdateTimezoneFunc = func(ctx context.Context, arg database.UpdateTimezoneParams) error {
+					return errors.New("db error")
+				}
+			},
+			check: func(t *testing.T, err error) {
+				if err != nil {
+					t.Errorf("expected no error, but got: %v", err)
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testCfg := newTestAPIConfig(t)
+			testCfg.apiConfig.gmpWeatherURL = serverSuccess.URL + "/gmp"
+			testCfg.apiConfig.owmWeatherURL = serverSuccess.URL + "/owm"
+			testCfg.apiConfig.ometeoWeatherURL = serverSuccess.URL + "/ometeo"
+			testCfg.apiConfig.gmpKey = "dummy"
+			testCfg.apiConfig.owmKey = "dummy"
+
+			tc.setupMocks(testCfg)
+
+			var err error
+			switch tc.functionToTest {
+			case "current":
+				_, err = testCfg.apiConfig.requestCurrentWeather(location)
+			case "daily":
+				// We need a different handler for daily/hourly to ensure parsers don't fail
+				dailyHandler := createWeatherAPIHandler(t, "daily_forecast")
+				dailyServer := setupMockServer(dailyHandler)
+				testCfg.apiConfig.gmpWeatherURL = dailyServer.URL + "/gmp"
+				testCfg.apiConfig.owmWeatherURL = dailyServer.URL + "/owm"
+				testCfg.apiConfig.ometeoWeatherURL = dailyServer.URL + "/ometeo"
+				_, err = testCfg.apiConfig.requestDailyForecast(location)
+				dailyServer.Close()
+			case "hourly":
+				hourlyHandler := createWeatherAPIHandler(t, "hourly_forecast")
+				hourlyServer := setupMockServer(hourlyHandler)
+				testCfg.apiConfig.gmpWeatherURL = hourlyServer.URL + "/gmp"
+				testCfg.apiConfig.owmWeatherURL = hourlyServer.URL + "/owm"
+				testCfg.apiConfig.ometeoWeatherURL = hourlyServer.URL + "/ometeo"
+				_, err = testCfg.apiConfig.requestHourlyForecast(location)
+				hourlyServer.Close()
+			default:
+				t.Fatalf("unknown function to test: %s", tc.functionToTest)
+			}
+
+			tc.check(t, err)
 		})
 	}
 }
