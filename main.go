@@ -20,6 +20,7 @@ import (
 
 // frontendFS embeds the compiled frontend assets into the Go binary.
 // This allows the application to be deployed as a single, self-contained executable.
+//
 //go:embed all:frontend/dist
 var frontendFS embed.FS
 

@@ -3,11 +3,14 @@ package main
 import (
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // This file contains the HTTP middleware functions used by the application.
 // Middleware are handlers that wrap other handlers to provide cross-cutting
 // functionality like logging, metrics, and CORS.
+
+// --- Server-Side Middleware ---
 
 // responseWriter is a wrapper around http.ResponseWriter that allows us to capture
 // the HTTP status code written to the response. This is essential for metrics,
@@ -47,4 +50,25 @@ func corsMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		next.ServeHTTP(w, r)
 	})
+}
+
+// --- Client-Side Middleware (RoundTripper) ---
+
+// metricsTransport is a custom http.RoundTripper that wraps another RoundTripper
+// to record the duration of outgoing HTTP requests as a Prometheus metric.
+type metricsTransport struct {
+	wrapped http.RoundTripper
+}
+
+// RoundTrip executes a single HTTP transaction, wrapping the call to the nested
+// RoundTripper to measure the request's duration.
+func (t *metricsTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	start := time.Now()
+	resp, err := t.wrapped.RoundTrip(req)
+	duration := time.Since(start).Seconds()
+
+	// Record the duration metric, using the request's host as a label.
+	externalRequestDuration.WithLabelValues(req.URL.Host).Observe(duration)
+
+	return resp, err
 }
