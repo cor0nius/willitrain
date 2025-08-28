@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -14,6 +15,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
+
+func setupMockServer(handler http.HandlerFunc) *httptest.Server {
+	return httptest.NewServer(handler)
+}
 
 // errorTransport is a custom http.RoundTripper that always returns an error.
 type errorTransport struct {
@@ -80,7 +85,7 @@ type mockQuerier struct {
 	t *testing.T
 
 	// Scheduler test fields
-	mu                sync.Mutex
+	mu                            sync.Mutex
 	createCurrentWeatherCalls     int
 	createDailyForecastCalls      int
 	createHourlyForecastCalls     int

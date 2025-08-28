@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,6 +17,28 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
+
+// createWeatherAPIHandler is a helper function that returns a handler for the mock weather API server.
+// It serves different test data files based on the provided file prefix.
+func createWeatherAPIHandler(t *testing.T, filePrefix string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var filePath string
+		if strings.Contains(r.URL.Path, "gmp") {
+			filePath = fmt.Sprintf("testdata/%s_gmp.json", filePrefix)
+		} else if strings.Contains(r.URL.Path, "owm") {
+			filePath = fmt.Sprintf("testdata/%s_owm.json", filePrefix)
+		} else {
+			filePath = fmt.Sprintf("testdata/%s_ometeo.json", filePrefix)
+		}
+
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			t.Fatalf("Failed to read test data %s: %v", filePath, err)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
+	}
+}
 
 // --- Tests ---
 
@@ -268,19 +291,8 @@ func TestGetCachedOrFetchCurrentWeather(t *testing.T) {
 		},
 	}
 
-	// --- Mock API Server ---
-	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var data []byte
-		if strings.Contains(r.URL.Path, "gmp") {
-			data, _ = os.ReadFile("testdata/current_weather_gmp.json")
-		} else if strings.Contains(r.URL.Path, "owm") {
-			data, _ = os.ReadFile("testdata/current_weather_owm.json")
-		} else {
-			data, _ = os.ReadFile("testdata/current_weather_ometeo.json")
-		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(data)
-	}))
+	handler := createWeatherAPIHandler(t, "current_weather")
+	mockServer := setupMockServer(handler)
 	defer mockServer.Close()
 
 	for _, tc := range testCases {
@@ -382,18 +394,8 @@ func TestGetCachedOrFetchDailyForecast(t *testing.T) {
 		},
 	}
 
-	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var data []byte
-		if strings.Contains(r.URL.Path, "gmp") {
-			data, _ = os.ReadFile("testdata/daily_forecast_gmp.json")
-		} else if strings.Contains(r.URL.Path, "owm") {
-			data, _ = os.ReadFile("testdata/daily_forecast_owm.json")
-		} else {
-			data, _ = os.ReadFile("testdata/daily_forecast_ometeo.json")
-		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(data)
-	}))
+	handler := createWeatherAPIHandler(t, "daily_forecast")
+	mockServer := setupMockServer(handler)
 	defer mockServer.Close()
 
 	for _, tc := range testCases {
@@ -492,18 +494,8 @@ func TestGetCachedOrFetchHourlyForecast(t *testing.T) {
 		},
 	}
 
-	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var data []byte
-		if strings.Contains(r.URL.Path, "gmp") {
-			data, _ = os.ReadFile("testdata/hourly_forecast_gmp.json")
-		} else if strings.Contains(r.URL.Path, "owm") {
-			data, _ = os.ReadFile("testdata/hourly_forecast_owm.json")
-		} else {
-			data, _ = os.ReadFile("testdata/hourly_forecast_ometeo.json")
-		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(data)
-	}))
+	handler := createWeatherAPIHandler(t, "hourly_forecast")
+	mockServer := setupMockServer(handler)
 	defer mockServer.Close()
 
 	for _, tc := range testCases {
