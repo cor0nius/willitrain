@@ -3,13 +3,13 @@
 // and triggered periodically by a scheduler (e.g., Cloud Scheduler).
 //
 // The scraper performs the following steps:
-// 1. Receives an HTTP request from the scheduler.
-// 2. Fetches Prometheus metrics from the main application's /metrics endpoint.
-// 3. Parses the text-based Prometheus exposition format, handling counters, gauges,
-//    and histograms.
-// 4. Converts the parsed metrics into the format required by Google Cloud's
-//    Managed Service for Prometheus.
-// 5. Ingests the converted metrics into Google Cloud Monitoring.
+//  1. Receives an HTTP request from the scheduler.
+//  2. Fetches Prometheus metrics from the main application's /metrics endpoint.
+//  3. Parses the text-based Prometheus exposition format, handling counters, gauges,
+//     and histograms.
+//  4. Converts the parsed metrics into the format required by Google Cloud's
+//     Managed Service for Prometheus.
+//  5. Ingests the converted metrics into Google Cloud Monitoring.
 //
 // This approach decouples metrics collection from the main application, ensuring
 // that scraping is reliable and independently managed.
@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"time"
@@ -47,11 +48,21 @@ func main() {
 	}
 	logger.Info("starting server", "port", port)
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		scrapeHandler(w, r, logger)
 	})
 
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	server := &http.Server{
+		Addr:              ":" + port,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       20 * time.Second,
+		WriteTimeout:      20 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
+	if err := server.ListenAndServe(); err != nil {
 		logger.Error("failed to start server", "error", err)
 		os.Exit(1)
 	}
@@ -149,7 +160,7 @@ func fetchAndConvertToTimeSeries(ctx context.Context, url string, logger *slog.L
 			case dto.MetricType_UNTYPED:
 				point = createPoint(now, m.GetUntyped().GetValue())
 			case dto.MetricType_HISTOGRAM:
-				point = createDistributionPoint(now, m.GetHistogram())
+				point = createDistributionPoint(now, m.GetHistogram(), logger)
 			default:
 				logger.Warn("skipping metric with unhandled type", "metric", name, "type", mf.GetType())
 				continue
@@ -179,7 +190,7 @@ func createPoint(timestamp *timestamppb.Timestamp, value float64) *monitoringpb.
 
 // createDistributionPoint creates a monitoring TimeSeries point for a histogram.
 // It converts a Prometheus histogram DTO into a Google Cloud Monitoring Distribution value.
-func createDistributionPoint(timestamp *timestamppb.Timestamp, h *dto.Histogram) *monitoringpb.Point {
+func createDistributionPoint(timestamp *timestamppb.Timestamp, h *dto.Histogram, logger *slog.Logger) *monitoringpb.Point {
 	promBuckets := h.GetBucket()
 	bounds := make([]float64, len(promBuckets)-1)
 	bucketCounts := make([]int64, len(promBuckets))
@@ -191,12 +202,27 @@ func createDistributionPoint(timestamp *timestamppb.Timestamp, h *dto.Histogram)
 			bounds[i] = b.GetUpperBound()
 		}
 		cumulativeCount := b.GetCumulativeCount()
-		bucketCounts[i] = int64(cumulativeCount - lastCumulativeCount)
+		countInBucket := cumulativeCount - lastCumulativeCount
+		if countInBucket > math.MaxInt64 {
+			logger.Warn("histogram bucket count exceeds MaxInt64, capping value", "bucket", i, "value", countInBucket)
+			bucketCounts[i] = math.MaxInt64
+		} else {
+			bucketCounts[i] = int64(countInBucket)
+		}
 		lastCumulativeCount = cumulativeCount
 	}
 
+	sampleCount := h.GetSampleCount()
+	var finalSampleCount int64
+	if sampleCount > math.MaxInt64 {
+		logger.Warn("histogram sample count exceeds MaxInt64, capping value", "value", sampleCount)
+		finalSampleCount = math.MaxInt64
+	} else {
+		finalSampleCount = int64(sampleCount)
+	}
+
 	dist := &distribution.Distribution{
-		Count: int64(h.GetSampleCount()),
+		Count: finalSampleCount,
 		Mean:  h.GetSampleSum() / float64(h.GetSampleCount()),
 		BucketOptions: &distribution.Distribution_BucketOptions{
 			Options: &distribution.Distribution_BucketOptions_ExplicitBuckets{
