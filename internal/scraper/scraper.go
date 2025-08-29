@@ -30,6 +30,7 @@ import (
 	"github.com/prometheus/common/expfmt"
 	"google.golang.org/genproto/googleapis/api/distribution"
 	"google.golang.org/genproto/googleapis/api/metric"
+	"google.golang.org/genproto/googleapis/api/monitoredres"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -95,7 +96,7 @@ func scrapeAndIngest(ctx context.Context, logger *slog.Logger) error {
 	}
 
 	// Fetch metrics and convert them to the Google Cloud Monitoring format.
-	timeSeries, err := fetchAndConvertToTimeSeries(ctx, metricsURL, logger)
+	timeSeries, err := fetchAndConvertToTimeSeries(ctx, projectID, metricsURL, logger)
 	if err != nil {
 		return fmt.Errorf("failed to fetch and convert metrics: %w", err)
 	}
@@ -116,7 +117,7 @@ func scrapeAndIngest(ctx context.Context, logger *slog.Logger) error {
 // fetchAndConvertToTimeSeries scrapes a Prometheus endpoint, parses the response,
 // and converts the metrics into Google Cloud Monitoring's TimeSeries format.
 // It handles Counter, Gauge, Untyped, and Histogram metric types.
-func fetchAndConvertToTimeSeries(ctx context.Context, url string, logger *slog.Logger) ([]*monitoringpb.TimeSeries, error) {
+func fetchAndConvertToTimeSeries(ctx context.Context, projectID, url string, logger *slog.Logger) ([]*monitoringpb.TimeSeries, error) {
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 	resp, err := httpClient.Get(url)
 	if err != nil {
@@ -134,6 +135,18 @@ func fetchAndConvertToTimeSeries(ctx context.Context, url string, logger *slog.L
 		return nil, fmt.Errorf("failed to parse prometheus metrics: %w", err)
 	}
 
+	resource := &monitoredres.MonitoredResource{
+		Type: "prometheus_target",
+		Labels: map[string]string{
+			"project_id": projectID,
+			"location":   "europe-west1",
+			"cluster":    "__gce__",
+			"namespace":  "willitrain",
+			"job":        "willitrain",
+			"instance":   url,
+		},
+	}
+
 	var timeSeriesList []*monitoringpb.TimeSeries
 	now := timestamppb.New(time.Now())
 
@@ -149,6 +162,7 @@ func fetchAndConvertToTimeSeries(ctx context.Context, url string, logger *slog.L
 					Type:   "prometheus.googleapis.com/" + name,
 					Labels: labels,
 				},
+				Resource: resource,
 			}
 
 			var point *monitoringpb.Point
@@ -161,6 +175,9 @@ func fetchAndConvertToTimeSeries(ctx context.Context, url string, logger *slog.L
 				point = createPoint(now, m.GetUntyped().GetValue())
 			case dto.MetricType_HISTOGRAM:
 				point = createDistributionPoint(now, m.GetHistogram(), logger)
+			case dto.MetricType_SUMMARY:
+				logger.Debug("skipping metric with unhandled summary type", "metric", name)
+				continue
 			default:
 				logger.Warn("skipping metric with unhandled type", "metric", name, "type", mf.GetType())
 				continue
