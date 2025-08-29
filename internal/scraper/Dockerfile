@@ -16,7 +16,7 @@ COPY . .
 # Build the scraper application.
 # -o /scraper specifies the output binary name.
 # CGO_ENABLED=0 and GOOS=linux ensure a statically linked binary for a linux environment.
-RUN CGO_ENABLED=0 GOOS=linux go build -o /scraper .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /scraper /internal/scraper .
 
 # --- Final Stage ---
 # This stage creates the final, small, and secure image.
