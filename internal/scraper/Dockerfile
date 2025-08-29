@@ -7,11 +7,11 @@ WORKDIR /app
 
 # Copy go.mod and go.sum files to download dependencies first.
 # This leverages Docker's layer caching.
-COPY ../../go.mod ../../go.sum ./
+COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy the rest of the application source code.
-COPY ../../ .
+COPY . .
 
 # Build the scraper application.
 # -o /scraper specifies the output binary name.
