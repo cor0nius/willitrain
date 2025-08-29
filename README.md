@@ -129,6 +129,18 @@ The backend exposes the following REST API endpoints:
 curl "http://localhost:8080/api/currentweather?location=London"
 ```
 
+## Monitoring
+
+The application is designed for robust monitoring in a cloud environment. This is handled by a separate, dedicated scraper service located in the `internal/scraper` directory.
+
+### Scraper Service
+
+-   **Purpose:** The scraper is a small, standalone Go service whose sole responsibility is to periodically fetch metrics from the main application's `/metrics` endpoint.
+-   **Architecture:** It is designed to be deployed as a separate, serverless container on Google Cloud Run. It is a cloud-only utility and is **not** part of the local `docker-compose` setup.
+-   **Execution:** The scraper is triggered on a schedule by Google Cloud Scheduler.
+-   **Functionality:** After scraping the metrics, it converts them into the appropriate format and ingests them into Google Cloud's Managed Service for Prometheus, where they can be queried and visualized (e.g., with Grafana).
+-   **CI/CD:** The scraper has its own independent deployment pipeline defined in `.github/workflows/scraper-cd.yaml`, which is triggered only when changes are made to the scraper's code.
+
 ## Running Tests
 
 To run the test suite for the Go backend, execute the following command from the root directory:

@@ -3,6 +3,9 @@ name: Continuous Deployment
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - 'internal/scraper/**'
+      - '.github/workflows/scraper-cd.yaml'
 
 jobs:
   deploy:
