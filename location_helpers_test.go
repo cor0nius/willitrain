@@ -6,6 +6,8 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"net/http"
+	"net/http/httptest"
 
 	"github.com/cor0nius/willitrain/internal/database"
 	"github.com/google/uuid"
@@ -15,21 +17,7 @@ import (
 
 func TestGetOrCreateLocation(t *testing.T) {
 	ctx := context.Background()
-	expectedLocation := Location{
-		LocationID:  uuid.New(),
-		CityName:    "Wroclaw",
-		Latitude:    51.1,
-		Longitude:   17.03,
-		CountryCode: "PL",
-	}
-	dbLocation := database.Location{
-		ID:          expectedLocation.LocationID,
-		CityName:    expectedLocation.CityName,
-		Latitude:    expectedLocation.Latitude,
-		Longitude:   expectedLocation.Longitude,
-		CountryCode: expectedLocation.CountryCode,
-	}
-
+	
 	testCases := []struct {
 		name       string
 		cityName   string
@@ -44,15 +32,15 @@ func TestGetOrCreateLocation(t *testing.T) {
 					if alias != "wroclaw" {
 						t.Errorf("expected alias 'wroclaw', got '%s'", alias)
 					}
-					return dbLocation, nil
+					return MockDBLocation, nil
 				}
 			},
 			check: func(t *testing.T, loc Location, err error) {
 				if err != nil {
 					t.Fatalf("expected no error, got %v", err)
 				}
-				if !reflect.DeepEqual(loc, expectedLocation) {
-					t.Errorf("unexpected location. got %+v, want %+v", loc, expectedLocation)
+				if !reflect.DeepEqual(loc, MockLocation) {
+					t.Errorf("unexpected location. got %+v, want %+v", loc, MockLocation)
 				}
 			},
 		},
@@ -64,10 +52,10 @@ func TestGetOrCreateLocation(t *testing.T) {
 					return database.Location{}, sql.ErrNoRows
 				}
 				cfg.mockGeo.GeocodeFunc = func(cityName string) (Location, error) {
-					return expectedLocation, nil
+					return MockLocation, nil
 				}
 				cfg.mockDB.GetLocationByNameFunc = func(ctx context.Context, cityName string) (database.Location, error) {
-					return dbLocation, nil
+					return MockDBLocation, nil
 				}
 				cfg.mockDB.CreateLocationAliasFunc = func(ctx context.Context, arg database.CreateLocationAliasParams) (database.LocationAlias, error) {
 					return database.LocationAlias{}, nil
@@ -77,8 +65,8 @@ func TestGetOrCreateLocation(t *testing.T) {
 				if err != nil {
 					t.Fatalf("expected no error, got %v", err)
 				}
-				if !reflect.DeepEqual(loc, expectedLocation) {
-					t.Errorf("unexpected location. got %+v, want %+v", loc, expectedLocation)
+				if !reflect.DeepEqual(loc, MockLocation) {
+					t.Errorf("unexpected location. got %+v, want %+v", loc, MockLocation)
 				}
 			},
 		},
@@ -152,6 +140,78 @@ func TestGetOrCreateLocation(t *testing.T) {
 			tc.setupMocks(testCfg)
 
 			loc, err := testCfg.apiConfig.getOrCreateLocation(ctx, tc.cityName)
+			tc.check(t, loc, err)
+		})
+	}
+}
+
+func TestGetLocationFromRequest(t *testing.T) {
+	testCases := []struct {
+		name       string
+		req        *http.Request
+		setupMocks func(cfg *testAPIConfig)
+		check      func(t *testing.T, loc Location, err error)
+	}{
+		{
+			name: "Success: With City",
+			req:  httptest.NewRequest("GET", "/?city=wroclaw", nil),
+			setupMocks: func(cfg *testAPIConfig) {
+				cfg.mockDB.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
+					if alias != "wroclaw" {
+						t.Errorf("expected alias 'wroclaw', got '%s'", alias)
+					}
+					return MockDBLocation, nil
+				}
+			},
+			check: func(t *testing.T, loc Location, err error) {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if !reflect.DeepEqual(loc, MockLocation) {
+					t.Errorf("unexpected location. got %+v, want %+v", loc, MockLocation)
+				}
+			},
+		},
+		{
+			name: "Success: With Lat/Lon",
+			req:  httptest.NewRequest("GET", "/?lat=51.1&lon=17.03", nil),
+			setupMocks: func(cfg *testAPIConfig) {
+				cfg.mockGeo.ReverseGeocodeFunc = func(lat, lon float64) (Location, error) {
+					return MockLocation, nil
+				}
+				cfg.mockDB.GetLocationByAliasFunc = func(ctx context.Context, alias string) (database.Location, error) {
+					return MockDBLocation, nil
+				}
+			},
+			check: func(t *testing.T, loc Location, err error) {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if !reflect.DeepEqual(loc, MockLocation) {
+					t.Errorf("unexpected location. got %+v, want %+v", loc, MockLocation)
+				}
+			},
+		},
+		{
+			name: "Failure: Missing Parameters",
+			req:  httptest.NewRequest("GET", "/", nil),
+			setupMocks: func(cfg *testAPIConfig) {
+				// No mocks needed
+			},
+			check: func(t *testing.T, loc Location, err error) {
+				if err == nil {
+					t.Fatal("expected an error, but got nil")
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testCfg := newTestAPIConfig(t)
+			tc.setupMocks(testCfg)
+
+			loc, err := testCfg.apiConfig.getLocationFromRequest(tc.req)
 			tc.check(t, loc, err)
 		})
 	}
