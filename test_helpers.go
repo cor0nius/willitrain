@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"io"
 	"log/slog"
@@ -27,6 +28,109 @@ type errorTransport struct {
 
 func (t *errorTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return nil, t.err
+}
+
+// --- Common Test Data ---
+
+var MockLocation = Location{
+	LocationID:  uuid.New(),
+	CityName:    "Wroclaw",
+	Latitude:    51.1,
+	Longitude:   17.03,
+	CountryCode: "PL",
+}
+
+var MockDBLocation = database.Location{
+	ID:          MockLocation.LocationID,
+	CityName:    MockLocation.CityName,
+	Latitude:    MockLocation.Latitude,
+	Longitude:   MockLocation.Longitude,
+	CountryCode: MockLocation.CountryCode,
+}
+
+var MockDBCurrentWeather = database.CurrentWeather{
+	SourceApi: "test",
+	UpdatedAt: time.Now().UTC(),
+	TemperatureC: sql.NullFloat64{
+		Float64: 10.0,
+		Valid:   true,
+	},
+	Humidity: sql.NullInt32{
+		Int32: 50,
+		Valid: true,
+	},
+	WindSpeedKmh: sql.NullFloat64{
+		Float64: 5.0,
+		Valid:   true,
+	},
+	PrecipitationMm: sql.NullFloat64{
+		Float64: 0.0,
+		Valid:   true,
+	},
+	ConditionText: sql.NullString{
+		String: "sunny",
+		Valid:  true,
+	},
+}
+
+var MockDBDailyForecast = database.DailyForecast{
+	SourceApi:    "test",
+	ForecastDate: time.Date(2035, 1, 1, 0, 0, 0, 0, time.UTC),
+	UpdatedAt: time.Date(2035, 1, 1, 0, 0, 0, 0, time.UTC),
+	MinTempC: sql.NullFloat64{
+		Float64: 5.0,
+		Valid:   true,
+	},
+	MaxTempC: sql.NullFloat64{
+		Float64: 15.0,
+		Valid:   true,
+	},
+	PrecipitationMm: sql.NullFloat64{
+		Float64: 1.0,
+		Valid:   true,
+	},
+	PrecipitationChancePercent: sql.NullInt32{
+		Int32: 50,
+		Valid: true,
+	},
+	WindSpeedKmh: sql.NullFloat64{
+		Float64: 10.0,
+		Valid:   true,
+	},
+	Humidity: sql.NullInt32{
+		Int32: 60,
+		Valid: true,
+	},
+}
+
+var MockDBHourlyForecast = database.HourlyForecast{
+	SourceApi: "test",
+	ForecastDatetimeUtc: time.Date(2035, 1, 1, 12, 0, 0, 0, time.UTC),
+	UpdatedAt: time.Date(2035, 1, 1, 12, 0, 0, 0, time.UTC),
+	TemperatureC: sql.NullFloat64{
+		Float64: 10.0,
+		Valid:   true,
+	},
+	Humidity: sql.NullInt32{
+		Int32: 50,
+		Valid: true,
+	},
+	WindSpeedKmh: sql.NullFloat64{
+		Float64: 5.0,
+		Valid:   true,
+	},
+	PrecipitationMm: sql.NullFloat64{
+		Float64: 0.0,
+		Valid:   true,
+	},
+	PrecipitationChancePercent: sql.NullInt32{
+		Int32: 10,
+		Valid: true,
+	},
+	ConditionText: sql.NullString{
+		String: "cloudy",
+		Valid:  true,
+	},
 }
 
 // --- Mocks ---
