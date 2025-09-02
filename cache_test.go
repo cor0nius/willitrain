@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-redis/redismock/v9"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -147,4 +151,141 @@ func TestRedisCache_Flush_Error(t *testing.T) {
 	require.Error(t, err)
 	assert.EqualError(t, err, "flush error")
 	assert.NoError(t, redisMock.ExpectationsWereMet())
+}
+
+func TestConnectCache(t *testing.T) {
+	testCases := []struct {
+		name        string
+		redisURL    string
+		setupMock   func(mock redismock.ClientMock)
+		expectedErr bool
+	}{
+		{
+			name:     "Success",
+			redisURL: "redis://localhost:6379/0",
+			setupMock: func(mock redismock.ClientMock) {
+				mock.ExpectPing().SetVal("PONG")
+			},
+			expectedErr: false,
+		},
+		{
+			name:        "Failure - Error Parsing URL",
+			redisURL:    "invalid-url",
+			setupMock:   func(mock redismock.ClientMock) {},
+			expectedErr: true,
+		},
+		{
+			name:     "Failure - Error Connecting to Redis",
+			redisURL: "redis://localhost:6379/0",
+			setupMock: func(mock redismock.ClientMock) {
+				mock.ExpectPing().SetErr(errors.New("connection error"))
+			},
+			expectedErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &apiConfig{
+				redisURL: tc.redisURL,
+				logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+			}
+
+			if tc.name != "Failure - Error Parsing URL" {
+				redisClient, redisMock := redismock.NewClientMock()
+				defer redisClient.Close()
+
+				cfg.newCacheClientFunc = func(opt *redis.Options) *redis.Client {
+					return redisClient
+				}
+
+				tc.setupMock(redisMock)
+
+				defer func() {
+					assert.NoError(t, redisMock.ExpectationsWereMet())
+				}()
+			}
+
+			err := cfg.ConnectCache()
+
+			if tc.expectedErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.NotNil(t, cfg.cache)
+			}
+		})
+	}
+}
+
+func TestConnectDB(t *testing.T) {
+	testCases := []struct {
+		name        string
+		dbURL       string
+		setupMock   func(mock sqlmock.Sqlmock)
+		openDBFails bool
+		expectedErr bool
+	}{
+		{
+			name:  "Success",
+			dbURL: "postgres://user:password@localhost:5432/dbname?sslmode=disable",
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectPing().WillReturnError(nil)
+			},
+			openDBFails: false,
+			expectedErr: false,
+		},
+		{
+			name:        "Failure - sql.Open Error",
+			dbURL:       "postgres://user:password@localhost:5432/dbname?sslmode=disable",
+			setupMock:   func(mock sqlmock.Sqlmock) {},
+			openDBFails: true,
+			expectedErr: true,
+		},
+		{
+			name:  "Failure - Ping Error",
+			dbURL: "postgres://user:password@localhost:5432/dbname?sslmode=disable",
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectPing().WillReturnError(errors.New("ping error"))
+			},
+			openDBFails: false,
+			expectedErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &apiConfig{
+				dbURL:  tc.dbURL,
+				logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+			}
+
+			if tc.openDBFails {
+				cfg.newDBClientFunc = func(driverName, dataSourceName string) (*sql.DB, error) {
+					return nil, errors.New("connection error")
+				}
+			} else {
+				db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+				require.NoError(t, err)
+				defer db.Close()
+
+				cfg.newDBClientFunc = func(driverName, dataSourceName string) (*sql.DB, error) {
+					return db, nil
+				}
+				tc.setupMock(mock)
+				defer func() {
+					assert.NoError(t, mock.ExpectationsWereMet())
+				}()
+			}
+
+			err := cfg.ConnectDB()
+
+			if tc.expectedErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.NotNil(t, cfg.dbQueries)
+			}
+		})
+	}
 }

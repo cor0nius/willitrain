@@ -60,3 +60,27 @@ func (c *RedisCache) Get(ctx context.Context, key string) (string, error) {
 func (c *RedisCache) Flush(ctx context.Context) error {
 	return c.client.FlushDB(ctx).Err()
 }
+
+// ConnectCache initializes the cache connection.
+// It currently supports only Redis, but the interface allows for future extensions.
+func (cfg *apiConfig) ConnectCache() error {
+	return cfg.ConnectRedis()
+}
+
+// ConnectRedis initializes the Redis client and verifies the connection.
+// If successful, it assigns a RedisCache instance to the apiConfig's cache field.
+func (cfg *apiConfig) ConnectRedis() error {
+	opt, err := redis.ParseURL(cfg.redisURL)
+	if err != nil {
+		cfg.logger.Error("could not parse Redis URL", "error", err)
+		return err
+	}
+	redisClient := cfg.newCacheClientFunc(opt)
+	if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
+		cfg.logger.Error("could not connect to Redis", "error", err)
+		return err
+	}
+	cfg.cache = NewRedisCache(redisClient)
+	cfg.logger.Debug("connected to Redis cache")
+	return nil
+}

@@ -27,8 +27,25 @@ var frontendFS embed.FS
 func main() {
 	// Initialize the application configuration, which includes setting up
 	// the logger, database connections, and other dependencies.
-	cfg := config()
+	cfg, err := NewAPIConfig(os.Stdout)
+	if err != nil {
+		cfg.logger.Error("failed to load configuration", "error", err)
+		os.Exit(1)
+	}
 	cfg.logger.Debug("configuration loaded")
+
+	// Establish connections to the database and cache.
+	err = cfg.ConnectDB()
+	if err != nil {
+		cfg.logger.Error("couldn't connect to database", "error", err)
+		os.Exit(1)
+	}
+
+	err = cfg.ConnectCache()
+	if err != nil {
+		cfg.logger.Error("couldn't connect to cache", "error", err)
+		os.Exit(1)
+	}
 
 	// Create and start the scheduler for periodic weather data updates.
 	scheduler := NewScheduler(cfg,
