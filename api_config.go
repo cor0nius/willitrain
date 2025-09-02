@@ -17,6 +17,15 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// These are package-level variables that hold the appropriate functions.
+// This allows for mocking their behavior in tests, preventing the test
+// suite from terminating prematurely and removing the need for setting
+// up actual database and cache connections.
+var osExit = os.Exit
+var sqlOpen = sql.Open
+var redisParseURL = redis.ParseURL
+var redisNewClient = redis.NewClient
+
 // apiConfig serves as the application's dependency injection container.
 // It holds all runtime dependencies, such as database connections, external API clients,
 // and configuration values. This struct is passed as a receiver to most high-level
@@ -42,13 +51,13 @@ type apiConfig struct {
 
 // getRequiredEnv provides a safe way to read a mandatory environment variable.
 // It ensures that the application will not start without critical configuration,
-// logging a fatal error and exiting if the variable is not found. This prevents
-// runtime errors due to missing configuration.
+// logging a fatal error and exiting if the variable is not found or is empty.
+// This prevents runtime errors due to missing configuration.
 func getRequiredEnv(key string, logger *slog.Logger) string {
-	val, ok := os.LookupEnv(key)
-	if !ok {
-		logger.Error("environment variable must be set", "key", key)
-		os.Exit(1)
+	val := os.Getenv(key)
+	if val == "" {
+		logger.Error("environment variable must be set and not empty", "key", key)
+		osExit(1)
 	}
 	return val
 }
@@ -83,11 +92,12 @@ func getEnvAsInt(key string, fallback int, logger *slog.Logger) int {
 
 // config is the application's configuration hub and initialization function.
 // It orchestrates the entire setup process by:
-// 1. Loading environment variables from a .env file for local development.
-// 2. Establishing and verifying connections to the database (PostgreSQL) and cache (Redis).
-// 3. Initializing service clients for external APIs (e.g., geocoding).
-// 4. Assembling all runtime parameters and dependencies into a single, fully populated
-//    apiConfig struct.
+//  1. Loading environment variables from a .env file for local development.
+//  2. Establishing and verifying connections to the database (PostgreSQL) and cache (Redis).
+//  3. Initializing service clients for external APIs (e.g., geocoding).
+//  4. Assembling all runtime parameters and dependencies into a single, fully populated
+//     apiConfig struct.
+//
 // This function ensures the application is in a valid state before it starts serving requests.
 func config() *apiConfig {
 	if err := godotenv.Load(); err != nil {
@@ -110,27 +120,27 @@ func config() *apiConfig {
 	}
 
 	dbURL := getRequiredEnv("DB_URL", logger)
-	db, err := sql.Open("postgres", dbURL)
+	db, err := sqlOpen("postgres", dbURL)
 	if err != nil {
 		logger.Error("couldn't prepare connection to database", "error", err)
-		os.Exit(1)
+		osExit(1)
 	}
 	if err := db.Ping(); err != nil {
 		logger.Error("couldn't connect to database", "error", err)
-		os.Exit(1)
+		osExit(1)
 	}
 	dbQueries := database.New(db)
 
 	redisURL := getRequiredEnv("REDIS_URL", logger)
-	opt, err := redis.ParseURL(redisURL)
+	opt, err := redisParseURL(redisURL)
 	if err != nil {
 		logger.Error("could not parse Redis URL", "error", err)
-		os.Exit(1)
+		osExit(1)
 	}
-	redisClient := redis.NewClient(opt)
+	redisClient := redisNewClient(opt)
 	if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
 		logger.Error("could not connect to Redis", "error", err)
-		os.Exit(1)
+		osExit(1)
 	}
 	cache := NewRedisCache(redisClient)
 

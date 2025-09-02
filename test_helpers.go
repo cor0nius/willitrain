@@ -76,7 +76,7 @@ var MockDBCurrentWeather = database.CurrentWeather{
 var MockDBDailyForecast = database.DailyForecast{
 	SourceApi:    "test",
 	ForecastDate: time.Date(2035, 1, 1, 0, 0, 0, 0, time.UTC),
-	UpdatedAt: time.Date(2035, 1, 1, 0, 0, 0, 0, time.UTC),
+	UpdatedAt:    time.Date(2035, 1, 1, 0, 0, 0, 0, time.UTC),
 	MinTempC: sql.NullFloat64{
 		Float64: 5.0,
 		Valid:   true,
@@ -104,9 +104,9 @@ var MockDBDailyForecast = database.DailyForecast{
 }
 
 var MockDBHourlyForecast = database.HourlyForecast{
-	SourceApi: "test",
+	SourceApi:           "test",
 	ForecastDatetimeUtc: time.Date(2035, 1, 1, 12, 0, 0, 0, time.UTC),
-	UpdatedAt: time.Date(2035, 1, 1, 12, 0, 0, 0, time.UTC),
+	UpdatedAt:           time.Date(2035, 1, 1, 12, 0, 0, 0, time.UTC),
 	TemperatureC: sql.NullFloat64{
 		Float64: 10.0,
 		Valid:   true,
