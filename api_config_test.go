@@ -40,11 +40,110 @@ func TestConfig(t *testing.T) {
 			expectExit: true,
 		},
 		{
+			name: "Failure - DB Ping Error",
+			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
+				dbMock.ExpectPing().WillReturnError(sql.ErrConnDone)
+			},
+			expectExit: true,
+		},
+		{
 			name: "Failure - Missing REDIS_URL",
 			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
 				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
 				dbMock.ExpectPing()
 				t.Setenv("REDIS_URL", "")
+			},
+			expectExit: true,
+		},
+		{
+			name: "Failure - Redis Ping Error",
+			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
+				dbMock.ExpectPing()
+				t.Setenv("REDIS_URL", "redis://localhost:6379")
+				redisMock.ExpectPing().SetErr(redis.Nil)
+			},
+			expectExit: true,
+		},
+		{
+			name: "Failure - Missing GMP_KEY",
+			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
+				dbMock.ExpectPing()
+				t.Setenv("REDIS_URL", "redis://localhost:6379")
+				redisMock.ExpectPing().SetVal("PONG")
+				t.Setenv("GMP_KEY", "")
+			},
+			expectExit: true,
+		},
+		{
+			name: "Failure - Missing GMP_GEOCODE_URL",
+			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
+				dbMock.ExpectPing()
+				t.Setenv("REDIS_URL", "redis://localhost:6379")
+				redisMock.ExpectPing().SetVal("PONG")
+				t.Setenv("GMP_KEY", "test_gmp_key")
+				t.Setenv("GMP_GEOCODE_URL", "")
+			},
+			expectExit: true,
+		},
+		{
+			name: "Failure - Missing GMP_WEATHER_URL",
+			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
+				dbMock.ExpectPing()
+				t.Setenv("REDIS_URL", "redis://localhost:6379")
+				redisMock.ExpectPing().SetVal("PONG")
+				t.Setenv("GMP_KEY", "test_gmp_key")
+				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
+				t.Setenv("GMP_WEATHER_URL", "")
+			},
+			expectExit: true,
+		},
+		{
+			name: "Failure - Missing OWM_WEATHER_URL",
+			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
+				dbMock.ExpectPing()
+				t.Setenv("REDIS_URL", "redis://localhost:6379")
+				redisMock.ExpectPing().SetVal("PONG")
+				t.Setenv("GMP_KEY", "test_gmp_key")
+				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
+				t.Setenv("GMP_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OWM_WEATHER_URL", "")
+			},
+			expectExit: true,
+		},
+		{
+			name: "Failure - Missing OMETEO_WEATHER_URL",
+			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
+				dbMock.ExpectPing()
+				t.Setenv("REDIS_URL", "redis://localhost:6379")
+				redisMock.ExpectPing().SetVal("PONG")
+				t.Setenv("GMP_KEY", "test_gmp_key")
+				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
+				t.Setenv("GMP_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OWM_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OMETEO_WEATHER_URL", "")
+			},
+			expectExit: true,
+		},
+		{
+			name: "Failure - Missing OWM_KEY",
+			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
+				dbMock.ExpectPing()
+				t.Setenv("REDIS_URL", "redis://localhost:6379")
+				redisMock.ExpectPing().SetVal("PONG")
+				t.Setenv("GMP_KEY", "test_gmp_key")
+				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
+				t.Setenv("GMP_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OWM_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OMETEO_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OWM_KEY", "")
 			},
 			expectExit: true,
 		},
