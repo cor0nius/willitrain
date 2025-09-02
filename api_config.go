@@ -1,8 +1,9 @@
 package main
 
 import (
-	"context"
 	"database/sql"
+	"errors"
+	"io"
 	"log"
 	"log/slog"
 	"net/http"
@@ -10,21 +11,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cor0nius/willitrain/internal/database"
-	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 )
-
-// These are package-level variables that hold the appropriate functions.
-// This allows for mocking their behavior in tests, preventing the test
-// suite from terminating prematurely and removing the need for setting
-// up actual database and cache connections.
-var osExit = os.Exit
-var sqlOpen = sql.Open
-var redisParseURL = redis.ParseURL
-var redisNewClient = redis.NewClient
 
 // apiConfig serves as the application's dependency injection container.
 // It holds all runtime dependencies, such as database connections, external API clients,
@@ -32,8 +22,8 @@ var redisNewClient = redis.NewClient
 // functions, providing them with the necessary context to operate without relying on
 // global state. This design improves testability and clarifies dependencies.
 type apiConfig struct {
-	dbQueries                dbQuerier
-	cache                    Cache
+	dbURL					 string
+	redisURL				 string
 	geocoder                 GeocodingService
 	gmpWeatherURL            string
 	owmWeatherURL            string
@@ -47,26 +37,31 @@ type apiConfig struct {
 	port                     string
 	devMode                  bool
 	logger                   *slog.Logger
+	newDBClientFunc          func(driverName, dataSourceName string) (*sql.DB, error)
+	dbQueries                dbQuerier
+	newCacheClientFunc		 	 func(opt *redis.Options) *redis.Client
+	cache                    Cache
 }
 
 // getRequiredEnv provides a safe way to read a mandatory environment variable.
 // It ensures that the application will not start without critical configuration,
 // logging a fatal error and exiting if the variable is not found or is empty.
 // This prevents runtime errors due to missing configuration.
-func getRequiredEnv(key string, logger *slog.Logger) string {
+func getRequiredEnv(key string, logger *slog.Logger) (string, error) {
 	val := os.Getenv(key)
 	if val == "" {
 		logger.Error("environment variable must be set and not empty", "key", key)
-		osExit(1)
+		return "", errors.New("missing required environment variable: " + key)
 	}
-	return val
+	return val, nil
 }
 
 // getEnv provides a safe way to read an optional environment variable with a fallback.
 // This is used for non-critical configuration where a default value is acceptable,
 // making the application more flexible and easier to configure.
 func getEnv(key, fallback string, logger *slog.Logger) string {
-	if val, ok := os.LookupEnv(key); ok {
+	val := os.Getenv(key)
+	if val != "" {
 		return val
 	}
 	logger.Info("environment variable not set, using fallback", "key", key, "fallback", fallback)
@@ -77,11 +72,7 @@ func getEnv(key, fallback string, logger *slog.Logger) string {
 // It handles parsing and provides a fallback value if the variable is not set or is
 // invalid, preventing configuration errors from crashing the application.
 func getEnvAsInt(key string, fallback int, logger *slog.Logger) int {
-	valStr, ok := os.LookupEnv(key)
-	if !ok {
-		logger.Info("environment variable not set, using fallback", "key", key, "fallback", fallback)
-		return fallback
-	}
+	valStr := getEnv(key, strconv.Itoa(fallback), logger)
 	val, err := strconv.Atoi(valStr)
 	if err != nil {
 		logger.Warn("invalid integer value for environment variable, using fallback", "key", key, "value", valStr, "error", err)
@@ -99,7 +90,7 @@ func getEnvAsInt(key string, fallback int, logger *slog.Logger) int {
 //     apiConfig struct.
 //
 // This function ensures the application is in a valid state before it starts serving requests.
-func config() *apiConfig {
+func NewAPIConfig(output io.Writer) (*apiConfig, error) {
 	if err := godotenv.Load(); err != nil {
 		log.Println("could not load .env file, proceeding with environment variables")
 	}
@@ -112,37 +103,52 @@ func config() *apiConfig {
 
 	var logger *slog.Logger
 	if devMode {
-		logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		logger = slog.New(slog.NewTextHandler(output, &slog.HandlerOptions{
 			Level: slog.LevelDebug,
 		}))
 	} else {
-		logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		logger = slog.New(slog.NewJSONHandler(output, nil))
 	}
 
-	dbURL := getRequiredEnv("DB_URL", logger)
-	db, err := sqlOpen("postgres", dbURL)
+	dbURL, err := getRequiredEnv("DB_URL", logger)
 	if err != nil {
-		logger.Error("couldn't prepare connection to database", "error", err)
-		osExit(1)
+		return nil, err
 	}
-	if err := db.Ping(); err != nil {
-		logger.Error("couldn't connect to database", "error", err)
-		osExit(1)
-	}
-	dbQueries := database.New(db)
 
-	redisURL := getRequiredEnv("REDIS_URL", logger)
-	opt, err := redisParseURL(redisURL)
+	redisURL, err := getRequiredEnv("REDIS_URL", logger)
 	if err != nil {
-		logger.Error("could not parse Redis URL", "error", err)
-		osExit(1)
+		return nil, err
 	}
-	redisClient := redisNewClient(opt)
-	if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
-		logger.Error("could not connect to Redis", "error", err)
-		osExit(1)
+
+	gmpKey, err := getRequiredEnv("GMP_KEY", logger)
+	if err != nil {
+		return nil, err
 	}
-	cache := NewRedisCache(redisClient)
+
+	gmpGeocodeURL, err := getRequiredEnv("GMP_GEOCODE_URL", logger)
+	if err != nil {
+		return nil, err
+	}
+
+	gmpWeatherURL, err := getRequiredEnv("GMP_WEATHER_URL", logger)
+	if err != nil {
+		return nil, err
+	}
+
+	owmWeatherURL, err := getRequiredEnv("OWM_WEATHER_URL", logger)
+	if err != nil {
+		return nil, err
+	}
+
+	ometeoWeatherURL, err := getRequiredEnv("OMETEO_WEATHER_URL", logger)
+	if err != nil {
+		return nil, err
+	}
+
+	owmKey, err := getRequiredEnv("OWM_KEY", logger)
+	if err != nil {
+		return nil, err
+	}
 
 	currentIntervalMin := getEnvAsInt("CURRENT_INTERVAL_MIN", 10, logger)
 	hourlyIntervalMin := getEnvAsInt("HOURLY_INTERVAL_MIN", 60, logger)
@@ -155,17 +161,17 @@ func config() *apiConfig {
 		},
 	}
 
-	geocoder := NewGmpGeocodingService(getRequiredEnv("GMP_KEY", logger), getRequiredEnv("GMP_GEOCODE_URL", logger), httpClient)
+	geocoder := NewGmpGeocodingService(gmpKey, gmpGeocodeURL, httpClient)
 
 	cfg := apiConfig{
-		dbQueries:                dbQueries,
-		cache:                    cache,
+		dbURL:                    dbURL,
+		redisURL:				  redisURL,
 		geocoder:                 geocoder,
-		gmpWeatherURL:            getRequiredEnv("GMP_WEATHER_URL", logger),
-		owmWeatherURL:            getRequiredEnv("OWM_WEATHER_URL", logger),
-		ometeoWeatherURL:         getRequiredEnv("OMETEO_WEATHER_URL", logger),
-		gmpKey:                   getRequiredEnv("GMP_KEY", logger),
-		owmKey:                   getRequiredEnv("OWM_KEY", logger),
+		gmpWeatherURL:            gmpWeatherURL,
+		owmWeatherURL:            owmWeatherURL,
+		ometeoWeatherURL:         ometeoWeatherURL,
+		gmpKey:                   gmpKey,
+		owmKey:                   owmKey,
 		httpClient:               httpClient,
 		schedulerCurrentInterval: time.Duration(currentIntervalMin) * time.Minute,
 		schedulerHourlyInterval:  time.Duration(hourlyIntervalMin) * time.Minute,
@@ -173,42 +179,9 @@ func config() *apiConfig {
 		port:                     getEnv("PORT", "8080", logger),
 		devMode:                  devMode,
 		logger:                   logger,
+		newDBClientFunc:          sql.Open,
+		newCacheClientFunc:		  redis.NewClient,
 	}
 
-	return &cfg
-}
-
-// dbQuerier is an interface that abstracts all database operations.
-// It is implemented by the sqlc-generated Queries struct, allowing for dependency
-// injection and easy mocking in tests. This decouples business logic from the data layer.
-type dbQuerier interface {
-	CreateCurrentWeather(ctx context.Context, arg database.CreateCurrentWeatherParams) (database.CurrentWeather, error)
-	CreateDailyForecast(ctx context.Context, arg database.CreateDailyForecastParams) (database.DailyForecast, error)
-	CreateHourlyForecast(ctx context.Context, arg database.CreateHourlyForecastParams) (database.HourlyForecast, error)
-	CreateLocation(ctx context.Context, arg database.CreateLocationParams) (database.Location, error)
-	CreateLocationAlias(ctx context.Context, arg database.CreateLocationAliasParams) (database.LocationAlias, error)
-	DeleteAllCurrentWeather(ctx context.Context) error
-	DeleteAllDailyForecasts(ctx context.Context) error
-	DeleteAllHourlyForecasts(ctx context.Context) error
-	DeleteAllLocations(ctx context.Context) error
-	DeleteCurrentWeatherAtLocation(ctx context.Context, locationID uuid.UUID) error
-	DeleteDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) error
-	DeleteHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) error
-	DeleteLocation(ctx context.Context, id uuid.UUID) error
-	GetAllDailyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.DailyForecast, error)
-	GetAllHourlyForecastsAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.HourlyForecast, error)
-	GetCurrentWeatherAtLocation(ctx context.Context, locationID uuid.UUID) ([]database.CurrentWeather, error)
-	GetCurrentWeatherAtLocationFromAPI(ctx context.Context, arg database.GetCurrentWeatherAtLocationFromAPIParams) (database.CurrentWeather, error)
-	GetDailyForecastAtLocationAndDateFromAPI(ctx context.Context, arg database.GetDailyForecastAtLocationAndDateFromAPIParams) (database.DailyForecast, error)
-	GetHourlyForecastAtLocationAndTimeFromAPI(ctx context.Context, arg database.GetHourlyForecastAtLocationAndTimeFromAPIParams) (database.HourlyForecast, error)
-	GetLocationByAlias(ctx context.Context, alias string) (database.Location, error)
-	GetLocationByCoordinates(ctx context.Context, arg database.GetLocationByCoordinatesParams) (database.Location, error)
-	GetLocationByName(ctx context.Context, cityName string) (database.Location, error)
-	GetUpcomingDailyForecastsAtLocation(ctx context.Context, arg database.GetUpcomingDailyForecastsAtLocationParams) ([]database.DailyForecast, error)
-	GetUpcomingHourlyForecastsAtLocation(ctx context.Context, arg database.GetUpcomingHourlyForecastsAtLocationParams) ([]database.HourlyForecast, error)
-	ListLocations(ctx context.Context) ([]database.Location, error)
-	UpdateCurrentWeather(ctx context.Context, arg database.UpdateCurrentWeatherParams) (database.CurrentWeather, error)
-	UpdateDailyForecast(ctx context.Context, arg database.UpdateDailyForecastParams) (database.DailyForecast, error)
-	UpdateHourlyForecast(ctx context.Context, arg database.UpdateHourlyForecastParams) (database.HourlyForecast, error)
-	UpdateTimezone(ctx context.Context, arg database.UpdateTimezoneParams) error
+	return &cfg, nil
 }

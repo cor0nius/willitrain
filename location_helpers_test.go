@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"reflect"
-	"testing"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"testing"
 
 	"github.com/cor0nius/willitrain/internal/database"
 	"github.com/google/uuid"
@@ -17,7 +17,7 @@ import (
 
 func TestGetOrCreateLocation(t *testing.T) {
 	ctx := context.Background()
-	
+
 	testCases := []struct {
 		name       string
 		cityName   string
@@ -98,6 +98,37 @@ func TestGetOrCreateLocation(t *testing.T) {
 				}
 				if loc.CityName != "Newville" {
 					t.Errorf("expected city name 'Newville', got '%s'", loc.CityName)
+				}
+			},
+		},
+		{
+			name:     "Failure: City Name Contains Invalid UTF-8",
+			cityName: "abc\x80def",
+			setupMocks: func(cfg *testAPIConfig) {
+				// No mocks needed since normalization will fail first
+			},
+			check: func(t *testing.T, loc Location, err error) {
+				if err == nil {
+					t.Fatal("expected an error, but got nil")
+				}
+			},
+		},
+		{
+			name:     "Failure: transformer.String returned an error (artificial)",
+			cityName: "wroclaw",
+			setupMocks: func(cfg *testAPIConfig) {
+				mockTransformer := &mockTransformer{
+					errToReturn: errors.New("artificial transform error"),
+				}
+				originalTransformer := transformer
+				transformer = mockTransformer
+				t.Cleanup(func() {
+					transformer = originalTransformer
+				})
+			},
+			check: func(t *testing.T, loc Location, err error) {
+				if err == nil {
+					t.Fatal("expected an error, but got nil")
 				}
 			},
 		},

@@ -1,28 +1,23 @@
 package main
 
 import (
-	"database/sql"
+	"io"
 	"testing"
 
-	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-redis/redismock/v9"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConfig(t *testing.T) {
+func TestNewAPIConfig(t *testing.T) {
 	testCases := []struct {
 		name       string
-		setup      func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock)
-		expectExit bool
+		setup      func(t *testing.T)
+		expectErr bool
 	}{
 		{
-			name: "Success",
-			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+			name: "Success - No Optional Vars",
+			setup: func(t *testing.T) {
 				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
-				dbMock.ExpectPing()
 				t.Setenv("REDIS_URL", "redis://localhost:6379")
-				redisMock.ExpectPing().SetVal("PONG")
 				t.Setenv("GMP_KEY", "test_gmp_key")
 				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
 				t.Setenv("GMP_WEATHER_URL", "http://localhost/weather")
@@ -30,114 +25,150 @@ func TestConfig(t *testing.T) {
 				t.Setenv("OMETEO_WEATHER_URL", "http://localhost/weather")
 				t.Setenv("OWM_KEY", "test_owm_key")
 			},
-			expectExit: false,
+			expectErr: false,
+		},
+		{
+			name: "Success - Dev Mode True",
+			setup: func(t *testing.T) {
+				t.Setenv("DEV_MODE", "true")
+				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
+				t.Setenv("REDIS_URL", "redis://localhost:6379")
+				t.Setenv("GMP_KEY", "test_gmp_key")
+				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
+				t.Setenv("GMP_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OWM_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OMETEO_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OWM_KEY", "test_owm_key")
+			},
+			expectErr: false,
+		},
+		{
+			name: "Success - Dev Mode Invalid",
+			setup: func(t *testing.T) {
+				t.Setenv("DEV_MODE", "not_a_bool")
+				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
+				t.Setenv("REDIS_URL", "redis://localhost:6379")
+				t.Setenv("GMP_KEY", "test_gmp_key")
+				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
+				t.Setenv("GMP_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OWM_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OMETEO_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OWM_KEY", "test_owm_key")
+			},
+			expectErr: false,
+		},
+		{
+			name: "Success - All Optional Vars",
+			setup: func(t *testing.T) {
+				t.Setenv("DEV_MODE", "false")
+				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
+				t.Setenv("REDIS_URL", "redis://localhost:6379")
+				t.Setenv("GMP_KEY", "test_gmp_key")
+				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
+				t.Setenv("GMP_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OWM_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OMETEO_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OWM_KEY", "test_owm_key")
+				t.Setenv("CURRENT_INTERVAL_MIN", "15")
+				t.Setenv("HOURLY_INTERVAL_MIN", "120")
+				t.Setenv("DAILY_INTERVAL_MIN", "1440")
+				t.Setenv("PORT", "9090")
+			},
+			expectErr: false,
+		},
+		{
+			name: "Success - Optional Vars Invalid/Empty",
+			setup: func(t *testing.T) {
+				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
+				t.Setenv("REDIS_URL", "redis://localhost:6379")
+				t.Setenv("GMP_KEY", "test_gmp_key")
+				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
+				t.Setenv("GMP_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OWM_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OMETEO_WEATHER_URL", "http://localhost/weather")
+				t.Setenv("OWM_KEY", "test_owm_key")
+				t.Setenv("CURRENT_INTERVAL_MIN", "not_an_int")
+				t.Setenv("HOURLY_INTERVAL_MIN", "also_not_an_int")
+				t.Setenv("DAILY_INTERVAL_MIN", "")
+				t.Setenv("PORT", "")
+			},
+			expectErr: false,
 		},
 		{
 			name: "Failure - Missing DB_URL",
-			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+			setup: func(t *testing.T) {
 				t.Setenv("DB_URL", "")
 			},
-			expectExit: true,
-		},
-		{
-			name: "Failure - DB Ping Error",
-			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
-				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
-				dbMock.ExpectPing().WillReturnError(sql.ErrConnDone)
-			},
-			expectExit: true,
+			expectErr: true,
 		},
 		{
 			name: "Failure - Missing REDIS_URL",
-			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+			setup: func(t *testing.T) {
 				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
-				dbMock.ExpectPing()
 				t.Setenv("REDIS_URL", "")
 			},
-			expectExit: true,
-		},
-		{
-			name: "Failure - Redis Ping Error",
-			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
-				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
-				dbMock.ExpectPing()
-				t.Setenv("REDIS_URL", "redis://localhost:6379")
-				redisMock.ExpectPing().SetErr(redis.Nil)
-			},
-			expectExit: true,
+			expectErr: true,
 		},
 		{
 			name: "Failure - Missing GMP_KEY",
-			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+			setup: func(t *testing.T) {
 				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
-				dbMock.ExpectPing()
 				t.Setenv("REDIS_URL", "redis://localhost:6379")
-				redisMock.ExpectPing().SetVal("PONG")
 				t.Setenv("GMP_KEY", "")
 			},
-			expectExit: true,
+			expectErr: true,
 		},
 		{
 			name: "Failure - Missing GMP_GEOCODE_URL",
-			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+			setup: func(t *testing.T) {
 				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
-				dbMock.ExpectPing()
 				t.Setenv("REDIS_URL", "redis://localhost:6379")
-				redisMock.ExpectPing().SetVal("PONG")
 				t.Setenv("GMP_KEY", "test_gmp_key")
 				t.Setenv("GMP_GEOCODE_URL", "")
 			},
-			expectExit: true,
+			expectErr: true,
 		},
 		{
 			name: "Failure - Missing GMP_WEATHER_URL",
-			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+			setup: func(t *testing.T) {
 				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
-				dbMock.ExpectPing()
 				t.Setenv("REDIS_URL", "redis://localhost:6379")
-				redisMock.ExpectPing().SetVal("PONG")
 				t.Setenv("GMP_KEY", "test_gmp_key")
 				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
 				t.Setenv("GMP_WEATHER_URL", "")
 			},
-			expectExit: true,
+			expectErr: true,
 		},
 		{
 			name: "Failure - Missing OWM_WEATHER_URL",
-			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+			setup: func(t *testing.T) {
 				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
-				dbMock.ExpectPing()
 				t.Setenv("REDIS_URL", "redis://localhost:6379")
-				redisMock.ExpectPing().SetVal("PONG")
 				t.Setenv("GMP_KEY", "test_gmp_key")
 				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
 				t.Setenv("GMP_WEATHER_URL", "http://localhost/weather")
 				t.Setenv("OWM_WEATHER_URL", "")
 			},
-			expectExit: true,
+			expectErr: true,
 		},
 		{
 			name: "Failure - Missing OMETEO_WEATHER_URL",
-			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+			setup: func(t *testing.T) {
 				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
-				dbMock.ExpectPing()
 				t.Setenv("REDIS_URL", "redis://localhost:6379")
-				redisMock.ExpectPing().SetVal("PONG")
 				t.Setenv("GMP_KEY", "test_gmp_key")
 				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
 				t.Setenv("GMP_WEATHER_URL", "http://localhost/weather")
 				t.Setenv("OWM_WEATHER_URL", "http://localhost/weather")
 				t.Setenv("OMETEO_WEATHER_URL", "")
 			},
-			expectExit: true,
+			expectErr: true,
 		},
 		{
 			name: "Failure - Missing OWM_KEY",
-			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
+			setup: func(t *testing.T) {
 				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
-				dbMock.ExpectPing()
 				t.Setenv("REDIS_URL", "redis://localhost:6379")
-				redisMock.ExpectPing().SetVal("PONG")
 				t.Setenv("GMP_KEY", "test_gmp_key")
 				t.Setenv("GMP_GEOCODE_URL", "http://localhost/geocode")
 				t.Setenv("GMP_WEATHER_URL", "http://localhost/weather")
@@ -145,55 +176,22 @@ func TestConfig(t *testing.T) {
 				t.Setenv("OMETEO_WEATHER_URL", "http://localhost/weather")
 				t.Setenv("OWM_KEY", "")
 			},
-			expectExit: true,
+			expectErr: true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// --- Setup ---
-			originalOsExit := osExit
-			defer func() {
-				osExit = originalOsExit
-			}()
-
-			var exitCalled bool
-			osExit = func(code int) {
-				exitCalled = true
-				if tc.expectExit {
-					assert.True(t, exitCalled, "Expected os.Exit to be called")
-				} else {
-					assert.False(t, exitCalled, "Expected os.Exit not to be called")
-				}
-				t.SkipNow()
-			}
-
-			db, dbMock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
-			if err != nil {
-				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-			}
-			defer db.Close()
-
-			redisClient, redisMock := redismock.NewClientMock()
-
-			// Override functions to return mocks
-			sqlOpen = func(driverName, dataSourceName string) (*sql.DB, error) { return db, nil }
-			redisNewClient = func(opt *redis.Options) *redis.Client { return redisClient }
-
-			// Run test-specific setup
 			if tc.setup != nil {
-				tc.setup(t, dbMock, redisMock)
+				tc.setup(t)
 			}
-
-			// --- Execute ---
-			config()
-
-			// Verify that all mock expectations were met
-			if err := dbMock.ExpectationsWereMet(); err != nil {
-				t.Errorf("there were unfulfilled expectations: %s", err)
-			}
-			if err := redisMock.ExpectationsWereMet(); err != nil {
-				t.Errorf("there were unfulfilled expectations: %s", err)
+			cfg, err := NewAPIConfig(io.Discard)
+			if tc.expectErr {
+				assert.Error(t, err, "expected an error but got none")
+				assert.Nil(t, cfg, "expected cfg to be nil on error")
+			} else {
+				assert.NoError(t, err, "did not expect an error but got one")
+				assert.NotNil(t, cfg, "expected cfg to be non-nil")
 			}
 		})
 	}
