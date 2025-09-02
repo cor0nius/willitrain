@@ -66,7 +66,8 @@ func getRequiredEnv(key string, logger *slog.Logger) string {
 // This is used for non-critical configuration where a default value is acceptable,
 // making the application more flexible and easier to configure.
 func getEnv(key, fallback string, logger *slog.Logger) string {
-	if val, ok := os.LookupEnv(key); ok {
+	val := os.Getenv(key)
+	if val != "" {
 		return val
 	}
 	logger.Info("environment variable not set, using fallback", "key", key, "fallback", fallback)
@@ -77,8 +78,8 @@ func getEnv(key, fallback string, logger *slog.Logger) string {
 // It handles parsing and provides a fallback value if the variable is not set or is
 // invalid, preventing configuration errors from crashing the application.
 func getEnvAsInt(key string, fallback int, logger *slog.Logger) int {
-	valStr, ok := os.LookupEnv(key)
-	if !ok {
+	valStr := os.Getenv(key)
+	if valStr == "" {
 		logger.Info("environment variable not set, using fallback", "key", key, "fallback", fallback)
 		return fallback
 	}

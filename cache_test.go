@@ -28,6 +28,17 @@ func TestCache(t *testing.T) {
 			},
 		},
 		{
+			name: "Failure - Set Marshal Error",
+			setup: func(redisMock redismock.ClientMock) {
+				// No setup needed as the error occurs before any Redis interaction
+			},
+			check: func(t *testing.T, err error) {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+			},
+		},
+		{
 			name: "Failure - Set Error",
 			setup: func(redisMock redismock.ClientMock) {
 				redisMock.ExpectSet("key", []byte(`"value"`), 0).SetErr(redis.Nil)

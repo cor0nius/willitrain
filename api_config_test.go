@@ -83,11 +83,12 @@ func TestConfig(t *testing.T) {
 				t.Setenv("CURRENT_INTERVAL_MIN", "15")
 				t.Setenv("HOURLY_INTERVAL_MIN", "120")
 				t.Setenv("DAILY_INTERVAL_MIN", "1440")
+				t.Setenv("PORT", "9090")
 			},
 			expectExit: false,
 		},
 		{
-			name: "Success - Optional int Vars Invalid",
+			name: "Success - Optional Vars Invalid/Empty",
 			setup: func(t *testing.T, dbMock sqlmock.Sqlmock, redisMock redismock.ClientMock) {
 				t.Setenv("DEV_MODE", "false")
 				t.Setenv("DB_URL", "postgres://user:password@localhost:5432/testdb")
@@ -102,7 +103,8 @@ func TestConfig(t *testing.T) {
 				t.Setenv("OWM_KEY", "test_owm_key")
 				t.Setenv("CURRENT_INTERVAL_MIN", "not_an_int")
 				t.Setenv("HOURLY_INTERVAL_MIN", "also_not_an_int")
-				t.Setenv("DAILY_INTERVAL_MIN", "still_not_an_int")
+				t.Setenv("DAILY_INTERVAL_MIN", "")
+				t.Setenv("PORT", "")
 			},
 			expectExit: false,
 		},
