@@ -2,77 +2,57 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/go-redis/redismock/v9"
 	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestCache(t *testing.T) {
+func TestRedisCache_Set(t *testing.T) {
+	ctx := context.Background()
+
 	testCases := []struct {
-		name  string
-		setup func(redisMock redismock.ClientMock)
-		check func(t *testing.T, err error)
+		name        string
+		key         string
+		value       any
+		expiration  time.Duration
+		setupMock   func(mock redismock.ClientMock, key string, value any, expiration time.Duration)
+		expectedErr error
 	}{
 		{
-			name: "Success",
-			setup: func(redisMock redismock.ClientMock) {
-				redisMock.ExpectSet("key", []byte(`"value"`), 0).SetVal("OK")
-				redisMock.ExpectGet("key").SetVal(`"value"`)
-				redisMock.ExpectFlushDB().SetVal("OK")
+			name:       "Success",
+			key:        "test-key",
+			value:      "test-value",
+			expiration: 1 * time.Minute,
+			setupMock: func(mock redismock.ClientMock, key string, value any, expiration time.Duration) {
+				jsonData, _ := json.Marshal(value)
+				mock.ExpectSet(key, jsonData, expiration).SetVal("OK")
 			},
-			check: func(t *testing.T, err error) {
-				if err != nil {
-					t.Fatalf("expected no error, got %v", err)
-				}
-			},
+			expectedErr: nil,
 		},
 		{
-			name: "Failure - Set Marshal Error",
-			setup: func(redisMock redismock.ClientMock) {
-				// No setup needed as the error occurs before any Redis interaction
-			},
-			check: func(t *testing.T, err error) {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-			},
+			name:        "Error on json.Marshal",
+			key:         "test-key",
+			value:       make(chan int),
+			expiration:  1 * time.Minute,
+			setupMock:   func(mock redismock.ClientMock, key string, value any, expiration time.Duration) {},
+			expectedErr: &json.UnsupportedTypeError{},
 		},
 		{
-			name: "Failure - Set Error",
-			setup: func(redisMock redismock.ClientMock) {
-				redisMock.ExpectSet("key", []byte(`"value"`), 0).SetErr(redis.Nil)
+			name:       "Error from Redis client",
+			key:        "test-key",
+			value:      "test-value",
+			expiration: 1 * time.Minute,
+			setupMock: func(mock redismock.ClientMock, key string, value any, expiration time.Duration) {
+				jsonData, _ := json.Marshal(value)
+				mock.ExpectSet(key, jsonData, expiration).SetErr(errors.New("redis error"))
 			},
-			check: func(t *testing.T, err error) {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-			},
-		},
-		{
-			name: "Failure - Get Error",
-			setup: func(redisMock redismock.ClientMock) {
-				redisMock.ExpectSet("key", []byte(`"value"`), 0).SetVal("OK")
-				redisMock.ExpectGet("key").SetErr(redis.Nil)
-			},
-			check: func(t *testing.T, err error) {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-			},
-		},
-		{
-			name: "Failure - Flush Error",
-			setup: func(redisMock redismock.ClientMock) {
-				redisMock.ExpectSet("key", []byte(`"value"`), 0).SetVal("OK")
-				redisMock.ExpectGet("key").SetVal(`"value"`)
-				redisMock.ExpectFlushDB().SetErr(redis.Nil)
-			},
-			check: func(t *testing.T, err error) {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-			},
+			expectedErr: errors.New("redis error"),
 		},
 	}
 
@@ -81,30 +61,90 @@ func TestCache(t *testing.T) {
 			redisClient, redisMock := redismock.NewClientMock()
 			defer redisClient.Close()
 
-			if tc.setup != nil {
-				tc.setup(redisMock)
-			}
-
 			cache := NewRedisCache(redisClient)
 
-			err := cache.Set(context.Background(), "key", "value", 0)
-			if err != nil {
-				tc.check(t, err)
+			tc.setupMock(redisMock, tc.key, tc.value, tc.expiration)
+
+			err := cache.Set(ctx, tc.key, tc.value, tc.expiration)
+
+			if tc.expectedErr != nil {
+				require.Error(t, err)
+				if _, ok := tc.expectedErr.(*json.UnsupportedTypeError); ok {
+					assert.IsType(t, &json.UnsupportedTypeError{}, err)
+				} else {
+					assert.EqualError(t, err, tc.expectedErr.Error())
+				}
+			} else {
+				require.NoError(t, err)
 			}
 
-			_, err = cache.Get(context.Background(), "key")
-			if err != nil {
-				tc.check(t, err)
-			}
-
-			err = cache.Flush(context.Background())
-			if tc.check != nil {
-				tc.check(t, err)
-			}
-
-			if err := redisMock.ExpectationsWereMet(); err != nil {
-				t.Errorf("there were unfulfilled expectations: %s", err)
-			}
+			assert.NoError(t, redisMock.ExpectationsWereMet())
 		})
 	}
+}
+
+func TestRedisCache_Get(t *testing.T) {
+	ctx := context.Background()
+	redisClient, redisMock := redismock.NewClientMock()
+	defer redisClient.Close()
+
+	cache := NewRedisCache(redisClient)
+	key := "test-key"
+	expectedValue := "test-value"
+
+	redisMock.ExpectGet(key).SetVal(expectedValue)
+
+	value, err := cache.Get(ctx, key)
+
+	require.NoError(t, err)
+	assert.Equal(t, expectedValue, value)
+	assert.NoError(t, redisMock.ExpectationsWereMet())
+}
+
+func TestRedisCache_Get_Error(t *testing.T) {
+	ctx := context.Background()
+	redisClient, redisMock := redismock.NewClientMock()
+	defer redisClient.Close()
+
+	cache := NewRedisCache(redisClient)
+	key := "test-key"
+
+	redisMock.ExpectGet(key).SetErr(redis.Nil)
+
+	_, err := cache.Get(ctx, key)
+
+	require.Error(t, err)
+	assert.Equal(t, redis.Nil, err)
+	assert.NoError(t, redisMock.ExpectationsWereMet())
+}
+
+func TestRedisCache_Flush(t *testing.T) {
+	ctx := context.Background()
+	redisClient, redisMock := redismock.NewClientMock()
+	defer redisClient.Close()
+
+	cache := NewRedisCache(redisClient)
+
+	redisMock.ExpectFlushDB().SetVal("OK")
+
+	err := cache.Flush(ctx)
+
+	require.NoError(t, err)
+	assert.NoError(t, redisMock.ExpectationsWereMet())
+}
+
+func TestRedisCache_Flush_Error(t *testing.T) {
+	ctx := context.Background()
+	redisClient, redisMock := redismock.NewClientMock()
+	defer redisClient.Close()
+
+	cache := NewRedisCache(redisClient)
+
+	redisMock.ExpectFlushDB().SetErr(errors.New("flush error"))
+
+	err := cache.Flush(ctx)
+
+	require.Error(t, err)
+	assert.EqualError(t, err, "flush error")
+	assert.NoError(t, redisMock.ExpectationsWereMet())
 }
