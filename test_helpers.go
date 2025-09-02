@@ -15,6 +15,7 @@ import (
 	"github.com/cor0nius/willitrain/internal/database"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/text/transform"
 )
 
 func setupMockServer(handler http.HandlerFunc) *httptest.Server {
@@ -484,4 +485,15 @@ func newTestAPIConfig(t *testing.T) *testAPIConfig {
 		mockCache: mockCache,
 		mockGeo:   mockGeo,
 	}
+}
+
+// mockTransformer is a test implementation of the StringTransformer interface.
+type mockTransformer struct {
+	errToReturn error
+}
+
+// TransformString is the mock's implementation that returns a forced error.
+func (mt mockTransformer) TransformString(t transform.Transformer, s string) (string, int, error) {
+	// We ignore the inputs and just return the error we were configured with.
+	return "", 0, mt.errToReturn
 }

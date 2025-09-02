@@ -273,7 +273,12 @@ func TestConfig(t *testing.T) {
 			redisClient, redisMock := redismock.NewClientMock()
 
 			// Override functions to return mocks
+			originalSqlOpen := sqlOpen
+			t.Cleanup(func() { sqlOpen = originalSqlOpen })
 			sqlOpen = func(driverName, dataSourceName string) (*sql.DB, error) { return db, nil }
+
+			originalRedisNewClient := redisNewClient
+			t.Cleanup(func() { redisNewClient = originalRedisNewClient })
 			redisNewClient = func(opt *redis.Options) *redis.Client { return redisClient }
 
 			// Run test-specific setup
