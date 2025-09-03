@@ -20,18 +20,18 @@ func mockHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		// Simulate a successful response
 		w.WriteHeader(http.StatusOK)
-		io.WriteString(w, "OK")
+		_, _ = io.WriteString(w, "OK")
 	case http.MethodPost:
 		// Simulate a "Not Found" response for a different status code test
 		w.WriteHeader(http.StatusNotFound)
-		io.WriteString(w, "Not Found")
+		_, _ = io.WriteString(w, "Not Found")
 	case http.MethodPut:
 		// Simulate a handler that doesn't explicitly write a status code
-		io.WriteString(w, "Implicit OK")
+		_, _ = io.WriteString(w, "Implicit OK")
 	default:
 		// Simulate a "Method Not Allowed" response
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		io.WriteString(w, "Method Not Allowed")
+		_, _ = io.WriteString(w, "Method Not Allowed")
 	}
 }
 
@@ -179,7 +179,7 @@ func TestMetricsTransport(t *testing.T) {
 			// Check if the metric was observed by checking the count.
 			observer := externalRequestDuration.WithLabelValues(req.URL.Host)
 			metric := &dto.Metric{}
-			observer.(prometheus.Metric).Write(metric)
+			_ = observer.(prometheus.Metric).Write(metric)
 
 			if metric.Histogram == nil {
 				t.Fatal("metric.Histogram is nil, metric is not a histogram")
