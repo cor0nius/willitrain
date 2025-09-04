@@ -87,9 +87,18 @@ func main() {
 	mux.Handle("/", http.FileServer(http.FS(distFS)))
 
 	// Configure and start the HTTP server, wrapping the router with middleware.
+	// The /metrics endpoint is excluded from metricsMiddleware.
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/metrics" {
+			corsMiddleware(mux).ServeHTTP(w, r)
+		} else {
+			metricsMiddleware(corsMiddleware(mux)).ServeHTTP(w, r)
+		}
+	})
+
 	server := &http.Server{
 		Addr:              ":" + cfg.port,
-		Handler:           metricsMiddleware(corsMiddleware(mux)),
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
