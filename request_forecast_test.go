@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 
@@ -91,8 +93,8 @@ func TestFetchForecastFromAPI(t *testing.T) {
 			var wg sync.WaitGroup
 			results := make(chan struct {
 				t   CurrentWeather
-				tz  string
-				err error
+					tz  string
+					err error
 			}, 1)
 
 			wg.Add(1)
@@ -136,6 +138,10 @@ func TestProcessForecastRequests(t *testing.T) {
 			parser:   mockParserSuccess,
 			errorVal: CurrentWeather{SourceAPI: "Provider 2"},
 		},
+		"unknownProvider": {
+			parser:   mockParserError,
+			errorVal: CurrentWeather{}, // Empty SourceAPI
+		},
 	}
 
 	testCases := []struct {
@@ -145,6 +151,7 @@ func TestProcessForecastRequests(t *testing.T) {
 		expectedLen      int
 		expectedTimezone string
 		expectError      bool
+		expectLogs       map[string]bool
 	}{
 		{
 			name: "All providers succeed",
@@ -156,6 +163,7 @@ func TestProcessForecastRequests(t *testing.T) {
 			expectedLen:      2,
 			expectedTimezone: "Europe/Warsaw",
 			expectError:      false,
+			expectLogs:       map[string]bool{"INFO": false, "WARN": false, "ERROR": false},
 		},
 		{
 			name: "One provider fails",
@@ -167,6 +175,7 @@ func TestProcessForecastRequests(t *testing.T) {
 			expectedLen:      1,
 			expectedTimezone: "Europe/Warsaw",
 			expectError:      false,
+			expectLogs:       map[string]bool{"INFO": false, "WARN": true, "ERROR": false},
 		},
 		{
 			name: "All providers fail",
@@ -178,24 +187,41 @@ func TestProcessForecastRequests(t *testing.T) {
 			expectedLen:      0,
 			expectedTimezone: "",
 			expectError:      true,
+			expectLogs:       map[string]bool{"INFO": false, "WARN": true, "ERROR": true},
 		},
 		{
 			name: "No provider found for URL",
 			urls: map[string]string{
-				"provider1":       serverSuccess.URL,
-				"unknownProvider": serverSuccess.URL,
+				"provider1":            serverSuccess.URL,
+				"unregisteredProvider": serverSuccess.URL,
 			},
 			providers:        providers,
 			expectedLen:      1,
 			expectedTimezone: "Europe/Warsaw",
 			expectError:      false,
+			expectLogs:       map[string]bool{"INFO": false, "WARN": false, "ERROR": true},
+		},
+		{
+			name: "Unknown provider fails",
+			urls: map[string]string{
+				"provider1":       serverSuccess.URL,
+				"unknownProvider": serverFail.URL,
+			},
+			providers:        providers,
+			expectedLen:      1,
+			expectedTimezone: "Europe/Warsaw",
+			expectError:      false,
+			expectLogs:       map[string]bool{"INFO": false, "WARN": true, "ERROR": false},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			var logBuf bytes.Buffer
+			logger := slog.New(slog.NewTextHandler(&logBuf, nil))
+
 			cfg := &apiConfig{
-				logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+				logger:     logger,
 				httpClient: http.DefaultClient,
 			}
 
@@ -211,6 +237,19 @@ func TestProcessForecastRequests(t *testing.T) {
 
 			if tz != tc.expectedTimezone {
 				t.Errorf("Expected timezone %q, but got %q", tc.expectedTimezone, tz)
+			}
+
+			logOutput := logBuf.String()
+			logsFound := map[string]bool{
+				"INFO":  strings.Contains(logOutput, "level=INFO"),
+				"WARN":  strings.Contains(logOutput, "level=WARN"),
+				"ERROR": strings.Contains(logOutput, "level=ERROR"),
+			}
+
+			for level, expected := range tc.expectLogs {
+				if logsFound[level] != expected {
+					t.Errorf("Log level %s: expected %v, got %v. Logs:\n%s", level, expected, logsFound[level], logOutput)
+				}
 			}
 		})
 	}
@@ -235,7 +274,7 @@ func TestRequestWeatherFunctions(t *testing.T) {
 			name:           "requestCurrentWeather - All providers fail",
 			functionToTest: "current",
 			setupMocks: func(cfg *testAPIConfig) {
-				cfg.apiConfig.httpClient = &http.Client{Transport: &errorTransport{err: errors.New("network error")}}
+				cfg.apiConfig.httpClient = &http.Client{Transport: &errorTransport{err: errors.New("network error")}} 
 			},
 			check: func(t *testing.T, err error) {
 				if err == nil {
@@ -247,7 +286,7 @@ func TestRequestWeatherFunctions(t *testing.T) {
 			name:           "requestDailyForecast - All providers fail",
 			functionToTest: "daily",
 			setupMocks: func(cfg *testAPIConfig) {
-				cfg.apiConfig.httpClient = &http.Client{Transport: &errorTransport{err: errors.New("network error")}}
+				cfg.apiConfig.httpClient = &http.Client{Transport: &errorTransport{err: errors.New("network error")}} 
 			},
 			check: func(t *testing.T, err error) {
 				if err == nil {
@@ -259,7 +298,7 @@ func TestRequestWeatherFunctions(t *testing.T) {
 			name:           "requestHourlyForecast - All providers fail",
 			functionToTest: "hourly",
 			setupMocks: func(cfg *testAPIConfig) {
-				cfg.apiConfig.httpClient = &http.Client{Transport: &errorTransport{err: errors.New("network error")}}
+				cfg.apiConfig.httpClient = &http.Client{Transport: &errorTransport{err: errors.New("network error")}} 
 			},
 			check: func(t *testing.T, err error) {
 				if err == nil {
@@ -270,6 +309,34 @@ func TestRequestWeatherFunctions(t *testing.T) {
 		{
 			name:           "requestCurrentWeather - UpdateTimezone fails",
 			functionToTest: "current",
+			setupMocks: func(cfg *testAPIConfig) {
+				cfg.mockDB.UpdateTimezoneFunc = func(ctx context.Context, arg database.UpdateTimezoneParams) error {
+					return errors.New("db error")
+				}
+			},
+			check: func(t *testing.T, err error) {
+				if err != nil {
+					t.Errorf("expected no error, but got: %v", err)
+				}
+			},
+		},
+		{
+			name:           "requestDailyForecast - UpdateTimezone fails",
+			functionToTest: "daily",
+			setupMocks: func(cfg *testAPIConfig) {
+				cfg.mockDB.UpdateTimezoneFunc = func(ctx context.Context, arg database.UpdateTimezoneParams) error {
+					return errors.New("db error")
+				}
+			},
+			check: func(t *testing.T, err error) {
+				if err != nil {
+					t.Errorf("expected no error, but got: %v", err)
+				}
+			},
+		},
+		{
+			name:           "requestHourlyForecast - UpdateTimezone fails",
+			functionToTest: "hourly",
 			setupMocks: func(cfg *testAPIConfig) {
 				cfg.mockDB.UpdateTimezoneFunc = func(ctx context.Context, arg database.UpdateTimezoneParams) error {
 					return errors.New("db error")
@@ -308,13 +375,13 @@ func TestRequestWeatherFunctions(t *testing.T) {
 				_, err = testCfg.apiConfig.requestDailyForecast(location)
 				dailyServer.Close()
 			case "hourly":
-				hourlyHandler := createWeatherAPIHandler(t, "hourly_forecast")
-				hourlyServer := setupMockServer(hourlyHandler)
-				testCfg.apiConfig.gmpWeatherURL = hourlyServer.URL + "/gmp"
-				testCfg.apiConfig.owmWeatherURL = hourlyServer.URL + "/owm"
-				testCfg.apiConfig.ometeoWeatherURL = hourlyServer.URL + "/ometeo"
-				_, err = testCfg.apiConfig.requestHourlyForecast(location)
-				hourlyServer.Close()
+			hourlyHandler := createWeatherAPIHandler(t, "hourly_forecast")
+			hourlyServer := setupMockServer(hourlyHandler)
+			testCfg.apiConfig.gmpWeatherURL = hourlyServer.URL + "/gmp"
+			testCfg.apiConfig.owmWeatherURL = hourlyServer.URL + "/owm"
+			testCfg.apiConfig.ometeoWeatherURL = hourlyServer.URL + "/ometeo"
+			_, err = testCfg.apiConfig.requestHourlyForecast(location)
+			hourlyServer.Close()
 			default:
 				t.Fatalf("unknown function to test: %s", tc.functionToTest)
 			}
