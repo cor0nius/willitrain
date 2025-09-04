@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	_ "github.com/lib/pq"
 )
 
@@ -69,7 +70,7 @@ func main() {
 	mux.HandleFunc("/api/currentweather", cfg.handlerCurrentWeather)
 	mux.HandleFunc("/api/dailyforecast", cfg.handlerDailyForecast)
 	mux.HandleFunc("/api/hourlyforecast", cfg.handlerHourlyForecast)
-	mux.HandleFunc("/metrics", cfg.handlerMetrics)
+	mux.Handle("/metrics", promhttp.Handler())
 
 	// Register development-only endpoints if dev mode is enabled.
 	if cfg.devMode {
