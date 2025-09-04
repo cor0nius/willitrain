@@ -514,29 +514,25 @@ func TestRunUpdateForLocations_PartialAPIFailure(t *testing.T) {
 
 func TestScheduler_Stop(t *testing.T) {
 	testCfg := newTestAPIConfig(t)
-	s := NewScheduler(testCfg.apiConfig, 10*time.Millisecond, 10*time.Millisecond, 10*time.Millisecond)
+	s := NewScheduler(testCfg.apiConfig, 1*time.Millisecond, 1*time.Millisecond, 1*time.Millisecond)
 
-	// Mock the job functions to prevent real work and isolate the test
-	// to the scheduler's lifecycle management.
 	s.currentWeatherJobs = func() {}
 	s.hourlyForecastJobs = func() {}
 	s.dailyForecastJobs = func() {}
 
 	s.Start()
+	s.Stop()
 
-	// Allow the scheduler goroutine to start and potentially run a job cycle.
-	time.Sleep(20 * time.Millisecond)
-
-	stopChan := make(chan struct{})
-	go func() {
-		s.Stop()
-		close(stopChan)
-	}()
+	time.Sleep(5 * time.Millisecond)
 
 	select {
-	case <-stopChan:
-		// Test passed, Stop() returned correctly.
-	case <-time.After(100 * time.Millisecond):
-		t.Fatal("scheduler.Stop() timed out, worker goroutine may not have exited")
+	case tick := <-s.currentChan:
+		t.Errorf("received tick on currentChan after stop: %v", tick)
+	case tick := <-s.hourlyChan:
+		t.Errorf("received tick on hourlyChan after stop: %v", tick)
+	case tick := <-s.dailyChan:
+		t.Errorf("received tick on dailyChan after stop: %v", tick)
+	default:
+		// No ticks received, as expected.
 	}
 }
