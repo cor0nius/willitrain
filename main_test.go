@@ -39,6 +39,16 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to Docker: %s", err)
 	}
 
+	network, err := pool.CreateNetwork("test_network")
+	if err != nil {
+		log.Fatalf("Could not create Docker network: %s", err)
+	}
+	defer func() {
+		if err := pool.RemoveNetwork(network); err != nil {
+			log.Fatalf("Could not remove Docker network: %s", err)
+		}
+	}()
+
 	pgResource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
 		Tag:        "13",
@@ -48,6 +58,7 @@ func TestMain(m *testing.M) {
 			"POSTGRES_DB=testdb",
 			"listen_addresses='*'",
 		},
+		NetworkID: network.Network.ID,
 	}, func(config *docker.HostConfig) {
 		config.AutoRemove = true
 		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
@@ -55,11 +66,12 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not start PostgreSQL container: %s", err)
 	}
-	dbURL = fmt.Sprintf("postgres://user:secret@127.0.0.1:%s/testdb?sslmode=disable", pgResource.GetPort("5432/tcp"))
+	dbURL = fmt.Sprintf("postgres://user:secret@%s:%s/testdb?sslmode=disable", pgResource.GetIPInNetwork(network), pgResource.GetPort("5432/tcp"))
 
 	redisResource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "redis",
 		Tag:        "6",
+		NetworkID:  network.Network.ID,
 	}, func(config *docker.HostConfig) {
 		config.AutoRemove = true
 		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
@@ -67,7 +79,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not start Redis container: %s", err)
 	}
-	redisURL = fmt.Sprintf("redis://127.0.0.1:%s", redisResource.GetPort("6379/tcp"))
+	redisURL = fmt.Sprintf("redis://%s:%s", redisResource.GetIPInNetwork(network), redisResource.GetPort("6379/tcp"))
 
 	os.Setenv("DB_URL", dbURL)
 	os.Setenv("REDIS_URL", redisURL)
