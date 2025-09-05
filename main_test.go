@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	dockerURL := os.Getenv("DOCKER_HOST")
+	dockerURL := "unix:///var/run/docker.sock"
 	if dockerURL == "" {
 		dockerURL = "unix:///var/run/docker.sock"
 	}
