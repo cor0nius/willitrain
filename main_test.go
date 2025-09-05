@@ -153,13 +153,14 @@ func TestMain(m *testing.M) {
 
 func TestMainExecution(t *testing.T) {
 	baseEnv := map[string]string{
+		"DEV_MODE":           "true",
 		"GMP_KEY":            "dummy",
 		"GMP_GEOCODE_URL":    "dummy",
 		"GMP_WEATHER_URL":    "dummy",
 		"OWM_WEATHER_URL":    "dummy",
 		"OMETEO_WEATHER_URL": "dummy",
 		"OWM_KEY":            "dummy",
-		"DOCKER_HOST":	  	  "127.0.0.1:2375",	
+		"DOCKER_HOST":	  	  "127.0.0.1:2375",
 	}
 
 	testCases := []struct {
