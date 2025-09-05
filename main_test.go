@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not start PostgreSQL container: %s", err)
 	}
-	dbURL = fmt.Sprintf("postgres://user:secret@%s:%s/testdb?sslmode=disable", pgResource.GetBoundIP("5432"), pgResource.GetPort("5432/tcp"))
+	dbURL = fmt.Sprintf("postgres://user:secret@docker:%s/testdb?sslmode=disable", pgResource.GetPort("5432/tcp"))
 
 	redisResource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "redis",
@@ -67,7 +67,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not start Redis container: %s", err)
 	}
-	redisURL = fmt.Sprintf("redis://%s:%s", redisResource.GetBoundIP("6379"), redisResource.GetPort("6379/tcp"))
+	redisURL = fmt.Sprintf("redis://docker:%s", redisResource.GetPort("6379/tcp"))
 
 	os.Setenv("DB_URL", dbURL)
 	os.Setenv("REDIS_URL", redisURL)
