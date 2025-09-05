@@ -159,6 +159,7 @@ func TestMainExecution(t *testing.T) {
 		"OWM_WEATHER_URL":    "dummy",
 		"OMETEO_WEATHER_URL": "dummy",
 		"OWM_KEY":            "dummy",
+		"DOCKER_HOST":	  	  "127.0.0.1:2375",	
 	}
 
 	testCases := []struct {
