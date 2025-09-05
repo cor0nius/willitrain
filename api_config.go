@@ -22,8 +22,8 @@ import (
 // functions, providing them with the necessary context to operate without relying on
 // global state. This design improves testability and clarifies dependencies.
 type apiConfig struct {
-	dbURL					 string
-	redisURL				 string
+	dbURL                    string
+	redisURL                 string
 	geocoder                 GeocodingService
 	gmpWeatherURL            string
 	owmWeatherURL            string
@@ -39,7 +39,7 @@ type apiConfig struct {
 	logger                   *slog.Logger
 	newDBClientFunc          func(driverName, dataSourceName string) (*sql.DB, error)
 	dbQueries                dbQuerier
-	newCacheClientFunc		 	 func(opt *redis.Options) *redis.Client
+	newCacheClientFunc       func(opt *redis.Options) *redis.Client
 	cache                    Cache
 }
 
@@ -110,44 +110,48 @@ func NewAPIConfig(output io.Writer) (*apiConfig, error) {
 		logger = slog.New(slog.NewJSONHandler(output, nil))
 	}
 
+	cfg := &apiConfig{
+		logger: logger,
+	}
+
 	dbURL, err := getRequiredEnv("DB_URL", logger)
 	if err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	redisURL, err := getRequiredEnv("REDIS_URL", logger)
 	if err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	gmpKey, err := getRequiredEnv("GMP_KEY", logger)
 	if err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	gmpGeocodeURL, err := getRequiredEnv("GMP_GEOCODE_URL", logger)
 	if err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	gmpWeatherURL, err := getRequiredEnv("GMP_WEATHER_URL", logger)
 	if err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	owmWeatherURL, err := getRequiredEnv("OWM_WEATHER_URL", logger)
 	if err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	ometeoWeatherURL, err := getRequiredEnv("OMETEO_WEATHER_URL", logger)
 	if err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	owmKey, err := getRequiredEnv("OWM_KEY", logger)
 	if err != nil {
-		return nil, err
+		return cfg, err
 	}
 
 	currentIntervalMin := getEnvAsInt("CURRENT_INTERVAL_MIN", 10, logger)
@@ -163,25 +167,22 @@ func NewAPIConfig(output io.Writer) (*apiConfig, error) {
 
 	geocoder := NewGmpGeocodingService(gmpKey, gmpGeocodeURL, httpClient)
 
-	cfg := apiConfig{
-		dbURL:                    dbURL,
-		redisURL:				  redisURL,
-		geocoder:                 geocoder,
-		gmpWeatherURL:            gmpWeatherURL,
-		owmWeatherURL:            owmWeatherURL,
-		ometeoWeatherURL:         ometeoWeatherURL,
-		gmpKey:                   gmpKey,
-		owmKey:                   owmKey,
-		httpClient:               httpClient,
-		schedulerCurrentInterval: time.Duration(currentIntervalMin) * time.Minute,
-		schedulerHourlyInterval:  time.Duration(hourlyIntervalMin) * time.Minute,
-		schedulerDailyInterval:   time.Duration(dailyIntervalMin) * time.Minute,
-		port:                     getEnv("PORT", "8080", logger),
-		devMode:                  devMode,
-		logger:                   logger,
-		newDBClientFunc:          sql.Open,
-		newCacheClientFunc:		  redis.NewClient,
-	}
+	cfg.dbURL = dbURL
+	cfg.redisURL = redisURL
+	cfg.geocoder = geocoder
+	cfg.gmpWeatherURL = gmpWeatherURL
+	cfg.owmWeatherURL = owmWeatherURL
+	cfg.ometeoWeatherURL = ometeoWeatherURL
+	cfg.gmpKey = gmpKey
+	cfg.owmKey = owmKey
+	cfg.httpClient = httpClient
+	cfg.schedulerCurrentInterval = time.Duration(currentIntervalMin) * time.Minute
+	cfg.schedulerHourlyInterval = time.Duration(hourlyIntervalMin) * time.Minute
+	cfg.schedulerDailyInterval = time.Duration(dailyIntervalMin) * time.Minute
+	cfg.port = getEnv("PORT", "8080", logger)
+	cfg.devMode = devMode
+	cfg.newDBClientFunc = sql.Open
+	cfg.newCacheClientFunc = redis.NewClient
 
-	return &cfg, nil
+	return cfg, nil
 }

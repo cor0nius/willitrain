@@ -9,8 +9,8 @@ import (
 
 func TestNewAPIConfig(t *testing.T) {
 	testCases := []struct {
-		name       string
-		setup      func(t *testing.T)
+		name      string
+		setup     func(t *testing.T)
 		expectErr bool
 	}{
 		{
@@ -188,7 +188,6 @@ func TestNewAPIConfig(t *testing.T) {
 			cfg, err := NewAPIConfig(io.Discard)
 			if tc.expectErr {
 				assert.Error(t, err, "expected an error but got none")
-				assert.Nil(t, cfg, "expected cfg to be nil on error")
 			} else {
 				assert.NoError(t, err, "did not expect an error but got one")
 				assert.NotNil(t, cfg, "expected cfg to be non-nil")
