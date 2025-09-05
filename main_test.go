@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -29,6 +30,21 @@ func TestMain(m *testing.M) {
 		return
 	}
 
+	dockerURL := os.Getenv("DOCKER_HOST")
+	if dockerURL == "" {
+		dockerURL = "unix:///var/run/docker.sock"
+	}
+	os.Setenv("DOCKER_HOST", dockerURL)
+	
+	u, err := url.Parse(dockerURL)
+	if err != nil {
+		log.Fatalf("Could not parse DOCKER_HOST: %s", err)
+	}
+	host := u.Hostname()
+	if host == "" {
+		host = "localhost"
+	}
+
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		log.Fatalf("Could not construct pool: %s", err)
@@ -43,11 +59,6 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not create Docker network: %s", err)
 	}
-	defer func() {
-		if err := pool.RemoveNetwork(test_network); err != nil {
-			log.Fatalf("Could not remove Docker network: %s", err)
-		}
-	}()
 
 	pgResource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
@@ -66,12 +77,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not start PostgreSQL container: %s", err)
 	}
-	defer func() {
-		if err := pool.Purge(pgResource); err != nil {
-			log.Fatalf("Could not purge PostgreSQL container: %s", err)
-		}
-	}()
-	dbURL = fmt.Sprintf("postgres://user:secret@%s/testdb?sslmode=disable", pgResource.GetHostPort("5432/tcp"))
+	dbURL = fmt.Sprintf("postgres://user:secret@%s:%s/testdb?sslmode=disable", host, pgResource.GetPort("5432/tcp"))
 
 	redisResource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "redis",
@@ -84,12 +90,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not start Redis container: %s", err)
 	}
-	defer func() {
-		if err := pool.Purge(redisResource); err != nil {
-			log.Fatalf("Could not purge Redis container: %s", err)
-		}
-	}()
-	redisURL = fmt.Sprintf("redis://%s", redisResource.GetHostPort("6379/tcp"))
+	redisURL = fmt.Sprintf("redis://%s:%s", host, redisResource.GetPort("6379/tcp"))
 
 	os.Setenv("DB_URL", dbURL)
 	os.Setenv("REDIS_URL", redisURL)
