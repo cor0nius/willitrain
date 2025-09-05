@@ -71,7 +71,7 @@ func TestMain(m *testing.M) {
 			log.Fatalf("Could not purge PostgreSQL container: %s", err)
 		}
 	}()
-	dbURL = fmt.Sprintf("postgres://user:secret@%s:%s/testdb?sslmode=disable", pgResource.GetBoundIP("5432/tcp"), pgResource.GetPort("5432/tcp"))
+	dbURL = fmt.Sprintf("postgres://user:secret@%s/testdb?sslmode=disable", pgResource.GetHostPort("5432/tcp"))
 
 	redisResource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "redis",
@@ -89,7 +89,7 @@ func TestMain(m *testing.M) {
 			log.Fatalf("Could not purge Redis container: %s", err)
 		}
 	}()
-	redisURL = fmt.Sprintf("redis://%s:%s", redisResource.GetBoundIP("6379/tcp"), redisResource.GetPort("6379/tcp"))
+	redisURL = fmt.Sprintf("redis://%s", redisResource.GetHostPort("6379/tcp"))
 
 	os.Setenv("DB_URL", dbURL)
 	os.Setenv("REDIS_URL", redisURL)
