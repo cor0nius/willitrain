@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     services:
       docker:
-        image: docker:dind
+        image: docker:24.0-dind
         ports:
           - 2375:2375
     env:
-      DOCKER_HOST: tcp://docker:2375
+      DOCKER_HOST: tcp://localhost:2375
       REDIS_URL: "redis://localhost:6379/"
       GMP_GEOCODE_URL: "https://maps.googleapis.com/maps/api/geocode/"
       GMP_WEATHER_URL: "https://weather.googleapis.com/v1/"
@@ -35,11 +35,25 @@ jobs:
       with:
         go-version: '1.24.x'
 
-    - name: Wait for Docker to be ready
+    - name: Wait for Docker and print logs on failure
       run: |
-        while ! docker info > /dev/null 2>&1; do
-           sleep 1
+        echo "Waiting for Docker to start..."
+        for i in `seq 1 60`; do
+          if docker info > /dev/null 2>&1; then
+            echo "Docker is ready!"
+            break
+          fi
+          echo -n "."
+          sleep 2
         done
+
+        if ! docker info > /dev/null 2>&1; then
+          echo "Docker did not start in time."
+          echo "--- Docker Service Logs ---"
+          docker ps -a
+          docker logs $(docker ps -aq)
+          exit 1
+        fi
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
