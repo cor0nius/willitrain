@@ -39,12 +39,12 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to Docker: %s", err)
 	}
 
-	network, err := pool.CreateNetwork("test_network")
+	test_network, err := pool.CreateNetwork("test_network")
 	if err != nil {
 		log.Fatalf("Could not create Docker network: %s", err)
 	}
 	defer func() {
-		if err := pool.RemoveNetwork(network); err != nil {
+		if err := pool.RemoveNetwork(test_network); err != nil {
 			log.Fatalf("Could not remove Docker network: %s", err)
 		}
 	}()
@@ -58,7 +58,7 @@ func TestMain(m *testing.M) {
 			"POSTGRES_DB=testdb",
 			"listen_addresses='*'",
 		},
-		NetworkID: network.Network.ID,
+		NetworkID: test_network.Network.ID,
 	}, func(config *docker.HostConfig) {
 		config.AutoRemove = true
 		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
@@ -66,12 +66,17 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not start PostgreSQL container: %s", err)
 	}
-	dbURL = fmt.Sprintf("postgres://user:secret@%s:%s/testdb?sslmode=disable", pgResource.GetIPInNetwork(network), pgResource.GetPort("5432/tcp"))
+	defer func() {
+		if err := pool.Purge(pgResource); err != nil {
+			log.Fatalf("Could not purge PostgreSQL container: %s", err)
+		}
+	}()
+	dbURL = fmt.Sprintf("postgres://user:secret@%s:%s/testdb?sslmode=disable", pgResource.GetBoundIP("5432/tcp"), pgResource.GetPort("5432/tcp"))
 
 	redisResource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "redis",
 		Tag:        "6",
-		NetworkID:  network.Network.ID,
+		NetworkID:  test_network.Network.ID,
 	}, func(config *docker.HostConfig) {
 		config.AutoRemove = true
 		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
@@ -79,7 +84,12 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not start Redis container: %s", err)
 	}
-	redisURL = fmt.Sprintf("redis://%s:%s", redisResource.GetIPInNetwork(network), redisResource.GetPort("6379/tcp"))
+	defer func() {
+		if err := pool.Purge(redisResource); err != nil {
+			log.Fatalf("Could not purge Redis container: %s", err)
+		}
+	}()
+	redisURL = fmt.Sprintf("redis://%s:%s", redisResource.GetBoundIP("6379/tcp"), redisResource.GetPort("6379/tcp"))
 
 	os.Setenv("DB_URL", dbURL)
 	os.Setenv("REDIS_URL", redisURL)
@@ -92,12 +102,6 @@ func TestMain(m *testing.M) {
 		}
 		return db.Ping()
 	}); err != nil {
-		if err := pool.Purge(pgResource); err != nil {
-			log.Fatalf("Could not purge PostgreSQL container: %s", err)
-		}
-		if err := pool.Purge(redisResource); err != nil {
-			log.Fatalf("Could not purge Redis container: %s", err)
-		}
 		log.Fatalf("Could not connect to PostgreSQL container: %s", err)
 	}
 
@@ -109,12 +113,6 @@ func TestMain(m *testing.M) {
 		client := redis.NewClient(opts)
 		return client.Ping(context.Background()).Err()
 	}); err != nil {
-		if err := pool.Purge(pgResource); err != nil {
-			log.Fatalf("Could not purge PostgreSQL container: %s", err)
-		}
-		if err := pool.Purge(redisResource); err != nil {
-			log.Fatalf("Could not purge Redis container: %s", err)
-		}
 		log.Fatalf("Could not connect to Redis container: %s", err)
 	}
 
@@ -125,6 +123,9 @@ func TestMain(m *testing.M) {
 	}
 	if err := pool.Purge(redisResource); err != nil {
 		log.Fatalf("Could not purge Redis container: %s", err)
+	}
+	if err := pool.RemoveNetwork(test_network); err != nil {
+			log.Fatalf("Could not remove Docker network: %s", err)
 	}
 
 	os.Exit(code)
