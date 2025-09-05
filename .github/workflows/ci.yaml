@@ -12,10 +12,11 @@ jobs:
     services:
       docker:
         image: docker:24.0-dind
+        options: --privileged
         ports:
           - 2375:2375
     env:
-      DOCKER_HOST: tcp://localhost:2375
+      DOCKER_HOST: tcp://127.0.0.1:2375
       REDIS_URL: "redis://localhost:6379/"
       GMP_GEOCODE_URL: "https://maps.googleapis.com/maps/api/geocode/"
       GMP_WEATHER_URL: "https://weather.googleapis.com/v1/"
