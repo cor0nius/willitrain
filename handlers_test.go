@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -545,4 +548,81 @@ func TestHandlerHourlyForecast(t *testing.T) {
 			tc.checkMocks(t, testCfg)
 		})
 	}
+}
+
+func TestHandlerRunSchedulerJobs(t *testing.T) {
+	var logBuf bytes.Buffer
+	testLogger := slog.New(slog.NewTextHandler(&logBuf, nil))
+
+	cfg := &apiConfig{
+		logger:                   testLogger,
+		schedulerCurrentInterval: 20 * time.Millisecond,
+		schedulerHourlyInterval:  20 * time.Millisecond,
+		schedulerDailyInterval:   20 * time.Millisecond,
+	}
+
+	scheduler := NewScheduler(cfg, cfg.schedulerCurrentInterval, cfg.schedulerHourlyInterval, cfg.schedulerDailyInterval)
+
+	scheduler.currentWeatherJobs = func() {
+		cfg.logger.Info("mock current weather job run")
+	}
+	scheduler.hourlyForecastJobs = func() {
+		cfg.logger.Info("mock hourly forecast job run")
+	}
+	scheduler.dailyForecastJobs = func() {
+		cfg.logger.Info("mock daily forecast job run")
+	}
+
+	handler := scheduler.handlerRunSchedulerJobs
+
+	t.Run("Success", func(t *testing.T) {
+		logBuf.Reset()
+
+		req := httptest.NewRequest(http.MethodPost, "/scheduler/run", nil)
+		rr := httptest.NewRecorder()
+
+		handler(rr, req)
+
+		if rr.Code != http.StatusAccepted {
+			t.Errorf("expected status %d; got %d", http.StatusAccepted, rr.Code)
+		}
+
+		expectedBody := `{"status":"scheduler jobs triggered"}`
+		actualBody := strings.TrimSpace(rr.Body.String())
+		if actualBody != expectedBody {
+			t.Errorf("expected body %q; got %q", expectedBody, actualBody)
+		}
+
+		time.Sleep(10 * time.Millisecond)
+
+		logs := logBuf.String()
+		if !strings.Contains(logs, "manual scheduler run triggered") {
+			t.Error("log output missing 'manual scheduler run triggered'")
+		}
+		if !strings.Contains(logs, "starting manual scheduler jobs") {
+			t.Error("log output missing 'starting manual scheduler jobs'")
+		}
+		if !strings.Contains(logs, "manual scheduler run finished") {
+			t.Error("log output missing 'manual scheduler run finished'")
+		}
+	})
+
+	t.Run("Failure - non-POST method", func(t *testing.T) {
+		logBuf.Reset()
+
+		req := httptest.NewRequest(http.MethodGet, "/scheduler/run", nil)
+		rr := httptest.NewRecorder()
+
+		handler(rr, req)
+
+		if rr.Code != http.StatusMethodNotAllowed {
+			t.Errorf("expected status %d; got %d", http.StatusMethodNotAllowed, rr.Code)
+		}
+
+		expectedBody := `{"error":"Method Not Allowed"}`
+		actualBody := strings.TrimSpace(rr.Body.String())
+		if actualBody != expectedBody {
+			t.Errorf("expected body %q; got %q", expectedBody, actualBody)
+		}
+	})
 }
