@@ -69,6 +69,9 @@ func TestMain(m *testing.M) {
 	}
 	redisURL = fmt.Sprintf("redis://%s", redisResource.GetHostPort("6379/tcp"))
 
+	os.Setenv("DB_URL", dbURL)
+	os.Setenv("REDIS_URL", redisURL)
+	
 	pool.MaxWait = 120 * time.Second
 	if err = pool.Retry(func() error {
 		db, err := sql.Open("postgres", dbURL)
