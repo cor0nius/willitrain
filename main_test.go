@@ -102,6 +102,15 @@ func TestMain(m *testing.M) {
 		}
 		return db.Ping()
 	}); err != nil {
+		if err := pool.Purge(pgResource); err != nil {
+			log.Fatalf("Could not purge PostgreSQL container: %s", err)
+		}
+		if err := pool.Purge(redisResource); err != nil {
+			log.Fatalf("Could not purge Redis container: %s", err)
+		}
+		if err := pool.RemoveNetwork(test_network); err != nil {
+			log.Fatalf("Could not remove Docker network: %s", err)
+		}
 		log.Fatalf("Could not connect to PostgreSQL container: %s", err)
 	}
 
@@ -113,6 +122,15 @@ func TestMain(m *testing.M) {
 		client := redis.NewClient(opts)
 		return client.Ping(context.Background()).Err()
 	}); err != nil {
+		if err := pool.Purge(pgResource); err != nil {
+			log.Fatalf("Could not purge PostgreSQL container: %s", err)
+		}
+		if err := pool.Purge(redisResource); err != nil {
+			log.Fatalf("Could not purge Redis container: %s", err)
+		}
+		if err := pool.RemoveNetwork(test_network); err != nil {
+			log.Fatalf("Could not remove Docker network: %s", err)
+		}
 		log.Fatalf("Could not connect to Redis container: %s", err)
 	}
 
