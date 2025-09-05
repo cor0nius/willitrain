@@ -9,6 +9,11 @@ jobs:
   test:
     name: Test & Coverage
     runs-on: ubuntu-latest
+    services:
+        dind:
+            image: docker:23.0-rc-dind-rootless
+            ports:
+              - 2375:2375
     env:
       REDIS_URL: "redis://localhost:6379/"
       GMP_GEOCODE_URL: "https://maps.googleapis.com/maps/api/geocode/"
@@ -41,9 +46,6 @@ jobs:
     - name: Build Frontend
       run: npm run build
       working-directory: ./frontend
-
-    - name: Set up Docker
-      uses: docker/setup-buildx-action@v3
 
     - name: Run tests and generate coverage
       run: go test -v -covermode=atomic -coverprofile=coverage.out ./...
