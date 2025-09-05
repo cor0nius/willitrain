@@ -8,6 +8,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // This file is the main entrypoint for the WillItRain application.
@@ -69,7 +70,7 @@ func main() {
 	mux.HandleFunc("/api/currentweather", cfg.handlerCurrentWeather)
 	mux.HandleFunc("/api/dailyforecast", cfg.handlerDailyForecast)
 	mux.HandleFunc("/api/hourlyforecast", cfg.handlerHourlyForecast)
-	mux.HandleFunc("/metrics", cfg.handlerMetrics)
+	mux.Handle("/metrics", promhttp.Handler())
 
 	// Register development-only endpoints if dev mode is enabled.
 	if cfg.devMode {

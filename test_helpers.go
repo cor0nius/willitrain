@@ -49,90 +49,265 @@ var MockDBLocation = database.Location{
 	CountryCode: MockLocation.CountryCode,
 }
 
-var MockDBCurrentWeather = database.CurrentWeather{
-	SourceApi: "test",
-	UpdatedAt: time.Now().UTC(),
-	TemperatureC: sql.NullFloat64{
-		Float64: 10.0,
-		Valid:   true,
-	},
-	Humidity: sql.NullInt32{
-		Int32: 50,
-		Valid: true,
-	},
-	WindSpeedKmh: sql.NullFloat64{
-		Float64: 5.0,
-		Valid:   true,
-	},
-	PrecipitationMm: sql.NullFloat64{
-		Float64: 0.0,
-		Valid:   true,
-	},
-	ConditionText: sql.NullString{
-		String: "sunny",
-		Valid:  true,
-	},
-}
+var (
+	now                   = time.Now().UTC()
+	MockDBCurrentWeather1 = database.CurrentWeather{
+		SourceApi: "test1",
+		UpdatedAt: now.Add(-5 * time.Minute),
+		TemperatureC: sql.NullFloat64{
+			Float64: 10.0,
+			Valid:   true,
+		},
+		Humidity: sql.NullInt32{
+			Int32: 50,
+			Valid: true,
+		},
+		WindSpeedKmh: sql.NullFloat64{
+			Float64: 5.0,
+			Valid:   true,
+		},
+		PrecipitationMm: sql.NullFloat64{
+			Float64: 0.0,
+			Valid:   true,
+		},
+		ConditionText: sql.NullString{
+			String: "sunny",
+			Valid:  true,
+		},
+	}
+	MockDBCurrentWeather2 = database.CurrentWeather{
+		SourceApi: "test2",
+		UpdatedAt: now.Add(-5 * time.Minute),
+		TemperatureC: sql.NullFloat64{
+			Float64: 11.0,
+			Valid:   true,
+		},
+		Humidity: sql.NullInt32{
+			Int32: 51,
+			Valid: true,
+		},
+		WindSpeedKmh: sql.NullFloat64{
+			Float64: 6.0,
+			Valid:   true,
+		},
+		PrecipitationMm: sql.NullFloat64{
+			Float64: 0.1,
+			Valid:   true,
+		},
+		ConditionText: sql.NullString{
+			String: "partly cloudy",
+			Valid:  true,
+		},
+	}
+	MockDBCurrentWeather3 = database.CurrentWeather{
+		SourceApi: "test3",
+		UpdatedAt: now.Add(-2 * time.Minute),
+		TemperatureC: sql.NullFloat64{
+			Float64: 12.0,
+			Valid:   true,
+		},
+		Humidity: sql.NullInt32{
+			Int32: 52,
+			Valid: true,
+		},
+		WindSpeedKmh: sql.NullFloat64{
+			Float64: 7.0,
+			Valid:   true,
+		},
+		PrecipitationMm: sql.NullFloat64{
+			Float64: 0.2,
+			Valid:   true,
+		},
+		ConditionText: sql.NullString{
+			String: "cloudy",
+			Valid:  true,
+		},
+	}
+)
 
-var MockDBDailyForecast = database.DailyForecast{
-	SourceApi:    "test",
-	ForecastDate: time.Date(2035, 1, 1, 0, 0, 0, 0, time.UTC),
-	UpdatedAt:    time.Date(2035, 1, 1, 0, 0, 0, 0, time.UTC),
-	MinTempC: sql.NullFloat64{
-		Float64: 5.0,
-		Valid:   true,
-	},
-	MaxTempC: sql.NullFloat64{
-		Float64: 15.0,
-		Valid:   true,
-	},
-	PrecipitationMm: sql.NullFloat64{
-		Float64: 1.0,
-		Valid:   true,
-	},
-	PrecipitationChancePercent: sql.NullInt32{
-		Int32: 50,
-		Valid: true,
-	},
-	WindSpeedKmh: sql.NullFloat64{
-		Float64: 10.0,
-		Valid:   true,
-	},
-	Humidity: sql.NullInt32{
-		Int32: 60,
-		Valid: true,
-	},
-}
+var (
+	futureDate1          = time.Now().UTC().AddDate(0, 0, 1)
+	futureDate2          = time.Now().UTC().AddDate(0, 0, 2)
+	MockDBDailyForecast1 = database.DailyForecast{
+		SourceApi:    "test1",
+		ForecastDate: futureDate1,
+		UpdatedAt:    now,
+		MinTempC: sql.NullFloat64{
+			Float64: 5.0,
+			Valid:   true,
+		},
+		MaxTempC: sql.NullFloat64{
+			Float64: 15.0,
+			Valid:   true,
+		},
+		PrecipitationMm: sql.NullFloat64{
+			Float64: 1.0,
+			Valid:   true,
+		},
+		PrecipitationChancePercent: sql.NullInt32{
+			Int32: 50,
+			Valid: true,
+		},
+		WindSpeedKmh: sql.NullFloat64{
+			Float64: 10.0,
+			Valid:   true,
+		},
+		Humidity: sql.NullInt32{
+			Int32: 60,
+			Valid: true,
+		},
+	}
+	MockDBDailyForecast2 = database.DailyForecast{
+		SourceApi:    "test2",
+		ForecastDate: futureDate1,
+		UpdatedAt:    now,
+		MinTempC: sql.NullFloat64{
+			Float64: 6.0,
+			Valid:   true,
+		},
+		MaxTempC: sql.NullFloat64{
+			Float64: 16.0,
+			Valid:   true,
+		},
+		PrecipitationMm: sql.NullFloat64{
+			Float64: 2.0,
+			Valid:   true,
+		},
+		PrecipitationChancePercent: sql.NullInt32{
+			Int32: 55,
+			Valid: true,
+		},
+		WindSpeedKmh: sql.NullFloat64{
+			Float64: 11.0,
+			Valid:   true,
+		},
+		Humidity: sql.NullInt32{
+			Int32: 62,
+			Valid: true,
+		},
+	}
+	MockDBDailyForecast3 = database.DailyForecast{
+		SourceApi:    "test3",
+		ForecastDate: futureDate2,
+		UpdatedAt:    now,
+		MinTempC: sql.NullFloat64{
+			Float64: 7.0,
+			Valid:   true,
+		},
+		MaxTempC: sql.NullFloat64{
+			Float64: 17.0,
+			Valid:   true,
+		},
+		PrecipitationMm: sql.NullFloat64{
+			Float64: 3.0,
+			Valid:   true,
+		},
+		PrecipitationChancePercent: sql.NullInt32{
+			Int32: 60,
+			Valid: true,
+		},
+		WindSpeedKmh: sql.NullFloat64{
+			Float64: 12.0,
+			Valid:   true,
+		},
+		Humidity: sql.NullInt32{
+			Int32: 65,
+			Valid: true,
+		},
+	}
+)
 
-var MockDBHourlyForecast = database.HourlyForecast{
-	SourceApi:           "test",
-	ForecastDatetimeUtc: time.Date(2035, 1, 1, 12, 0, 0, 0, time.UTC),
-	UpdatedAt:           time.Date(2035, 1, 1, 12, 0, 0, 0, time.UTC),
-	TemperatureC: sql.NullFloat64{
-		Float64: 10.0,
-		Valid:   true,
-	},
-	Humidity: sql.NullInt32{
-		Int32: 50,
-		Valid: true,
-	},
-	WindSpeedKmh: sql.NullFloat64{
-		Float64: 5.0,
-		Valid:   true,
-	},
-	PrecipitationMm: sql.NullFloat64{
-		Float64: 0.0,
-		Valid:   true,
-	},
-	PrecipitationChancePercent: sql.NullInt32{
-		Int32: 10,
-		Valid: true,
-	},
-	ConditionText: sql.NullString{
-		String: "cloudy",
-		Valid:  true,
-	},
-}
+var (
+	futureDateTime1       = time.Now().UTC().Add(1 * time.Hour).Truncate(time.Hour)
+	futureDateTime2       = time.Now().UTC().Add(2 * time.Hour).Truncate(time.Hour)
+	MockDBHourlyForecast1 = database.HourlyForecast{
+		SourceApi:           "test1",
+		ForecastDatetimeUtc: futureDateTime1,
+		UpdatedAt:           now,
+		TemperatureC: sql.NullFloat64{
+			Float64: 10.0,
+			Valid:   true,
+		},
+		Humidity: sql.NullInt32{
+			Int32: 50,
+			Valid: true,
+		},
+		WindSpeedKmh: sql.NullFloat64{
+			Float64: 5.0,
+			Valid:   true,
+		},
+		PrecipitationMm: sql.NullFloat64{
+			Float64: 0.0,
+			Valid:   true,
+		},
+		PrecipitationChancePercent: sql.NullInt32{
+			Int32: 10,
+			Valid: true,
+		},
+		ConditionText: sql.NullString{
+			String: "cloudy",
+			Valid:  true,
+		},
+	}
+	MockDBHourlyForecast2 = database.HourlyForecast{
+		SourceApi:           "test2",
+		ForecastDatetimeUtc: futureDateTime1,
+		UpdatedAt:           now,
+		TemperatureC: sql.NullFloat64{
+			Float64: 11.0,
+			Valid:   true,
+		},
+		Humidity: sql.NullInt32{
+			Int32: 51,
+			Valid: true,
+		},
+		WindSpeedKmh: sql.NullFloat64{
+			Float64: 6.0,
+			Valid:   true,
+		},
+		PrecipitationMm: sql.NullFloat64{
+			Float64: 0.1,
+			Valid:   true,
+		},
+		PrecipitationChancePercent: sql.NullInt32{
+			Int32: 15,
+			Valid: true,
+		},
+		ConditionText: sql.NullString{
+			String: "partly cloudy",
+			Valid:  true,
+		},
+	}
+	MockDBHourlyForecast3 = database.HourlyForecast{
+		SourceApi:           "test3",
+		ForecastDatetimeUtc: futureDateTime2,
+		UpdatedAt:           now,
+		TemperatureC: sql.NullFloat64{
+			Float64: 12.0,
+			Valid:   true,
+		},
+		Humidity: sql.NullInt32{
+			Int32: 52,
+			Valid: true,
+		},
+		WindSpeedKmh: sql.NullFloat64{
+			Float64: 7.0,
+			Valid:   true,
+		},
+		PrecipitationMm: sql.NullFloat64{
+			Float64: 0.2,
+			Valid:   true,
+		},
+		PrecipitationChancePercent: sql.NullInt32{
+			Int32: 20,
+			Valid: true,
+		},
+		ConditionText: sql.NullString{
+			String: "sunny",
+			Valid:  true,
+		},
+	}
+)
 
 // --- Mocks ---
 

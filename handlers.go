@@ -5,8 +5,6 @@ import (
 	"sort"
 	"sync"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // This file contains the main HTTP handlers for the application. Each handler is responsible
@@ -183,11 +181,6 @@ func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Reque
 	}
 
 	cfg.respondWithJSON(w, http.StatusOK, response)
-}
-
-// handlerMetrics exposes the application's Prometheus metrics.
-func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
-	promhttp.Handler().ServeHTTP(w, r)
 }
 
 // handlerResetDB is a development-only endpoint that completely wipes the database and the Redis cache.
