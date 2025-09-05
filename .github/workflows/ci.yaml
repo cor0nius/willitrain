@@ -18,7 +18,6 @@ jobs:
         env:
           DOCKER_TLS_CERTDIR: ""
     env:
-      DOCKER_HOST: tcp://127.0.0.1:2375
       REDIS_URL: "redis://localhost:6379/"
       GMP_GEOCODE_URL: "https://maps.googleapis.com/maps/api/geocode/"
       GMP_WEATHER_URL: "https://weather.googleapis.com/v1/"
