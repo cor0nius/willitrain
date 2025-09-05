@@ -22,6 +22,7 @@ import (
 var (
 	dbURL    string
 	redisURL string
+	dockerURL string
 )
 
 func TestMain(m *testing.M) {
@@ -30,7 +31,7 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	dockerURL := "unix:///var/run/docker.sock"
+	dockerURL = os.Getenv("DOCKER_HOST")
 	if dockerURL == "" {
 		dockerURL = "unix:///var/run/docker.sock"
 	}
