@@ -15,6 +15,8 @@ jobs:
         options: --privileged
         ports:
           - 2375:2375
+        env:
+          DOCKER_TLS_CERTDIR: ""
     env:
       DOCKER_HOST: tcp://127.0.0.1:2375
       REDIS_URL: "redis://localhost:6379/"
