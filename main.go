@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"embed"
+	"fmt"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -25,27 +28,24 @@ import (
 //go:embed all:frontend/dist
 var frontendFS embed.FS
 
-func main() {
+func run(ctx context.Context) error {
 	// Initialize the application configuration, which includes setting up
 	// the logger, database connections, and other dependencies.
 	cfg, err := NewAPIConfig(os.Stdout)
 	if err != nil {
-		cfg.logger.Error("failed to load configuration", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 	cfg.logger.Debug("configuration loaded")
 
 	// Establish connections to the database and cache.
 	err = cfg.ConnectDB()
 	if err != nil {
-		cfg.logger.Error("couldn't connect to database", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("couldn't connect to database: %w", err)
 	}
 
 	err = cfg.ConnectCache()
 	if err != nil {
-		cfg.logger.Error("couldn't connect to cache", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("couldn't connect to cache: %w", err)
 	}
 
 	// Create and start the scheduler for periodic weather data updates.
@@ -82,8 +82,7 @@ func main() {
 	// Set up the file server to serve the embedded frontend assets.
 	distFS, err := fs.Sub(frontendFS, "frontend/dist")
 	if err != nil {
-		cfg.logger.Error("failed to create frontend file system", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to create frontend file system: %w", err)
 	}
 	mux.Handle("/", http.FileServer(http.FS(distFS)))
 
@@ -103,10 +102,26 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
+	// Goroutine for graceful shutdown
+	go func() {
+		<-ctx.Done() // Block until context is cancelled
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			cfg.logger.Error("server shutdown failed", "error", err)
+		}
+	}()
+
 	cfg.logger.Info("starting server", "port", cfg.port)
 	err = server.ListenAndServe()
-	if err != nil {
-		cfg.logger.Error("server startup failed", "error", err)
-		os.Exit(1)
+	if err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("server startup failed: %w", err)
+	}
+	return nil
+}
+
+func main() {
+	if err := run(context.Background()); err != nil {
+		log.Fatal(err)
 	}
 }
