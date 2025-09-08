@@ -626,3 +626,60 @@ func TestHandlerRunSchedulerJobs(t *testing.T) {
 		}
 	})
 }
+
+func TestRespondWithJSON(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		cfg := &apiConfig{logger: slog.Default()}
+		payload := struct {
+			Name string `json:"name"`
+		}{"test"}
+
+		cfg.respondWithJSON(rr, http.StatusOK, payload)
+
+		if status := rr.Code; status != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+		}
+
+		expected := `{"name":"test"}`
+		if rr.Body.String() != expected {
+			t.Errorf("handler returned unexpected body: got %v want %v", rr.Body.String(), expected)
+		}
+
+		if ctype := rr.Header().Get("Content-Type"); ctype != "application/json" {
+			t.Errorf("content type header is not application/json: got %v", ctype)
+		}
+	})
+
+	t.Run("Failure - Marshal Error", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		cfg := &apiConfig{logger: slog.Default()}
+		payload := make(chan int) // Channels can't be marshaled to JSON
+
+		cfg.respondWithJSON(rr, http.StatusOK, payload)
+
+		if status := rr.Code; status != http.StatusInternalServerError {
+			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+		}
+	})
+
+	t.Run("Failure - Write Error", func(t *testing.T) {
+		var logBuffer bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&logBuffer, nil))
+		cfg := &apiConfig{logger: logger}
+		payload := struct {
+			Name string `json:"name"`
+		}{"test"}
+
+		mockWriter := &mockResponseWriter{
+			writeErr: errors.New("write error"),
+		}
+
+		cfg.respondWithJSON(mockWriter, http.StatusOK, payload)
+
+		logOutput := logBuffer.String()
+		if !strings.Contains(logOutput, "error writing response") {
+			t.Errorf("expected log to contain 'error writing response', but it didn't. Log: %s", logOutput)
+		}
+	})
+}

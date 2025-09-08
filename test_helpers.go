@@ -672,3 +672,35 @@ func (mt mockTransformer) TransformString(t transform.Transformer, s string) (st
 	// We ignore the inputs and just return the error we were configured with.
 	return "", 0, mt.errToReturn
 }
+
+type mockResponseWriter struct {
+	header      http.Header
+	statusCode  int
+	writeErr    error
+	wroteHeader bool
+}
+
+func (m *mockResponseWriter) Header() http.Header {
+	if m.header == nil {
+		m.header = make(http.Header)
+	}
+	return m.header
+}
+
+func (m *mockResponseWriter) WriteHeader(statusCode int) {
+	if m.wroteHeader {
+		return
+	}
+	m.statusCode = statusCode
+	m.wroteHeader = true
+}
+
+func (m *mockResponseWriter) Write(b []byte) (int, error) {
+	if m.writeErr != nil {
+		return 0, m.writeErr
+	}
+	if !m.wroteHeader {
+		m.WriteHeader(http.StatusOK)
+	}
+	return len(b), nil
+}
