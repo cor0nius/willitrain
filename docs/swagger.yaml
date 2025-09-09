@@ -1,0 +1,15 @@
+basePath: /api/v1
+host: localhost:8080
+info:
+  contact:
+    email: jacekglowacki94@gmail.com
+  description: This is a simple API to get weather forecasts.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: WillItRain API
+  version: "1.0"
+paths: {}
+schemes:
+- http
+swagger: "2.0"

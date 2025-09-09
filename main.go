@@ -1,3 +1,15 @@
+// @title WillItRain API
+// @version 1.0
+// @description This is a simple API to get weather forecasts.
+
+// @contact.email jacekglowacki94@gmail.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api/v1
+// @schemes http
 package main
 
 import (
@@ -10,8 +22,10 @@ import (
 	"os"
 	"time"
 
+	_ "github.com/cor0nius/willitrain/docs"
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // This file is the main entrypoint for the WillItRain application.
@@ -71,6 +85,7 @@ func run(ctx context.Context) error {
 	mux.HandleFunc("/api/dailyforecast", cfg.handlerDailyForecast)
 	mux.HandleFunc("/api/hourlyforecast", cfg.handlerHourlyForecast)
 	mux.Handle("/metrics", promhttp.Handler())
+	mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 
 	// Register development-only endpoints if dev mode is enabled.
 	if cfg.devMode {
