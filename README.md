@@ -1,3 +1,4 @@
+[![codecov](https://codecov.io/gh/cor0nius/willitrain/graph/badge.svg?token=1T93JQE83A)](https://codecov.io/gh/cor0nius/willitrain)
 # Will It Rain?
 
 ## Overview
