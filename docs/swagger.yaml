@@ -1,0 +1,302 @@
+basePath: /
+definitions:
+  main.ConfigResponse:
+    properties:
+      current_interval:
+        type: string
+      daily_interval:
+        type: string
+      dev_mode:
+        type: boolean
+      hourly_interval:
+        type: string
+    type: object
+  main.CurrentWeatherJSON:
+    properties:
+      condition_text:
+        type: string
+      humidity:
+        type: integer
+      precipitation_mm:
+        type: number
+      source_api:
+        type: string
+      temperature_c:
+        type: number
+      timestamp:
+        type: string
+      wind_speed_kmh:
+        type: number
+    type: object
+  main.CurrentWeatherResponse:
+    properties:
+      location:
+        $ref: '#/definitions/main.Location'
+      weather:
+        items:
+          $ref: '#/definitions/main.CurrentWeatherJSON'
+        type: array
+    type: object
+  main.DailyForecastJSON:
+    properties:
+      forecast_date:
+        type: string
+      humidity:
+        type: integer
+      max_temp_c:
+        type: number
+      min_temp_c:
+        type: number
+      precipitation_chance:
+        type: integer
+      precipitation_mm:
+        type: number
+      source_api:
+        type: string
+      wind_speed_kmh:
+        type: number
+    type: object
+  main.DailyForecastsResponse:
+    properties:
+      forecasts:
+        items:
+          $ref: '#/definitions/main.DailyForecastJSON'
+        type: array
+      location:
+        $ref: '#/definitions/main.Location'
+    type: object
+  main.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  main.HourlyForecastJSON:
+    properties:
+      condition_text:
+        type: string
+      forecast_datetime:
+        type: string
+      humidity:
+        type: integer
+      precipitation_chance:
+        type: integer
+      precipitation_mm:
+        type: number
+      source_api:
+        type: string
+      temperature_c:
+        type: number
+      wind_speed_kmh:
+        type: number
+    type: object
+  main.HourlyForecastsResponse:
+    properties:
+      forecasts:
+        items:
+          $ref: '#/definitions/main.HourlyForecastJSON'
+        type: array
+      location:
+        $ref: '#/definitions/main.Location'
+    type: object
+  main.Location:
+    properties:
+      city_name:
+        type: string
+      country_code:
+        type: string
+      latitude:
+        type: number
+      location_id:
+        type: string
+      longitude:
+        type: number
+      timezone:
+        type: string
+    type: object
+host: willitrain-908739103426.europe-west1.run.app
+info:
+  contact:
+    email: jacekglowacki94@gmail.com
+  description: This is a simple API to get weather forecasts.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: WillItRain API
+  version: "1.0"
+paths:
+  /api/config:
+    get:
+      description: |-
+        Provides client-side applications with necessary configuration details,
+        such as whether the application is running in development mode and the
+        intervals for scheduled weather data updates.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.ConfigResponse'
+      summary: Get application configuration
+      tags:
+      - configuration
+  /api/currentweather:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Retrieves the current weather conditions for a specified location.
+        The location can be identified by its name, or by latitude and longitude.
+      parameters:
+      - description: Location name to search for (e.g., 'London')
+        in: query
+        name: city
+        type: string
+      - description: Latitude for the location (e.g., 51.5074)
+        in: query
+        name: lat
+        type: number
+      - description: Longitude for the location (e.g., -0.1278)
+        in: query
+        name: lon
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.CurrentWeatherResponse'
+        "400":
+          description: Bad Request - Invalid location parameters
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error - Failed to retrieve weather data
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Get current weather
+      tags:
+      - weather
+  /api/dailyforecast:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Retrieves the weather forecast for the next 5 days for a specified location.
+        The location can be identified by its name, or by latitude and longitude.
+      parameters:
+      - description: Location name to search for (e.g., 'London')
+        in: query
+        name: city
+        type: string
+      - description: Latitude for the location (e.g., 51.5074)
+        in: query
+        name: lat
+        type: number
+      - description: Longitude for the location (e.g., -0.1278)
+        in: query
+        name: lon
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.DailyForecastsResponse'
+        "400":
+          description: Bad Request - Invalid location parameters
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error - Failed to retrieve forecast data
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Get daily forecast
+      tags:
+      - weather
+  /api/hourlyforecast:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Retrieves the weather forecast for the next 24 hours for a specified location.
+        The location can be identified by its name, or by latitude and longitude.
+      parameters:
+      - description: Location name to search for (e.g., 'London')
+        in: query
+        name: city
+        type: string
+      - description: Latitude for the location (e.g., 51.5074)
+        in: query
+        name: lat
+        type: number
+      - description: Longitude for the location (e.g., -0.1278)
+        in: query
+        name: lon
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.HourlyForecastsResponse'
+        "400":
+          description: Bad Request - Invalid location parameters
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error - Failed to retrieve forecast data
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Get hourly forecast
+      tags:
+      - weather
+  /dev/reset-db:
+    post:
+      description: |-
+        Completely wipes the database and Redis cache. This action deletes all stored locations
+        and their associated weather data. This endpoint is intended for development and testing purposes only.
+        It should not be enabled in production environments.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Confirmation of reset. Example: `{\"status\":\"database and
+            cache reset\"}`'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error - Failed to reset database or cache
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Reset database and cache (development only)
+      tags:
+      - development
+  /dev/runschedulerjobs:
+    post:
+      description: |-
+        Manually triggers a run of all scheduled data update jobs, including current weather,
+        hourly forecast, and daily forecast updates. This endpoint is intended for development
+        and testing purposes only. It should not be enabled in production environments.
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: 'Confirmation of triggering. Example:`{\"status\": \"scheduler
+            jobs triggered\"}`'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Manually trigger scheduler jobs (development only)
+      tags:
+      - development
+schemes:
+- https
+- http
+swagger: "2.0"

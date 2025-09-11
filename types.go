@@ -125,6 +125,19 @@ type HourlyForecastsResponse struct {
 	Forecasts []HourlyForecastJSON `json:"forecasts"`
 }
 
+// ErrorResponse standardizes the JSON structure for error messages returned by the API.
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+// ConfigResponse defines the JSON structure for the /api/config endpoint.
+type ConfigResponse struct {
+	DevMode         bool   `json:"dev_mode"`
+	CurrentInterval string `json:"current_interval"`
+	HourlyInterval  string `json:"hourly_interval"`
+	DailyInterval   string `json:"daily_interval"`
+}
+
 // --- Generic Type Constraints ---
 
 // Forecast is a generic type constraint that allows functions to work with any of the forecast types.

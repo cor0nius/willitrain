@@ -19,6 +19,20 @@ import (
 // 4. They sort the results for a consistent response order.
 // 5. They format the data into the final JSON response structure.
 // 6. They send the JSON response to the client.
+
+// @Summary      Get current weather
+// @Description  Retrieves the current weather conditions for a specified location.
+// @Description  The location can be identified by its name, or by latitude and longitude.
+// @Tags         weather
+// @Accept       json
+// @Produce      json
+// @Param        city query     string  false  "Location name to search for (e.g., 'London')"
+// @Param        lat  query     number  false  "Latitude for the location (e.g., 51.5074)"
+// @Param        lon  query     number  false  "Longitude for the location (e.g., -0.1278)"
+// @Success      200  {object}  CurrentWeatherResponse
+// @Failure      400  {object}  ErrorResponse "Bad Request - Invalid location parameters"
+// @Failure      500  {object}  ErrorResponse "Internal Server Error - Failed to retrieve weather data"
+// @Router       /api/currentweather [get]
 func (cfg *apiConfig) handlerCurrentWeather(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if r.Method != http.MethodGet {
@@ -73,6 +87,19 @@ func (cfg *apiConfig) handlerCurrentWeather(w http.ResponseWriter, r *http.Reque
 	cfg.respondWithJSON(w, http.StatusOK, response)
 }
 
+// @Summary      Get daily forecast
+// @Description  Retrieves the weather forecast for the next 5 days for a specified location.
+// @Description  The location can be identified by its name, or by latitude and longitude.
+// @Tags         weather
+// @Accept       json
+// @Produce      json
+// @Param        city query     string  false  "Location name to search for (e.g., 'London')"
+// @Param        lat  query     number  false  "Latitude for the location (e.g., 51.5074)"
+// @Param        lon  query     number  false  "Longitude for the location (e.g., -0.1278)"
+// @Success      200  {object}  DailyForecastsResponse
+// @Failure      400  {object}  ErrorResponse "Bad Request - Invalid location parameters"
+// @Failure      500  {object}  ErrorResponse "Internal Server Error - Failed to retrieve forecast data"
+// @Router       /api/dailyforecast [get]
 func (cfg *apiConfig) handlerDailyForecast(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if r.Method != http.MethodGet {
@@ -128,6 +155,19 @@ func (cfg *apiConfig) handlerDailyForecast(w http.ResponseWriter, r *http.Reques
 	cfg.respondWithJSON(w, http.StatusOK, response)
 }
 
+// @Summary      Get hourly forecast
+// @Description  Retrieves the weather forecast for the next 24 hours for a specified location.
+// @Description  The location can be identified by its name, or by latitude and longitude.
+// @Tags         weather
+// @Accept       json
+// @Produce      json
+// @Param        city query     string  false  "Location name to search for (e.g., 'London')"
+// @Param        lat  query     number  false  "Latitude for the location (e.g., 51.5074)"
+// @Param        lon  query     number  false  "Longitude for the location (e.g., -0.1278)"
+// @Success      200  {object}  HourlyForecastsResponse
+// @Failure      400  {object}  ErrorResponse "Bad Request - Invalid location parameters"
+// @Failure      500  {object}  ErrorResponse "Internal Server Error - Failed to retrieve forecast data"
+// @Router       /api/hourlyforecast [get]
 func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if r.Method != http.MethodGet {
@@ -185,6 +225,16 @@ func (cfg *apiConfig) handlerHourlyForecast(w http.ResponseWriter, r *http.Reque
 
 // handlerResetDB is a development-only endpoint that completely wipes the database and the Redis cache.
 // Deleting all locations cascades and clears all related weather and forecast data.
+
+// @Summary      Reset database and cache (development only)
+// @Description  Completely wipes the database and Redis cache. This action deletes all stored locations
+// @Description  and their associated weather data. This endpoint is intended for development and testing purposes only.
+// @Description  It should not be enabled in production environments.
+// @Tags         development
+// @Produce      json
+// @Success	 	 200  {object}  map[string]string "Confirmation of reset. Example: `{\"status\":\"database and cache reset\"}`"
+// @Failure	     500  {object}  ErrorResponse "Internal Server Error - Failed to reset database or cache"
+// @Router       /dev/reset-db [post]
 func (cfg *apiConfig) handlerResetDB(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		cfg.respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
@@ -211,6 +261,15 @@ func (cfg *apiConfig) handlerResetDB(w http.ResponseWriter, r *http.Request) {
 
 // handlerRunSchedulerJobs is a development-only endpoint that manually triggers
 // a run of all scheduled data update jobs.
+
+// @Summary      Manually trigger scheduler jobs (development only)
+// @Description  Manually triggers a run of all scheduled data update jobs, including current weather,
+// @Description  hourly forecast, and daily forecast updates. This endpoint is intended for development
+// @Description  and testing purposes only. It should not be enabled in production environments.
+// @Tags         development
+// @Produce      json
+// @Success      202  {object}  map[string]string "Confirmation of triggering. Example:`{\"status\": \"scheduler jobs triggered\"}`"
+// @Router       /dev/runschedulerjobs [post]
 func (s *Scheduler) handlerRunSchedulerJobs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		s.cfg.respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
@@ -250,18 +309,26 @@ func (s *Scheduler) handlerRunSchedulerJobs(w http.ResponseWriter, r *http.Reque
 
 // handlerConfig provides client-side applications with necessary configuration,
 // such as whether the application is running in development mode.
+
+// @Summary      Get application configuration
+// @Description  Provides client-side applications with necessary configuration details,
+// @Description  such as whether the application is running in development mode and the
+// @Description  intervals for scheduled weather data updates.
+// @Tags         configuration
+// @Produce      json
+// @Success	     200  {object}  ConfigResponse
+// @Router       /api/config [get]
 func (cfg *apiConfig) handlerConfig(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		cfg.respondWithError(w, http.StatusMethodNotAllowed, "Method Not Allowed", nil)
 		return
 	}
 
-	type configResponse struct {
-		DevMode bool `json:"dev_mode"`
-	}
-
-	response := configResponse{
-		DevMode: cfg.devMode,
+	response := ConfigResponse{
+		DevMode:         cfg.devMode,
+		CurrentInterval: cfg.schedulerCurrentInterval.String(),
+		HourlyInterval:  cfg.schedulerHourlyInterval.String(),
+		DailyInterval:   cfg.schedulerDailyInterval.String(),
 	}
 
 	cfg.respondWithJSON(w, http.StatusOK, response)
