@@ -16,10 +16,7 @@ func (cfg *apiConfig) respondWithError(w http.ResponseWriter, code int, msg stri
 	if err != nil {
 		cfg.logger.Error(msg, "error", err)
 	}
-	type errorResponse struct {
-		Error string `json:"error"`
-	}
-	cfg.respondWithJSON(w, code, errorResponse{
+	cfg.respondWithJSON(w, code, ErrorResponse{
 		Error: msg,
 	})
 }

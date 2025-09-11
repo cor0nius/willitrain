@@ -19,25 +19,38 @@ import (
 
 func TestHandlerConfig(t *testing.T) {
 	testCases := []struct {
-		name       string
-		method     string
-		devMode    bool
-		wantStatus int
-		wantBody   string
+		name            string
+		method          string
+		devMode         bool
+		currentInterval time.Duration
+		hourlyInterval  time.Duration
+		dailyInterval   time.Duration
+		wantStatus      int
+		wantBody        string
 	}{
 		{
 			name:       "Dev Mode True",
 			method:     http.MethodGet,
 			devMode:    true,
 			wantStatus: http.StatusOK,
-			wantBody:   `{"dev_mode":true}`,
+			wantBody:   `{"dev_mode":true,"current_interval":"0s","hourly_interval":"0s","daily_interval":"0s"}`,
 		},
 		{
 			name:       "Dev Mode False",
 			method:     http.MethodGet,
 			devMode:    false,
 			wantStatus: http.StatusOK,
-			wantBody:   `{"dev_mode":false}`,
+			wantBody:   `{"dev_mode":false,"current_interval":"0s","hourly_interval":"0s","daily_interval":"0s"}`,
+		},
+		{
+			name:            "Success with Custom Intervals",
+			method:          http.MethodGet,
+			devMode:         true,
+			currentInterval: 5 * time.Minute,
+			hourlyInterval:  1 * time.Hour,
+			dailyInterval:   24 * time.Hour,
+			wantStatus:      http.StatusOK,
+			wantBody:        `{"dev_mode":true,"current_interval":"5m0s","hourly_interval":"1h0m0s","daily_interval":"24h0m0s"}`,
 		},
 		{
 			name:       "Wrong Method",
@@ -51,7 +64,10 @@ func TestHandlerConfig(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			apiCfg := &apiConfig{
-				devMode: tc.devMode,
+				devMode:                  tc.devMode,
+				schedulerCurrentInterval: tc.currentInterval,
+				schedulerHourlyInterval:  tc.hourlyInterval,
+				schedulerDailyInterval:   tc.dailyInterval,
 			}
 
 			req := httptest.NewRequest(tc.method, "/api/config", nil)

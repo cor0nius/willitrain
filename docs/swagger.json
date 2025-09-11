@@ -1,5 +1,6 @@
 {
     "schemes": [
+        "https",
         "http"
     ],
     "swagger": "2.0",
@@ -15,7 +16,421 @@
         },
         "version": "1.0"
     },
-    "host": "localhost:8080",
-    "basePath": "/api/v1",
-    "paths": {}
+    "host": "willitrain-908739103426.europe-west1.run.app",
+    "basePath": "/",
+    "paths": {
+        "/api/config": {
+            "get": {
+                "description": "Provides client-side applications with necessary configuration details,\nsuch as whether the application is running in development mode and the\nintervals for scheduled weather data updates.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Get application configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ConfigResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/currentweather": {
+            "get": {
+                "description": "Retrieves the current weather conditions for a specified location.\nThe location can be identified by its name, or by latitude and longitude.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "weather"
+                ],
+                "summary": "Get current weather",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Location name to search for (e.g., 'London')",
+                        "name": "city",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Latitude for the location (e.g., 51.5074)",
+                        "name": "lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitude for the location (e.g., -0.1278)",
+                        "name": "lon",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.CurrentWeatherResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid location parameters",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to retrieve weather data",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dailyforecast": {
+            "get": {
+                "description": "Retrieves the weather forecast for the next 5 days for a specified location.\nThe location can be identified by its name, or by latitude and longitude.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "weather"
+                ],
+                "summary": "Get daily forecast",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Location name to search for (e.g., 'London')",
+                        "name": "city",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Latitude for the location (e.g., 51.5074)",
+                        "name": "lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitude for the location (e.g., -0.1278)",
+                        "name": "lon",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.DailyForecastsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid location parameters",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to retrieve forecast data",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/hourlyforecast": {
+            "get": {
+                "description": "Retrieves the weather forecast for the next 24 hours for a specified location.\nThe location can be identified by its name, or by latitude and longitude.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "weather"
+                ],
+                "summary": "Get hourly forecast",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Location name to search for (e.g., 'London')",
+                        "name": "city",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Latitude for the location (e.g., 51.5074)",
+                        "name": "lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitude for the location (e.g., -0.1278)",
+                        "name": "lon",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.HourlyForecastsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid location parameters",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to retrieve forecast data",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/dev/reset-db": {
+            "post": {
+                "description": "Completely wipes the database and Redis cache. This action deletes all stored locations\nand their associated weather data. This endpoint is intended for development and testing purposes only.\nIt should not be enabled in production environments.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "development"
+                ],
+                "summary": "Reset database and cache (development only)",
+                "responses": {
+                    "200": {
+                        "description": "Confirmation of reset. Example: `{\\\"status\\\":\\\"database and cache reset\\\"}`",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to reset database or cache",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/dev/runschedulerjobs": {
+            "post": {
+                "description": "Manually triggers a run of all scheduled data update jobs, including current weather,\nhourly forecast, and daily forecast updates. This endpoint is intended for development\nand testing purposes only. It should not be enabled in production environments.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "development"
+                ],
+                "summary": "Manually trigger scheduler jobs (development only)",
+                "responses": {
+                    "202": {
+                        "description": "Confirmation of triggering. Example:`{\\\"status\\\": \\\"scheduler jobs triggered\\\"}`",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "main.ConfigResponse": {
+            "type": "object",
+            "properties": {
+                "current_interval": {
+                    "type": "string"
+                },
+                "daily_interval": {
+                    "type": "string"
+                },
+                "dev_mode": {
+                    "type": "boolean"
+                },
+                "hourly_interval": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.CurrentWeatherJSON": {
+            "type": "object",
+            "properties": {
+                "condition_text": {
+                    "type": "string"
+                },
+                "humidity": {
+                    "type": "integer"
+                },
+                "precipitation_mm": {
+                    "type": "number"
+                },
+                "source_api": {
+                    "type": "string"
+                },
+                "temperature_c": {
+                    "type": "number"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "wind_speed_kmh": {
+                    "type": "number"
+                }
+            }
+        },
+        "main.CurrentWeatherResponse": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "$ref": "#/definitions/main.Location"
+                },
+                "weather": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.CurrentWeatherJSON"
+                    }
+                }
+            }
+        },
+        "main.DailyForecastJSON": {
+            "type": "object",
+            "properties": {
+                "forecast_date": {
+                    "type": "string"
+                },
+                "humidity": {
+                    "type": "integer"
+                },
+                "max_temp_c": {
+                    "type": "number"
+                },
+                "min_temp_c": {
+                    "type": "number"
+                },
+                "precipitation_chance": {
+                    "type": "integer"
+                },
+                "precipitation_mm": {
+                    "type": "number"
+                },
+                "source_api": {
+                    "type": "string"
+                },
+                "wind_speed_kmh": {
+                    "type": "number"
+                }
+            }
+        },
+        "main.DailyForecastsResponse": {
+            "type": "object",
+            "properties": {
+                "forecasts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.DailyForecastJSON"
+                    }
+                },
+                "location": {
+                    "$ref": "#/definitions/main.Location"
+                }
+            }
+        },
+        "main.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.HourlyForecastJSON": {
+            "type": "object",
+            "properties": {
+                "condition_text": {
+                    "type": "string"
+                },
+                "forecast_datetime": {
+                    "type": "string"
+                },
+                "humidity": {
+                    "type": "integer"
+                },
+                "precipitation_chance": {
+                    "type": "integer"
+                },
+                "precipitation_mm": {
+                    "type": "number"
+                },
+                "source_api": {
+                    "type": "string"
+                },
+                "temperature_c": {
+                    "type": "number"
+                },
+                "wind_speed_kmh": {
+                    "type": "number"
+                }
+            }
+        },
+        "main.HourlyForecastsResponse": {
+            "type": "object",
+            "properties": {
+                "forecasts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.HourlyForecastJSON"
+                    }
+                },
+                "location": {
+                    "$ref": "#/definitions/main.Location"
+                }
+            }
+        },
+        "main.Location": {
+            "type": "object",
+            "properties": {
+                "city_name": {
+                    "type": "string"
+                },
+                "country_code": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "location_id": {
+                    "type": "string"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        }
+    }
 }

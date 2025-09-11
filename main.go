@@ -7,9 +7,9 @@
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 
-// @host localhost:8080
-// @BasePath /api/v1
-// @schemes http
+// @host willitrain-908739103426.europe-west1.run.app
+// @BasePath /
+// @schemes https http
 package main
 
 import (
