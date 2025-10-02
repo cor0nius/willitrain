@@ -7,11 +7,6 @@ Will It Rain? is a weather forecast application designed to provide more reliabl
 
 This application is built with a Go backend, a lightweight TypeScript frontend, and is fully containerized for easy deployment.
 
-## Live Demo
-
-A version of this application is deployed on Google Cloud Run and is available here:
-[https://willitrain-908739103426.europe-west1.run.app/](https://willitrain-908739103426.europe-west1.run.app/)
-
 ## Features
 
 -   **Multi-Source Weather Data:** Aggregates current, hourly, and daily forecasts from three different weather APIs.
